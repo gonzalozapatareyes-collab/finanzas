@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Finanzas Gonzalo</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #F4F6F9;
@@ -90,9 +90,13 @@
   .editable::-webkit-outer-spin-button, .editable::-webkit-inner-spin-button { -webkit-appearance:none; }
   .editable:focus { outline:none; border-color:var(--blue); background:#fff; box-shadow:0 0 0 3px var(--blue-dim); }
 
+  /* ── Fuente numérica — Inter tabular ── */
+  .num { font-family:'Inter',sans-serif; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-0.3px; }
+  .hero-amount { font-family:'Inter',sans-serif; font-size:38px; font-weight:800; letter-spacing:-1.5px; color:#fff; font-variant-numeric:tabular-nums; }
+  .goal-pct { font-family:'Inter',sans-serif; font-size:24px; font-weight:800; font-variant-numeric:tabular-nums; }
+  .total-amount { font-family:'Inter',sans-serif; font-size:20px; font-weight:800; color:var(--text); font-variant-numeric:tabular-nums; letter-spacing:-0.5px; }
   .hero { background:var(--blue); border:none; border-radius:12px; padding:28px 32px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; gap:20px; }
   .hero-label { font-size:10px; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:2px; margin-bottom:6px; }
-  .hero-amount { font-family:'Syne',sans-serif; font-size:38px; font-weight:800; letter-spacing:-1px; color:#fff; }
   .hero-sub { font-size:11px; color:rgba(255,255,255,0.65); margin-top:6px; }
 
   .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
@@ -104,7 +108,6 @@
   .goal-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px; }
   .goal-name { font-family:'Syne',sans-serif; font-size:15px; font-weight:700; color:var(--text); }
   .goal-sub { font-size:11px; color:var(--muted); margin-top:2px; }
-  .goal-pct { font-family:'Syne',sans-serif; font-size:24px; font-weight:800; }
   .goal-bar-track { height:6px; background:var(--surface2); border-radius:99px; margin:10px 0 12px; overflow:hidden; }
   .goal-bar-fill { height:100%; border-radius:99px; transition:width .6s ease; }
   .goal-detail { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); flex-wrap:wrap; gap:6px; }
@@ -890,7 +893,7 @@ function renderHistorial() {
     return `<div style="padding:12px 0;border-bottom:0.5px solid var(--border);">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
         <div style="flex:1;min-width:120px;">
-          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--text);">
+          <div style="font-family:'Inter',sans-serif;font-weight:700;font-variant-numeric:tabular-nums;font-size:14px;color:var(--text);">
             ${r.mes}${isLatest ? ' <span style="font-size:9px;color:var(--blue);background:var(--blue-dim);padding:1px 7px;border-radius:4px;font-family:DM Mono,monospace;font-weight:600;">Último</span>' : ''}
           </div>
           ${detalle ? `<div style="margin-top:5px;line-height:1.6;">${detalle}</div>` : ''}
@@ -898,11 +901,11 @@ function renderHistorial() {
         <div style="display:flex;gap:16px;flex-shrink:0;text-align:right;">
           <div>
             <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;">Ahorro total</div>
-            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--text);">${fmt(r.saldoTotal||0)}</div>
+            <div style="font-family:'Inter',sans-serif;font-weight:700;font-variant-numeric:tabular-nums;font-size:13px;color:var(--text);">${fmt(r.saldoTotal||0)}</div>
           </div>
           <div>
             <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;">Depositado</div>
-            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:${depColor};">${r.totalDeposito > 0 ? '+'+fmt(r.totalDeposito) : '—'}</div>
+            <div style="font-family:'Inter',sans-serif;font-weight:700;font-variant-numeric:tabular-nums;font-size:14px;color:${depColor};">${r.totalDeposito > 0 ? '+'+fmt(r.totalDeposito) : '—'}</div>
           </div>
         </div>
       </div>
@@ -914,12 +917,12 @@ function renderHistorial() {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
       <div style="background:var(--surface2);border-radius:8px;padding:12px;">
         <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Ahorro acumulado</div>
-        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:15px;color:var(--text);">${fmt(ultimoMes.saldoTotal||0)}</div>
+        <div style="font-family:'Inter',sans-serif;font-weight:800;font-variant-numeric:tabular-nums;font-size:15px;color:var(--text);">${fmt(ultimoMes.saldoTotal||0)}</div>
         ${variacion}
       </div>
       <div style="background:var(--surface2);border-radius:8px;padding:12px;">
         <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Total depositado</div>
-        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:15px;color:var(--green);">${fmt(totalDepositado)}</div>
+        <div style="font-family:'Inter',sans-serif;font-weight:800;font-variant-numeric:tabular-nums;font-size:15px;color:var(--green);">${fmt(totalDepositado)}</div>
         <div style="font-size:10px;color:var(--muted);margin-top:2px;">${hist.length} mes${hist.length!==1?'es':''} registrado${hist.length!==1?'s':''}</div>
       </div>
       <div style="background:var(--surface2);border-radius:8px;padding:12px;grid-column:1/-1;">
@@ -928,7 +931,7 @@ function renderHistorial() {
             <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Cumplimiento de hábito</div>
             <div style="font-size:11px;color:var(--muted);">${mesesConDeposito} de ${hist.length} meses con aporte</div>
           </div>
-          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:28px;color:${cumColor};">${pctCumplimiento}%</div>
+          <div style="font-family:'Inter',sans-serif;font-weight:800;font-variant-numeric:tabular-nums;font-size:28px;color:${cumColor};">${pctCumplimiento}%</div>
         </div>
         <div style="height:5px;background:var(--border);border-radius:99px;margin-top:8px;overflow:hidden;">
           <div style="height:100%;width:${pctCumplimiento}%;background:${cumColor};border-radius:99px;transition:width .6s;"></div>
@@ -1543,7 +1546,7 @@ function renderModalParticipantes(montoTotal, existentes) {
         <option value="__nuevo__" ${p.nombre && !modalPersonasDisponibles.includes(p.nombre)?'selected':''}>+ Nombre nuevo...</option>
       </select>
       <input class="modal-input" type="number" id="mval-${i}" value="${valDisplay}" placeholder="${valPlaceholder}" oninput="recalcModal()" style="color:var(--${modalMode==='pct'?'blue':'yellow'});">
-      <span id="mcalc-${i}" style="text-align:right;font-family:'Syne',sans-serif;font-weight:700;font-size:12px;color:var(--muted);">${calc}</span>
+      <span id="mcalc-${i}" style="text-align:right;font-family:'Inter',sans-serif;font-weight:700;font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted);">${calc}</span>
       <button class="modal-remove" onclick="quitarParticipante(${i})">✕</button>
     `;
 
@@ -1850,16 +1853,31 @@ function confirmarCompartido() {
 .filtro-btn.active, .filtro-btn:hover { background:var(--blue-dim); color:var(--blue); border-color:var(--blue); }
 
 .gasto-row {
-  display:grid;
-  grid-template-columns:80px 1fr 90px 90px 110px 64px;
-  gap:6px;
-  padding:8px 0;
+  padding:10px 0;
   border-bottom:0.5px solid var(--border);
-  align-items:center;
   font-size:11px;
   color:var(--text2);
 }
 .gasto-row:last-child { border-bottom:none; }
+.gasto-row-main {
+  display:grid;
+  grid-template-columns:78px 1fr 88px 68px 120px 60px;
+  gap:6px;
+  align-items:center;
+}
+@media(max-width:600px){
+  .gasto-row-main {
+    grid-template-columns:1fr auto;
+    grid-template-rows:auto auto;
+    gap:4px;
+  }
+  .gasto-row-fecha { grid-column:1; grid-row:1; font-size:9px; color:var(--muted); }
+  .gasto-row-desc { grid-column:1; grid-row:2; }
+  .gasto-row-monto { grid-column:2; grid-row:1; text-align:right; font-size:12px; }
+  .gasto-row-banco { display:none; }
+  .gasto-row-persona { grid-column:2; grid-row:2; }
+  .gasto-row-acciones { grid-column:1/-1; grid-row:3; display:flex; gap:6px; margin-top:4px; }
+}
 
 .persona-select {
   background:var(--surface2);
@@ -2078,9 +2096,9 @@ function renderGastos() {
     const displayName = g._label || g.desc;
 
     row.innerHTML = `
-      <div style="display:grid;grid-template-columns:78px 1fr 90px 72px 128px 64px;gap:6px;align-items:center;">
-        <span style="color:var(--muted);font-size:10px;">${g.fecha}</span>
-        <span style="display:flex;align-items:center;gap:4px;min-width:0;">
+      <div class="gasto-row-main">
+        <span class="gasto-row-fecha" style="color:var(--muted);font-size:10px;">${g.fecha}</span>
+        <span class="gasto-row-desc" style="display:flex;align-items:center;gap:4px;min-width:0;">
           <span id="desc-text-${realIdx}" style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;" title="${g.desc}">
             ${displayName}${g._label ? '<span style="color:var(--muted);font-size:9px;margin-left:4px;" title="Nombre original: '+g.desc+'">✎</span>' : ''}
             ${cuotaBadge}
@@ -2093,12 +2111,12 @@ function renderGastos() {
             style="background:transparent;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:0 2px;flex-shrink:0;line-height:1;"
             title="Editar nombre">✎</button>
         </span>
-        <span style="text-align:right;">${montoStr}</span>
-        <span style="text-align:center;">${bancoBadge}</span>
-        <select class="persona-select ${g.persona ? 'asignado' : ''}" onchange="asignar(${realIdx}, this)" ${g.ignorado ? 'disabled' : ''}>
+        <span class="gasto-row-monto" style="text-align:right;">${montoStr}</span>
+        <span class="gasto-row-banco" style="text-align:center;">${bancoBadge}</span>
+        <select class="gasto-row-persona persona-select ${g.persona ? 'asignado' : ''}" onchange="asignar(${realIdx}, this)" ${g.ignorado ? 'disabled' : ''}>
           ${options}
         </select>
-        <div style="display:flex;flex-direction:column;gap:3px;">
+        <div class="gasto-row-acciones" style="display:flex;flex-direction:column;gap:3px;">
           <button class="ignorar-btn ${g.ignorado ? 'activo' : ''}" onclick="toggleIgnorar(${realIdx})">${g.ignorado ? 'restaurar' : 'ignorar'}</button>
           <button class="ignorar-btn" id="cuota-btn-${realIdx}" style="${(g._cuotaActual||g._cuotaTotal)?'background:var(--purple-dim);border-color:var(--purple);color:var(--purple);':''}" onclick="toggleCuotaRow(${realIdx})">cuotas</button>
         </div>
@@ -2106,11 +2124,11 @@ function renderGastos() {
       <div id="cuota-row-${realIdx}" style="display:${(g._cuotaActual||g._cuotaTotal)?'flex':'none'};align-items:center;gap:8px;margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:6px;border:1px solid var(--border);">
         <span style="font-size:10px;color:var(--muted);flex-shrink:0;">Cuota:</span>
         <input type="number" min="1" placeholder="actual" value="${g._cuotaActual||''}"
-          style="width:52px;background:var(--bg);border:1px solid var(--purple);border-radius:4px;color:var(--purple);font-family:'Syne',sans-serif;font-weight:700;font-size:13px;text-align:center;padding:4px;-moz-appearance:textfield;"
+          style="width:52px;background:var(--bg);border:1px solid var(--purple);border-radius:4px;color:var(--purple);font-family:'Inter',sans-serif;font-weight:700;font-variant-numeric:tabular-nums;font-size:13px;text-align:center;padding:4px;-moz-appearance:textfield;"
           onchange="setCuota(${realIdx},'actual',this.value)">
         <span style="color:var(--muted);font-size:14px;font-weight:700;flex-shrink:0;">/</span>
         <input type="number" min="1" placeholder="total" value="${g._cuotaTotal||''}"
-          style="width:52px;background:var(--bg);border:1px solid var(--purple);border-radius:4px;color:var(--purple);font-family:'Syne',sans-serif;font-weight:700;font-size:13px;text-align:center;padding:4px;-moz-appearance:textfield;"
+          style="width:52px;background:var(--bg);border:1px solid var(--purple);border-radius:4px;color:var(--purple);font-family:'Inter',sans-serif;font-weight:700;font-variant-numeric:tabular-nums;font-size:13px;text-align:center;padding:4px;-moz-appearance:textfield;"
           onchange="setCuota(${realIdx},'total',this.value)">
         <span id="cuota-info-${realIdx}" style="font-size:11px;color:${(g._cuotaActual&&g._cuotaTotal&&(g._cuotaTotal-g._cuotaActual)<=1)?'var(--green)':'var(--muted)'};">
           ${(g._cuotaActual && g._cuotaTotal)
@@ -2235,14 +2253,14 @@ function actualizarResumen() {
           : '';
         return `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);font-size:10px;color:var(--muted);">
           <span>${g.fecha} · ${(g._label||g.desc).substring(0,60)}${(g._label||g.desc).length>60?'…':''}${cuotaTag}${faltanTag}</span>
-          <span style="color:var(--text);font-family:'Syne',sans-serif;font-weight:600;">${g.moneda==='USD'?'$'+g.monto.toFixed(2)+' USD':fmtNum(g.monto)}</span>
+          <span style="color:var(--text);font-family:'Inter',sans-serif;font-weight:600;font-variant-numeric:tabular-nums;">${g.moneda==='USD'?'$'+g.monto.toFixed(2)+' USD':fmtNum(g.monto)}</span>
         </div>`;
       }).join('');
 
       const compartidosHtml = data.compartidos.map(({g, monto}) =>
         `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);font-size:10px;color:var(--muted);">
           <span>${g.fecha} · ${(g._label||g.desc).substring(0,60)}${(g._label||g.desc).length>60?'…':''} <span style="background:var(--purple-dim);color:var(--purple);padding:1px 5px;border-radius:3px;font-size:9px;margin-left:4px;">compartido</span></span>
-          <span style="color:var(--text);font-family:'Syne',sans-serif;font-weight:600;">${fmtNum(monto)}</span>
+          <span style="color:var(--text);font-family:'Inter',sans-serif;font-weight:600;font-variant-numeric:tabular-nums;">${fmtNum(monto)}</span>
         </div>`
       ).join('');
 
