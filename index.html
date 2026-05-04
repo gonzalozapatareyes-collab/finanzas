@@ -798,7 +798,7 @@ function recalcularDeposito(k) {
   recalcular(); // actualiza metas + hero + totales en cascada
 }
 
-let _heroVisible = true;
+let _heroVisible = false;
 function toggleHeroVisible() {
   _heroVisible = !_heroVisible;
   const el = document.getElementById('heroTotal');
@@ -814,6 +814,13 @@ function toggleHeroVisible() {
     btn.textContent = '🙈';
     btn.style.background = 'rgba(255,255,255,0.25)';
   }
+}
+
+function initHeroHidden() {
+  const el = document.getElementById('heroTotal');
+  const btn = document.getElementById('hero-eye-btn');
+  if (el) { el.style.filter = 'blur(10px)'; el.style.userSelect = 'none'; }
+  if (btn) { btn.textContent = '🙈'; btn.style.background = 'rgba(255,255,255,0.25)'; }
 }
 
 function recalcularTotalDepositos() {
@@ -1043,18 +1050,12 @@ function toggleFijo(id, btn) {
 }
 
 function saveFijos() {
-  const estado = {};
-  document.querySelectorAll('.fijo-check').forEach(btn => {
-    const row = btn.closest('.fijo-row');
-    if (row && row.id) {
-      const key = row.id.replace('fijo-','');
-      estado[key] = btn.classList.contains('pagado');
-    }
-  });
-  localStorage.setItem(FIJOS_KEY, JSON.stringify(estado));
+  // Siempre guarda en Drive si está conectado (los fijos quedan en _buildData)
+  if (window.driveAccessToken) guardar();
 }
 
 function loadFijos() {
+  // Los fijos vienen de Drive via _aplicarDatos — solo como fallback si no hay Drive
   try {
     const estado = JSON.parse(localStorage.getItem(FIJOS_KEY) || '{}');
     Object.entries(estado).forEach(([key, pagado]) => {
@@ -1075,12 +1076,14 @@ const DEUDORES_KEY = 'finanzas_gonzalo_deudores_v1';
 let _deudores = [];
 
 function loadDeudores() {
+  // Los deudores vienen de Drive via _aplicarDatos — solo como fallback si no hay Drive
   try { _deudores = JSON.parse(localStorage.getItem(DEUDORES_KEY) || '[]'); } catch(e) { _deudores = []; }
   renderDeudores();
 }
 
 function saveDeudores() {
-  localStorage.setItem(DEUDORES_KEY, JSON.stringify(_deudores));
+  window._deudores = _deudores;
+  if (window.driveAccessToken) guardar();
 }
 
 function agregarDeudor() {
@@ -1199,7 +1202,14 @@ function driveHandleToken(resp) {
   driveAccessToken = resp.access_token;
   const expiry = Date.now() + (resp.expires_in - 60) * 1000;
   localStorage.setItem(LS_TOKEN_KEY, JSON.stringify({ token: driveAccessToken, expiry }));
-  driveSetStatus('conectado', '☁️ Drive ✓');
+  driveSetStatus('sincronizando', '☁️ Cargando…');
+  // Auto-carga datos desde Drive al conectar — sin necesidad de F5
+  cargar().then(() => {
+    recalcular();
+    calcGrandTotal();
+    renderHistorial();
+    driveSetStatus('conectado', '☁️ Drive ✓');
+  });
   driveFindFile();
 }
 
@@ -1286,7 +1296,16 @@ function _buildData() {
     metas:   { auto:val('auto-meta'), vivienda:val('viv-meta') },
     pagos:   {}, checks: [], tarjetaMontos: {}, gastos: null,
     depositos: {},
-    historialAhorros: window._historialAhorros || []
+    historialAhorros: window._historialAhorros || [],
+    deudores: window._deudores || [],
+    fijosPagados: (function() {
+      const estado = {};
+      document.querySelectorAll('.fijo-check').forEach(btn => {
+        const row = btn.closest('.fijo-row');
+        if (row && row.id) estado[row.id.replace('fijo-','')] = btn.classList.contains('pagado');
+      });
+      return estado;
+    })()
   };
   // Save deposit amounts and confirmation states
   ['mp','be','fr','fc','fa','cripto'].forEach(k => {
@@ -1392,6 +1411,28 @@ function _aplicarDatos(d) {
     if (d.historialAhorros) {
       window._historialAhorros = d.historialAhorros;
       renderHistorial();
+    }
+
+    // ── Deudores ───────────────────────────────────────────────
+    if (d.deudores) {
+      window._deudores = d.deudores;
+      renderDeudores();
+    }
+
+    // ── Gastos fijos pagados ───────────────────────────────────
+    if (d.fijosPagados) {
+      Object.entries(d.fijosPagados).forEach(([key, pagado]) => {
+        const row = document.getElementById('fijo-'+key);
+        if (!row) return;
+        const btn = row.querySelector('.fijo-check');
+        if (pagado) {
+          btn.classList.add('pagado'); btn.textContent = '✓';
+          row.classList.add('pagado-row');
+        } else {
+          btn.classList.remove('pagado'); btn.textContent = '';
+          row.classList.remove('pagado-row');
+        }
+      });
     }
 
     // ── Metas ──────────────────────────────────────────────────
@@ -1644,6 +1685,7 @@ window.onload = async function() {
   renderHistorial();
   loadFijos();
   loadDeudores();
+  initHeroHidden();
 };
 
 // ─── MODAL COMPARTIDO ────────────────────────────────────────────
