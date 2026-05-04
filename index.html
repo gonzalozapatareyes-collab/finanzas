@@ -124,12 +124,46 @@
   .total-label { font-size:11px; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted); }
   .total-amount { font-family:'Syne',sans-serif; font-size:20px; font-weight:800; color:var(--text); }
 
-  .fijo-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:0.5px solid var(--border); font-size:13px; gap:8px; min-width:0; }
+  .fijo-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:0.5px solid var(--border); font-size:13px; gap:10px; min-width:0; }
   .fijo-row:last-child { border-bottom:none; }
-  .fijo-row > div:first-child { min-width:0; flex:1; overflow:hidden; }
-  .fijo-row > div:first-child > div:first-child { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text2); }
+  .fijo-row-info { min-width:0; flex:1; overflow:hidden; }
+  .fijo-row-info > div:first-child { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text2); }
   .fijo-estado { font-size:10px; color:var(--muted); margin-top:2px; }
-  .fijo-amount { font-family:'Syne',sans-serif; font-weight:700; flex-shrink:0; white-space:nowrap; }
+  .fijo-amount { font-family:'Inter',sans-serif; font-weight:700; flex-shrink:0; white-space:nowrap; font-variant-numeric:tabular-nums; }
+
+  .fijo-check {
+    width:20px; height:20px; min-width:20px; border-radius:5px; border:1.5px solid var(--border);
+    background:var(--surface2); cursor:pointer; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; transition:all .15s; color:transparent;
+  }
+  .fijo-check.pagado { background:var(--green-dim); border-color:var(--green); color:var(--green); }
+  .fijo-row.pagado-row .fijo-row-info > div:first-child { text-decoration:line-through; opacity:.45; }
+  .fijo-row.pagado-row .fijo-amount { opacity:.35; }
+
+  /* ── Deudores ─────────────────────────────────────────────── */
+  .deudor-row { display:grid; grid-template-columns:1fr auto auto; gap:10px; align-items:center; padding:10px 0; border-bottom:0.5px solid var(--border); }
+  .deudor-row:last-of-type { border-bottom:none; }
+  .deudor-nombre { font-size:13px; font-weight:600; color:var(--text); }
+  .deudor-detalle { font-size:10px; color:var(--muted); margin-top:2px; }
+  .deudor-monto { font-family:'Inter',sans-serif; font-weight:700; font-size:14px; color:var(--red); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .deudor-check {
+    width:22px; height:22px; border-radius:6px; border:1.5px solid var(--border);
+    background:var(--surface2); cursor:pointer; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px; transition:all .15s; color:transparent;
+  }
+  .deudor-check.cobrado { background:var(--green-dim); border-color:var(--green); color:var(--green); }
+  .deudor-form { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px; padding-top:14px; border-top:0.5px solid var(--border); }
+  .deudor-form input { background:var(--surface2); border:0.5px solid var(--border); border-radius:7px; color:var(--text); font-family:'DM Mono',monospace; font-size:12px; padding:7px 10px; width:100%; box-sizing:border-box; }
+  .deudor-form input::placeholder { color:var(--muted); }
+  .deudor-add-btn { grid-column:1/-1; background:var(--blue); color:#fff; border:none; border-radius:7px; padding:8px; font-size:12px; font-weight:600; cursor:pointer; font-family:'DM Mono',monospace; transition:opacity .15s; }
+  .deudor-add-btn:hover { opacity:.85; }
+  @media(max-width:480px){
+    .deudor-row { grid-template-columns:1fr auto auto; }
+    .deudor-form { grid-template-columns:1fr; }
+    .deudor-add-btn { grid-column:1; }
+  }
 
   .tarjeta-row { display:grid; grid-template-columns:1fr 80px 80px 80px 52px; align-items:center; padding:9px 0; border-bottom:0.5px solid var(--border); font-size:12px; gap:4px; min-width:0; }
   .tarjeta-row.hdr { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; padding-bottom:6px; }
@@ -228,8 +262,13 @@
 
 <!-- HERO -->
 <div class="hero">
-  <div>
-    <div class="hero-label">Total ahorrado e invertido</div>
+  <div style="flex:1;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="hero-label">Total ahorrado e invertido</div>
+      <button onclick="toggleHeroVisible()" id="hero-eye-btn"
+        style="background:rgba(255,255,255,0.15);border:none;border-radius:6px;color:rgba(255,255,255,0.8);font-size:14px;cursor:pointer;padding:2px 7px;line-height:1;transition:background .15s;"
+        title="Mostrar / ocultar monto">👁</button>
+    </div>
     <div class="hero-amount" id="heroTotal">—</div>
     <div class="hero-sub">Distribuido en 6 cuentas · Mayo 2026</div>
   </div>
@@ -531,6 +570,20 @@
   </div>
 </div>
 
+<!-- DEUDORES -->
+<div class="section-label">💸 Deudores</div>
+<div class="card" style="margin-bottom:16px;">
+  <div class="card-title">Personas que me deben — marca como cobrado para eliminar</div>
+  <div id="deudores-lista"></div>
+  <div class="deudor-form">
+    <input type="text"   id="d-nombre"  placeholder="Nombre">
+    <input type="number" id="d-monto"   placeholder="Monto ($)">
+    <input type="text"   id="d-titulo"  placeholder="Concepto (ej: cena, deuda auto...)">
+    <input type="text"   id="d-desde"   placeholder="Desde cuándo (ej: marzo 2026)">
+    <button class="deudor-add-btn" onclick="agregarDeudor()">+ Agregar deudor</button>
+  </div>
+</div>
+
 <!-- ESTE MES -->
 <div class="section-label">Este mes</div>
 <div class="grid-2">
@@ -538,16 +591,16 @@
   <!-- FIJOS -->
   <div class="card">
     <div class="card-title">📋 Gastos fijos</div>
-    <div class="fijo-row"><div><div>Cuota casa</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$150.000</div></div>
-    <div class="fijo-row"><div><div>Crossfit</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$45.000</div></div>
-    <div class="fijo-row"><div><div>Flores</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$30.000</div></div>
-    <div class="fijo-row"><div><div>Psicólogo</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$44.000</div></div>
-    <div class="fijo-row"><div><div>Wizz (cuotas)</div><div class="fijo-estado" style="color:var(--yellow);">⚠ Termina nov</div></div><div class="fijo-amount" style="color:var(--yellow);">$61.666</div></div>
-    <div class="fijo-row"><div><div>Bodega</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$24.600</div></div>
-    <div class="fijo-row"><div><div>Spotify</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$6.750</div></div>
-    <div class="fijo-row"><div><div>Netflix</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$9.990</div></div>
-    <div class="fijo-row"><div><div>Google One</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$1.790</div></div>
-    <div class="fijo-row"><div><div>Plan Celu</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$9.027</div></div>
+    <div class="fijo-row" id="fijo-casa"><div class="fijo-check" onclick="toggleFijo('casa',this)"></div><div class="fijo-row-info"><div>Cuota casa</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$150.000</div></div>
+    <div class="fijo-row" id="fijo-crossfit"><div class="fijo-check" onclick="toggleFijo('crossfit',this)"></div><div class="fijo-row-info"><div>Crossfit</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$45.000</div></div>
+    <div class="fijo-row" id="fijo-flores"><div class="fijo-check" onclick="toggleFijo('flores',this)"></div><div class="fijo-row-info"><div>Flores</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$30.000</div></div>
+    <div class="fijo-row" id="fijo-psico"><div class="fijo-check" onclick="toggleFijo('psico',this)"></div><div class="fijo-row-info"><div>Psicólogo</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$44.000</div></div>
+    <div class="fijo-row" id="fijo-wizz"><div class="fijo-check" onclick="toggleFijo('wizz',this)"></div><div class="fijo-row-info"><div>Wizz (cuotas)</div><div class="fijo-estado" style="color:var(--yellow);">⚠ Termina nov</div></div><div class="fijo-amount" style="color:var(--yellow);">$61.666</div></div>
+    <div class="fijo-row" id="fijo-bodega"><div class="fijo-check" onclick="toggleFijo('bodega',this)"></div><div class="fijo-row-info"><div>Bodega</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$24.600</div></div>
+    <div class="fijo-row" id="fijo-spotify"><div class="fijo-check" onclick="toggleFijo('spotify',this)"></div><div class="fijo-row-info"><div>Spotify</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$6.750</div></div>
+    <div class="fijo-row" id="fijo-netflix"><div class="fijo-check" onclick="toggleFijo('netflix',this)"></div><div class="fijo-row-info"><div>Netflix</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$9.990</div></div>
+    <div class="fijo-row" id="fijo-google"><div class="fijo-check" onclick="toggleFijo('google',this)"></div><div class="fijo-row-info"><div>Google One</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$1.790</div></div>
+    <div class="fijo-row" id="fijo-celu"><div class="fijo-check" onclick="toggleFijo('celu',this)"></div><div class="fijo-row-info"><div>Plan Celu</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$9.027</div></div>
     <div class="total-row">
       <span class="total-label">Total fijos</span>
       <span class="total-amount" style="color:var(--yellow);font-size:17px;">$382.823</span>
@@ -743,6 +796,24 @@ function getMesActual() {
 
 function recalcularDeposito(k) {
   recalcular(); // actualiza metas + hero + totales en cascada
+}
+
+let _heroVisible = true;
+function toggleHeroVisible() {
+  _heroVisible = !_heroVisible;
+  const el = document.getElementById('heroTotal');
+  const btn = document.getElementById('hero-eye-btn');
+  if (_heroVisible) {
+    el.style.filter = 'none';
+    el.style.userSelect = '';
+    btn.textContent = '👁';
+    btn.style.background = 'rgba(255,255,255,0.15)';
+  } else {
+    el.style.filter = 'blur(10px)';
+    el.style.userSelect = 'none';
+    btn.textContent = '🙈';
+    btn.style.background = 'rgba(255,255,255,0.25)';
+  }
 }
 
 function recalcularTotalDepositos() {
@@ -958,7 +1029,109 @@ function fmtShort(n) {
   return '$' + Math.round(n);
 }
 
-// ── Recalcular también inicializa totales de depósitos ──────────
+// ══════════════════════════════════════════════════════════════════
+//  GASTOS FIJOS — CHECKBOXES (persisten, no se limpian con el mes)
+// ══════════════════════════════════════════════════════════════════
+const FIJOS_KEY = 'finanzas_gonzalo_fijos_v1';
+
+function toggleFijo(id, btn) {
+  const row = document.getElementById('fijo-'+id);
+  const isPagado = btn.classList.toggle('pagado');
+  btn.textContent = isPagado ? '✓' : '';
+  row.classList.toggle('pagado-row', isPagado);
+  saveFijos();
+}
+
+function saveFijos() {
+  const estado = {};
+  document.querySelectorAll('.fijo-check').forEach(btn => {
+    const row = btn.closest('.fijo-row');
+    if (row && row.id) {
+      const key = row.id.replace('fijo-','');
+      estado[key] = btn.classList.contains('pagado');
+    }
+  });
+  localStorage.setItem(FIJOS_KEY, JSON.stringify(estado));
+}
+
+function loadFijos() {
+  try {
+    const estado = JSON.parse(localStorage.getItem(FIJOS_KEY) || '{}');
+    Object.entries(estado).forEach(([key, pagado]) => {
+      const row = document.getElementById('fijo-'+key);
+      if (!row || !pagado) return;
+      const btn = row.querySelector('.fijo-check');
+      btn.classList.add('pagado');
+      btn.textContent = '✓';
+      row.classList.add('pagado-row');
+    });
+  } catch(e) {}
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  DEUDORES
+// ══════════════════════════════════════════════════════════════════
+const DEUDORES_KEY = 'finanzas_gonzalo_deudores_v1';
+let _deudores = [];
+
+function loadDeudores() {
+  try { _deudores = JSON.parse(localStorage.getItem(DEUDORES_KEY) || '[]'); } catch(e) { _deudores = []; }
+  renderDeudores();
+}
+
+function saveDeudores() {
+  localStorage.setItem(DEUDORES_KEY, JSON.stringify(_deudores));
+}
+
+function agregarDeudor() {
+  const nombre = document.getElementById('d-nombre').value.trim();
+  const monto  = parseFloat(document.getElementById('d-monto').value) || 0;
+  const titulo = document.getElementById('d-titulo').value.trim();
+  const desde  = document.getElementById('d-desde').value.trim();
+  if (!nombre || !monto) { alert('Ingresa al menos nombre y monto.'); return; }
+  _deudores.push({ id: Date.now(), nombre, monto, titulo, desde, cobrado: false });
+  saveDeudores();
+  renderDeudores();
+  ['d-nombre','d-monto','d-titulo','d-desde'].forEach(id => document.getElementById(id).value = '');
+}
+
+function toggleCobrado(id) {
+  const d = _deudores.find(x => x.id === id);
+  if (!d) return;
+  if (!d.cobrado) {
+    d.cobrado = true;
+    saveDeudores();
+    renderDeudores();
+    // Eliminar después de 1.2s para que el usuario vea el tick
+    setTimeout(() => {
+      _deudores = _deudores.filter(x => x.id !== id);
+      saveDeudores();
+      renderDeudores();
+    }, 1200);
+  }
+}
+
+// ── Integrar en _buildData y _aplicarDatos (los fijos y deudores van en localStorage, no en Drive)
+
+function renderDeudores() {
+  const lista = document.getElementById('deudores-lista');
+  if (!lista) return;
+  if (_deudores.length === 0) {
+    lista.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:12px 0;">Sin deudores registrados.</div>';
+    return;
+  }
+  lista.innerHTML = _deudores.map(d => `
+    <div class="deudor-row" id="deudor-${d.id}">
+      <div>
+        <div class="deudor-nombre">${d.nombre}</div>
+        <div class="deudor-detalle">${d.titulo ? d.titulo : ''}${d.titulo && d.desde ? ' · ' : ''}${d.desde ? 'Desde ' + d.desde : ''}</div>
+      </div>
+      <div class="deudor-monto">${fmt(d.monto)}</div>
+      <div class="deudor-check ${d.cobrado ? 'cobrado' : ''}" onclick="toggleCobrado(${d.id})" title="Marcar como cobrado — se eliminará">${d.cobrado ? '✓' : ''}</div>
+    </div>
+  `).join('');
+}
+
 
 //  Usa Google Identity Services (OAuth2 PKCE) — sin backend
 // ══════════════════════════════════════════════════════════════════
@@ -1469,6 +1642,8 @@ window.onload = async function() {
   recalcular();
   calcGrandTotal();
   renderHistorial();
+  loadFijos();
+  loadDeudores();
 };
 
 // ─── MODAL COMPARTIDO ────────────────────────────────────────────
