@@ -1073,7 +1073,7 @@ function loadFijos() {
 //  DEUDORES
 // ══════════════════════════════════════════════════════════════════
 const DEUDORES_KEY = 'finanzas_gonzalo_deudores_v1';
-let _deudores = [];
+window._deudores = window._deudores || [];
 
 function loadDeudores() {
   // Los deudores vienen de Drive via _aplicarDatos — solo como fallback si no hay Drive
@@ -1082,7 +1082,7 @@ function loadDeudores() {
 }
 
 function saveDeudores() {
-  window._deudores = _deudores;
+  // synced via window._deudores directly
   if (window.driveAccessToken) guardar();
 }
 
@@ -1092,14 +1092,14 @@ function agregarDeudor() {
   const titulo = document.getElementById('d-titulo').value.trim();
   const desde  = document.getElementById('d-desde').value.trim();
   if (!nombre || !monto) { alert('Ingresa al menos nombre y monto.'); return; }
-  _deudores.push({ id: Date.now(), nombre, monto, titulo, desde, cobrado: false });
+  window._deudores.push({ id: Date.now(), nombre, monto, titulo, desde, cobrado: false });
   saveDeudores();
   renderDeudores();
   ['d-nombre','d-monto','d-titulo','d-desde'].forEach(id => document.getElementById(id).value = '');
 }
 
 function toggleCobrado(id) {
-  const d = _deudores.find(x => x.id === id);
+  const d = window._deudores.find(x => x.id === id);
   if (!d) return;
   if (!d.cobrado) {
     d.cobrado = true;
@@ -1107,7 +1107,7 @@ function toggleCobrado(id) {
     renderDeudores();
     // Eliminar después de 1.2s para que el usuario vea el tick
     setTimeout(() => {
-      _deudores = _deudores.filter(x => x.id !== id);
+      window._deudores = window._deudores.filter(x => x.id !== id);
       saveDeudores();
       renderDeudores();
     }, 1200);
@@ -1119,11 +1119,11 @@ function toggleCobrado(id) {
 function renderDeudores() {
   const lista = document.getElementById('deudores-lista');
   if (!lista) return;
-  if (_deudores.length === 0) {
+  if ((window._deudores||[]).length === 0) {
     lista.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:12px 0;">Sin deudores registrados.</div>';
     return;
   }
-  lista.innerHTML = _deudores.map(d => `
+  lista.innerHTML = window._deudores.map(d => `
     <div class="deudor-row" id="deudor-${d.id}">
       <div>
         <div class="deudor-nombre">${d.nombre}</div>
