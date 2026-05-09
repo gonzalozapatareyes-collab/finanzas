@@ -200,6 +200,7 @@
   .section-label { font-family:'Syne',sans-serif; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:2.5px; color:var(--muted); margin:26px 0 12px; }
   .tag { display:inline-block; padding:1px 7px; border-radius:4px; font-size:9px; text-transform:uppercase; letter-spacing:1px; margin-left:6px; font-weight:600; }
   .tag-imp { background:var(--purple-dim); color:var(--purple); }
+  .tag-res { background:var(--yellow-dim); color:var(--yellow); }
   .tag-auto { background:var(--yellow-dim); color:var(--yellow); }
   .tag-viv { background:var(--blue-dim); color:var(--blue); }
 
@@ -440,7 +441,7 @@
     <div class="ahorro-controls">
       <div class="ahorro-field">
         <span class="ahorro-field-label">Saldo actual</span>
-        <input class="editable" type="number" id="c-be" value="3080262" onchange="recalcular()" style="color:var(--blue);width:140px;">
+        <input class="editable" type="number" id="c-be" value="3335727" onchange="recalcular()" style="color:var(--blue);width:140px;">
       </div>
       <div class="ahorro-field">
         <span class="ahorro-field-label">Deposité este mes</span>
@@ -455,7 +456,7 @@
     <div class="ahorro-info">
       <div class="cuenta-left">
         <div class="cuenta-dot" style="background:var(--purple);"></div>
-        <div><div class="cuenta-name">Fintual Reserva <span class="tag tag-imp">importación</span></div><div class="cuenta-dest">4.17% anual</div></div>
+        <div><div class="cuenta-name">Fintual Reserva <span class="tag tag-res">Reserva/Emergencia</span></div><div class="cuenta-dest">4.17% anual</div></div>
       </div>
       <div id="listo-fr" style="margin-left:18px;margin-top:2px;"></div>
     </div>
@@ -494,27 +495,7 @@
     </div>
   </div>
 
-  <!-- Fintual Autito -->
-  <div class="ahorro-row">
-    <div class="ahorro-info">
-      <div class="cuenta-left">
-        <div class="cuenta-dot" style="background:var(--purple);opacity:.5;"></div>
-        <div><div class="cuenta-name">Fintual Autito <span class="tag tag-imp">importación</span></div><div class="cuenta-dest">—</div></div>
-      </div>
-      <div id="listo-fa" style="margin-left:18px;margin-top:2px;"></div>
-    </div>
-    <div class="ahorro-controls">
-      <div class="ahorro-field">
-        <span class="ahorro-field-label">Saldo actual</span>
-        <input class="editable" type="number" id="c-fa" value="255465" onchange="recalcular()" style="color:var(--purple);opacity:.7;width:140px;">
-      </div>
-      <div class="ahorro-field">
-        <span class="ahorro-field-label">Deposité este mes</span>
-        <input class="editable" type="number" id="dep-fa" value="0" onchange="recalcularDeposito('fa')" placeholder="0" style="color:var(--green);width:140px;">
-      </div>
-      <button class="ahorro-confirm pendiente" id="btn-fa" onclick="confirmarDeposito('fa')">✓ Listo</button>
-    </div>
-  </div>
+
 
   <!-- Cripto -->
   <div class="ahorro-row">
@@ -692,7 +673,7 @@
   <div class="card-title">Qué actualizar cada 1ro</div>
   <div class="check-item" onclick="toggleCheck(this)"><div class="chk">✓</div><div class="check-text">Actualizar saldo MercadoPago</div></div>
   <div class="check-item" onclick="toggleCheck(this)"><div class="chk">✓</div><div class="check-text">Actualizar saldo BancoEstado Vivienda</div></div>
-  <div class="check-item" onclick="toggleCheck(this)"><div class="chk">✓</div><div class="check-text">Actualizar los 3 saldos Fintual</div></div>
+  <div class="check-item" onclick="toggleCheck(this)"><div class="chk">✓</div><div class="check-text">Actualizar los 2 saldos Fintual (Reserva y Capital)</div></div>
   <div class="check-item" onclick="toggleCheck(this)"><div class="chk">✓</div><div class="check-text">Ingresar montos de tarjetas Bco Chile y CMR</div></div>
   <div class="check-item" onclick="toggleCheck(this)"><div class="chk">✓</div><div class="check-text">Marcar pagos de tarjetas a medida que se realizan</div></div>
   <div class="check-item" onclick="toggleCheck(this)"><div class="chk">✓</div><div class="check-text">Revisar si cambió algún gasto fijo</div></div>
@@ -746,7 +727,7 @@ function calcGrandTotal() {
 }
 
 function recalcular() {
-  const ids = ['c-mp','c-be','c-fr','c-fc','c-fa','c-cripto'];
+  const ids = ['c-mp','c-be','c-fr','c-fc','c-cripto'];
   let total = 0;
   ids.forEach(id => total += val(id));
   document.getElementById('totalCuentas').textContent = fmt(total);
@@ -785,7 +766,7 @@ window._historialAhorros = window._historialAhorros || [];
 
 const CUENTAS_NOMBRES = {
   mp: 'MercadoPago', be: 'BancoEstado', fr: 'Fintual Reserva',
-  fc: 'Fintual Capital', fa: 'Fintual Autito', cripto: 'ETH + BTC'
+  fc: 'Fintual Capital', cripto: 'ETH + BTC'
 };
 
 function getMesActual() {
@@ -825,13 +806,13 @@ function initHeroHidden() {
 
 function recalcularTotalDepositos() {
   let totalDep = 0;
-  ['mp','be','fr','fc','fa','cripto'].forEach(k => {
+  ['mp','be','fr','fc','cripto'].forEach(k => {
     const el = document.getElementById('dep-'+k);
     totalDep += parseFloat(el ? el.value : 0) || 0;
   });
 
   // Total saldos actuales (sin depósitos)
-  const totalSaldo = ['c-mp','c-be','c-fr','c-fc','c-fa','c-cripto'].reduce((s,id) => s + val(id), 0);
+  const totalSaldo = ['c-mp','c-be','c-fr','c-fc','c-cripto'].reduce((s,id) => s + val(id), 0);
 
   // Hero: saldo + depósitos del mes
   const totalConDep = totalSaldo + totalDep;
@@ -890,10 +871,10 @@ function confirmarDeposito(k) {
 
 function guardarSnapshotHistorial() {
   const mes = getMesActual();
-  const saldoTotal = ['mp','be','fr','fc','fa','cripto'].reduce((s,k) => s + val('c-'+k), 0);
+  const saldoTotal = ['mp','be','fr','fc','cripto'].reduce((s,k) => s + val('c-'+k), 0);
   let totalDeposito = 0;
   const detalle = {};
-  ['mp','be','fr','fc','fa','cripto'].forEach(k => {
+  ['mp','be','fr','fc','cripto'].forEach(k => {
     const dep = parseFloat(document.getElementById('dep-'+k)?.value||0)||0;
     totalDeposito += dep;
     detalle[k] = { saldo: val('c-'+k), deposito: dep };
@@ -1292,7 +1273,7 @@ async function driveCargar() {
 // ══════════════════════════════════════════════════════════════════
 function _buildData() {
   const data = {
-    cuentas: { mp:val('c-mp'), be:val('c-be'), fr:val('c-fr'), fc:val('c-fc'), fa:val('c-fa'), cripto:val('c-cripto') },
+    cuentas: { mp:val('c-mp'), be:val('c-be'), fr:val('c-fr'), fc:val('c-fc'), cripto:val('c-cripto') },
     metas:   { auto:val('auto-meta'), vivienda:val('viv-meta') },
     pagos:   {}, checks: [], tarjetaMontos: {}, gastos: null,
     depositos: {},
@@ -1308,7 +1289,7 @@ function _buildData() {
     })()
   };
   // Save deposit amounts and confirmation states
-  ['mp','be','fr','fc','fa','cripto'].forEach(k => {
+  ['mp','be','fr','fc','cripto'].forEach(k => {
     const depEl = document.getElementById('dep-'+k);
     const btnEl = document.getElementById('btn-'+k);
     data.depositos[k] = {
@@ -1384,14 +1365,14 @@ function _aplicarDatos(d) {
   try {
     // ── Saldos de cuentas ──────────────────────────────────────
     if (d.cuentas) {
-      ['mp','be','fr','fc','fa','cripto'].forEach(k => {
+      ['mp','be','fr','fc','cripto'].forEach(k => {
         if (d.cuentas[k] !== undefined) document.getElementById('c-'+k).value = d.cuentas[k];
       });
     }
 
     // ── Depósitos del mes ──────────────────────────────────────
     if (d.depositos) {
-      ['mp','be','fr','fc','fa','cripto'].forEach(k => {
+      ['mp','be','fr','fc','cripto'].forEach(k => {
         const dep = d.depositos[k];
         if (!dep) return;
         const depEl = document.getElementById('dep-'+k);
