@@ -228,7 +228,9 @@
     color: var(--muted); background: var(--surface); cursor: default;
     transition: all 0.3s; user-select: none; white-space: nowrap;
   }
-  .drive-status.conectado  { color: var(--green);  border-color: var(--green);  background: var(--green-dim); }
+  .drive-status.conectado  { color: var(--green);  border-color: var(--green);  background: var(--green-dim); cursor: pointer; }
+  .drive-status.conectado:hover { color: var(--red); border-color: var(--red); background: var(--red-dim); }
+  .drive-status.conectado:hover::after { content: ' — desconectar'; font-size: 9px; }
   .drive-status.sincronizando { color: var(--blue);  border-color: var(--blue);  background: var(--blue-dim); animation: pulse 1s infinite; }
   .drive-status.error      { color: var(--red);   border-color: var(--red);   background: var(--red-dim); cursor: pointer; }
   .drive-status.desconectado { cursor: pointer; }
@@ -249,7 +251,7 @@
 <div class="header">
   <div class="header-left">
     <h1>Finanzas Gonzalo</h1>
-    <span class="mes-badge">Mayo 2026</span>
+    <span class="mes-badge" id="header-mes"></span>
   </div>
   <div class="header-actions">
     <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">🌙 Oscuro</button>
@@ -271,7 +273,6 @@
         title="Mostrar / ocultar monto">👁</button>
     </div>
     <div class="hero-amount" id="heroTotal">—</div>
-    <div class="hero-sub">Distribuido en 6 cuentas · Mayo 2026</div>
   </div>
   <div style="font-size:44px;opacity:.25;">🏦</div>
 </div>
@@ -1135,10 +1136,16 @@ function driveSetStatus(estado, texto) {
   if (!el) return;
   el.className = 'drive-status ' + estado;
   el.textContent = texto;
-  el.onclick = (estado === 'desconectado' || estado === 'error') ? driveConectar : null;
-  el.title = (estado === 'desconectado') ? 'Clic para conectar Google Drive'
-           : (estado === 'error') ? 'Error — clic para reconectar'
-           : '';
+  if (estado === 'desconectado' || estado === 'error') {
+    el.onclick = driveConectar;
+    el.title = estado === 'error' ? 'Error — clic para reconectar' : 'Clic para conectar Google Drive';
+  } else if (estado === 'conectado') {
+    el.onclick = driveDesconectar;
+    el.title = 'Conectado — clic para desconectar';
+  } else {
+    el.onclick = null;
+    el.title = '';
+  }
 }
 
 // ─── Inicializar Google Identity Services ───────────────────────
@@ -1173,6 +1180,18 @@ function driveConectar() {
   if (!tokenClient) { driveInit(); setTimeout(driveConectar, 600); return; }
   driveSetStatus('sincronizando', '☁️ Conectando…');
   tokenClient.requestAccessToken({ prompt: 'consent' });
+}
+
+// ─── Desconectar Drive ───────────────────────────────────────────
+function driveDesconectar() {
+  const ok = confirm('¿Desconectar Google Drive?\n\nLos datos quedarán en localStorage hasta que vuelvas a conectar.');
+  if (!ok) return;
+  if (driveAccessToken) {
+    try { google.accounts.oauth2.revoke(driveAccessToken, () => {}); } catch(e) {}
+    driveAccessToken = null;
+  }
+  localStorage.removeItem('finanzas_drive_token');
+  driveSetStatus('desconectado', '☁️ Drive');
 }
 
 // ─── Callback con el token ───────────────────────────────────────
@@ -3469,5 +3488,16 @@ window.addEventListener('DOMContentLoaded', () => {
   ↑
 </button>
 
+
+<script>
+(function() {
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const now = new Date();
+  const texto = meses[now.getMonth()] + ' ' + now.getFullYear();
+  const el = document.getElementById('header-mes');
+  if (el) el.textContent = texto;
+})();
+</script>
 </body>
 </html>
