@@ -1390,7 +1390,7 @@ body {
   <div class="card">
     <div class="v6-section-label" style="margin-top:0;">ℹ️ Acerca de</div>
     <p style="font-size:12px;color:var(--muted);line-height:1.6;">
-      <strong>Mis Finanzas v27</strong><br>
+      <strong>Mis Finanzas v28</strong><br>
       Paleta colours.cafe · Donut + barras horizontales · Auto-snapshot · Cero duplicados<br><br>
       <em>Toda tu data del JSON original está 100% preservada.</em>
     </p>
@@ -6925,6 +6925,381 @@ setTimeout(() => {
   v24RegisterActivity();
   if (typeof v24RenderSecurityPanel === 'function') v24RenderSecurityPanel();
 }, 100);
+
+
+
+// ═══════════════════════════════════════════════════════════════════
+// V28: BIOMETRÍA con WebAuthn API
+// ═══════════════════════════════════════════════════════════════════
+
+const V28_BIOMETRIC_KEY = 'v28_biometric_enabled';
+const V28_BIOMETRIC_CRED_KEY = 'v28_biometric_credential_id';
+
+// Detectar si el dispositivo soporta biometría
+window.v28BiometricAvailable = async function() {
+  if (!window.PublicKeyCredential) return false;
+  try {
+    const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    return available;
+  } catch(e) {
+    console.warn('V28: error detectando biometría', e);
+    return false;
+  }
+};
+
+window.v28BiometricEnabled = function() {
+  return localStorage.getItem(V28_BIOMETRIC_KEY) === 'true' &&
+         !!localStorage.getItem(V28_BIOMETRIC_CRED_KEY);
+};
+
+// Generar bytes aleatorios
+function v28RandomBytes(length) {
+  const arr = new Uint8Array(length);
+  crypto.getRandomValues(arr);
+  return arr;
+}
+
+function v28BufferToBase64(buffer) {
+  return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+}
+
+function v28Base64ToBuffer(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+// === REGISTRAR biometría ===
+window.v28RegisterBiometric = async function() {
+  const available = await v28BiometricAvailable();
+  if (!available) {
+    await v25Alert('Este dispositivo no soporta biometría. Necesitas un sensor de huella, reconocimiento facial (Face ID) o Windows Hello.');
+    return false;
+  }
+
+  try {
+    const userId = v28RandomBytes(16);
+    const challenge = v28RandomBytes(32);
+
+    const credential = await navigator.credentials.create({
+      publicKey: {
+        challenge: challenge,
+        rp: {
+          name: 'Mis Finanzas',
+          id: window.location.hostname
+        },
+        user: {
+          id: userId,
+          name: window._driveUserEmail || 'usuario@mis-finanzas',
+          displayName: 'Mis Finanzas'
+        },
+        pubKeyCredParams: [
+          { alg: -7, type: 'public-key' },   // ES256
+          { alg: -257, type: 'public-key' }  // RS256
+        ],
+        authenticatorSelection: {
+          authenticatorAttachment: 'platform',  // sensor del dispositivo
+          userVerification: 'required',
+          requireResidentKey: false
+        },
+        timeout: 60000,
+        attestation: 'none'
+      }
+    });
+
+    if (credential) {
+      const credIdBase64 = v28BufferToBase64(credential.rawId);
+      localStorage.setItem(V28_BIOMETRIC_CRED_KEY, credIdBase64);
+      localStorage.setItem(V28_BIOMETRIC_KEY, 'true');
+      console.log('🔐 V28: biometría registrada');
+      return true;
+    }
+    return false;
+  } catch(e) {
+    console.error('V28: error registrando biometría', e);
+    if (e.name === 'NotAllowedError') {
+      await v25Alert('Cancelaste la configuración de biometría. Inténtalo de nuevo cuando quieras.');
+    } else {
+      await v25Alert('No se pudo configurar la biometría: ' + e.message);
+    }
+    return false;
+  }
+};
+
+// === VERIFICAR biometría ===
+window.v28VerifyBiometric = async function() {
+  if (!v28BiometricEnabled()) return false;
+  try {
+    const credId = localStorage.getItem(V28_BIOMETRIC_CRED_KEY);
+    const challenge = v28RandomBytes(32);
+
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge: challenge,
+        allowCredentials: [{
+          id: v28Base64ToBuffer(credId),
+          type: 'public-key',
+          transports: ['internal']
+        }],
+        userVerification: 'required',
+        timeout: 60000
+      }
+    });
+
+    return !!assertion;
+  } catch(e) {
+    console.error('V28: error verificando biometría', e);
+    return false;
+  }
+};
+
+// === Desactivar biometría ===
+window.v28DisableBiometric = async function() {
+  const ok = await v25Confirm('¿Desactivar biometría? Solo quedará el PIN para proteger la app.');
+  if (!ok) return;
+  localStorage.removeItem(V28_BIOMETRIC_KEY);
+  localStorage.removeItem(V28_BIOMETRIC_CRED_KEY);
+  await v25Alert('Biometría desactivada.');
+  v24RenderSecurityPanel();
+};
+
+// === Activar biometría desde el panel ===
+window.v28SetupBiometric = async function() {
+  if (!v24PinEnabled()) {
+    await v25Alert('Primero debes activar el PIN. La biometría es una alternativa más rápida, pero el PIN sigue siendo el método de respaldo.');
+    return;
+  }
+  const success = await v28RegisterBiometric();
+  if (success) {
+    await v25Alert('✅ Biometría activada. Desde ahora podrás desbloquear la app con tu huella, rostro o Windows Hello.');
+    v24RenderSecurityPanel();
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// V28: Reemplazar la pantalla de bloqueo con opción biométrica
+// ═══════════════════════════════════════════════════════════════════
+window.v24ShowLockScreen = function(onUnlock) {
+  const old = document.getElementById('v24-lock-screen');
+  if (old) old.remove();
+
+  const lock = document.createElement('div');
+  lock.id = 'v24-lock-screen';
+  lock.style.cssText = `
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: linear-gradient(135deg, #1F1814, #2A211B);
+    z-index: 999999; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-family: 'DM Mono', monospace;
+  `;
+
+  const bioActive = v28BiometricEnabled();
+  const bioHTML = bioActive ? `
+    <button id="v28-bio-btn" style="width: 200px; padding: 14px; background: linear-gradient(135deg,#6B9B3F,#8AB35A);
+      color: white; border: none; border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer;
+      font-family: 'DM Mono', monospace; margin-bottom: 12px; display: flex; align-items: center;
+      justify-content: center; gap: 8px;">
+      <span style="font-size: 18px;">👆</span> Usar biometría
+    </button>
+    <div style="font-size: 10px; color: #9A8878; margin-bottom: 16px;">o</div>
+  ` : '';
+
+  lock.innerHTML = `
+    <div style="text-align:center; max-width: 320px; padding: 20px;">
+      <div style="font-size: 72px; margin-bottom: 20px;">🔒</div>
+      <h1 style="font-family: 'Syne', sans-serif; font-size: 26px; background: linear-gradient(135deg,#D16D3E,#D09A27); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px;">Mis Finanzas</h1>
+      <p style="color: #9A8878; font-size: 13px; margin-bottom: 30px;">${bioActive ? 'Usa biometría o tu PIN' : 'Ingresa tu PIN para continuar'}</p>
+      ${bioHTML}
+      <input type="password" id="v24-pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off"
+        style="width: 200px; text-align: center; background: #352920; border: 2px solid #4A382C;
+        color: #EAE9DB; padding: 16px; border-radius: 12px; font-family: 'DM Mono', monospace;
+        font-size: 28px; letter-spacing: 12px; margin-bottom: 12px;">
+      <div id="v24-pin-error" style="color: #c43; font-size: 12px; min-height: 18px; margin-bottom: 16px;"></div>
+      <button id="v24-pin-submit" style="width: 200px; padding: 14px; background: linear-gradient(135deg,#D16D3E,#E07E4E);
+        color: white; border: none; border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer;
+        font-family: 'DM Mono', monospace;">Desbloquear con PIN</button>
+      <div style="margin-top: 20px; font-size: 10px; color: #6A5A4D;">
+        Si olvidaste tu PIN, recarga la página y usa el botón "Olvidé mi PIN" en Configuración → Seguridad
+      </div>
+    </div>
+  `;
+  document.body.appendChild(lock);
+
+  const input = document.getElementById('v24-pin-input');
+  const errorEl = document.getElementById('v24-pin-error');
+  const submitBtn = document.getElementById('v24-pin-submit');
+  const bioBtn = document.getElementById('v28-bio-btn');
+
+  setTimeout(() => input.focus(), 100);
+
+  let attempts = 0;
+  async function tryUnlock() {
+    const pin = input.value.trim();
+    if (!pin) return;
+    const hash = await v24HashPin(pin);
+    const savedHash = localStorage.getItem(V24_PIN_KEY);
+    if (hash === savedHash) {
+      lock.style.opacity = '0';
+      lock.style.transition = 'opacity 0.3s';
+      setTimeout(() => { lock.remove(); if (onUnlock) onUnlock(); }, 300);
+    } else {
+      attempts++;
+      errorEl.textContent = `❌ PIN incorrecto (intento ${attempts})`;
+      input.value = '';
+      input.style.borderColor = '#c43';
+      setTimeout(() => input.style.borderColor = '#4A382C', 500);
+      if (attempts >= 5) {
+        errorEl.textContent = '⚠️ Demasiados intentos. Espera 10 segundos.';
+        submitBtn.disabled = true;
+        setTimeout(() => {
+          submitBtn.disabled = false;
+          attempts = 0;
+          errorEl.textContent = '';
+        }, 10000);
+      }
+    }
+  }
+
+  async function tryBio() {
+    errorEl.textContent = '';
+    bioBtn.disabled = true;
+    bioBtn.innerHTML = '<span style="font-size:18px;">⏳</span> Verificando...';
+    const ok = await v28VerifyBiometric();
+    if (ok) {
+      lock.style.opacity = '0';
+      lock.style.transition = 'opacity 0.3s';
+      setTimeout(() => { lock.remove(); if (onUnlock) onUnlock(); }, 300);
+    } else {
+      bioBtn.disabled = false;
+      bioBtn.innerHTML = '<span style="font-size:18px;">👆</span> Usar biometría';
+      errorEl.textContent = '⚠️ Biometría no verificada. Usa tu PIN.';
+    }
+  }
+
+  submitBtn.onclick = tryUnlock;
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
+  if (bioBtn) {
+    bioBtn.onclick = tryBio;
+    // Intentar biometría automáticamente al abrir (después de 300ms para que renderice)
+    setTimeout(tryBio, 300);
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// V28: Render del panel de seguridad CON biometría
+// ═══════════════════════════════════════════════════════════════════
+const _v28_origRenderSec = window.v24RenderSecurityPanel;
+window.v24RenderSecurityPanel = async function() {
+  const cont = document.getElementById('v24-security-panel');
+  if (!cont) return;
+
+  const pinOn = v24PinEnabled();
+  const hideOn = v24AutoHideAmounts();
+  const logoutMins = v24GetAutoLogoutMinutes();
+  const bioOn = v28BiometricEnabled();
+  const bioAvailable = await v28BiometricAvailable();
+
+  const bioCardHTML = pinOn ? `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--surface2);border-radius:8px;margin-bottom:10px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;color:var(--text);font-size:13px;">${bioOn ? '✅ Biometría activada' : 'Biometría (huella / Face ID)'}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">
+          ${bioOn ? 'Desbloquea con huella, rostro o Windows Hello' : (bioAvailable ? 'Desbloquea más rápido con tu sensor del dispositivo' : '⚠️ Tu dispositivo no soporta biometría')}
+        </div>
+      </div>
+      <button onclick="${bioOn ? 'v28DisableBiometric()' : 'v28SetupBiometric()'}"
+        ${(!bioOn && !bioAvailable) ? 'disabled style="opacity:0.4;cursor:not-allowed;background:var(--muted);color:white;border:none;padding:8px 14px;border-radius:6px;font-weight:700;font-size:11px;flex-shrink:0;"' : `style="background:${bioOn ? 'var(--red)' : 'linear-gradient(135deg,#6B9B3F,#8AB35A)'};color:white;border:none;padding:8px 14px;border-radius:6px;font-weight:700;font-size:11px;cursor:pointer;flex-shrink:0;"`}>
+        ${bioOn ? 'Desactivar' : 'Activar'}
+      </button>
+    </div>
+  ` : '';
+
+  cont.innerHTML = `
+    <div class="card">
+      <div class="v6-section-label" style="margin-top:0;">🔐 Seguridad</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">
+        Configuraciones para proteger tu información financiera.
+      </p>
+
+      <!-- PIN -->
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--surface2);border-radius:8px;margin-bottom:10px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;color:var(--text);font-size:13px;">PIN de bloqueo</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${pinOn ? '✅ Activado · Se pedirá al abrir la app' : 'Solicita un PIN cada vez que abras la app'}</div>
+        </div>
+        <button onclick="${pinOn ? 'v24DisablePin()' : 'v24SetupPin()'}" style="background:${pinOn ? 'var(--red)' : 'linear-gradient(135deg,var(--terracotta),#E07E4E)'};color:white;border:none;padding:8px 14px;border-radius:6px;font-weight:700;font-size:11px;cursor:pointer;flex-shrink:0;">${pinOn ? 'Desactivar' : 'Activar'}</button>
+      </div>
+
+      ${pinOn ? `<div style="text-align:right;margin-bottom:10px;"><button onclick="v24ResetPin()" style="background:transparent;color:var(--muted);border:1px solid var(--border);padding:6px 12px;border-radius:6px;font-size:10px;cursor:pointer;">¿Olvidaste tu PIN?</button></div>` : ''}
+
+      <!-- Biometría (solo si PIN activado) -->
+      ${bioCardHTML}
+
+      <!-- Modo ojo cerrado al abrir -->
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--surface2);border-radius:8px;margin-bottom:10px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;color:var(--text);font-size:13px;">Ocultar montos al abrir</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${hideOn ? '✅ Activado · La app abre con saldos ocultos' : 'La app abre con saldos visibles'}</div>
+        </div>
+        <button onclick="v24ToggleAutoHide()" style="background:${hideOn ? 'var(--red)' : 'linear-gradient(135deg,var(--terracotta),#E07E4E)'};color:white;border:none;padding:8px 14px;border-radius:6px;font-weight:700;font-size:11px;cursor:pointer;flex-shrink:0;">${hideOn ? 'Desactivar' : 'Activar'}</button>
+      </div>
+
+      <!-- Auto-logout -->
+      <div style="padding:12px;background:var(--surface2);border-radius:8px;margin-bottom:10px;">
+        <div style="font-weight:700;color:var(--text);font-size:13px;margin-bottom:4px;">Desconexión por inactividad</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">
+          ${logoutMins === 0 ? 'Desactivado · No se desconecta automáticamente' : `Desconecta Drive tras ${logoutMins} minutos sin actividad`}
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${[0, 5, 15, 30, 60].map(m => `
+            <button onclick="v24SetAutoLogout(${m})" style="background:${logoutMins === m ? 'var(--terracotta)' : 'var(--surface)'};color:${logoutMins === m ? 'white' : 'var(--text)'};border:1px solid var(--border);padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600;">${m === 0 ? 'Off' : m + ' min'}</button>
+          `).join('')}
+        </div>
+      </div>
+
+      <div style="margin-top:16px;padding:12px;background:rgba(208,154,39,0.1);border-left:3px solid var(--mustard);border-radius:6px;font-size:11px;color:var(--text2);line-height:1.5;">
+        <strong style="color:var(--mustard);">💡 Recomendación adicional:</strong> activa la <strong>verificación en 2 pasos (2FA)</strong> en tu cuenta de Google. Es la mejora de seguridad más importante que puedes hacer hoy. Lleva 5 minutos en <a href="https://myaccount.google.com/security" target="_blank" style="color:var(--terracotta);">myaccount.google.com/security</a>.
+      </div>
+    </div>
+  `;
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// V28: Recuperación de PIN simplificada (sin email)
+// Como ya hay biometría, el "olvidé mi PIN" se simplifica
+// ═══════════════════════════════════════════════════════════════════
+window.v24ResetPin = async function() {
+  // Si tiene biometría, usarla como verificación
+  if (v28BiometricEnabled()) {
+    const verified = await v25ShowModal({
+      message: '¿Olvidaste tu PIN? Verifica con tu biometría para eliminarlo.<br><br><strong style="color:#D09A27;">Después podrás crear un PIN nuevo.</strong>',
+      okText: 'Verificar con biometría',
+      cancelText: 'Cancelar'
+    });
+    if (!verified) return;
+
+    const bioOk = await v28VerifyBiometric();
+    if (!bioOk) {
+      await v25Alert('No se pudo verificar tu biometría. El PIN no fue eliminado.');
+      return;
+    }
+
+    localStorage.removeItem(V24_PIN_KEY);
+    localStorage.removeItem(V24_PIN_ENABLED_KEY);
+    await v25Alert('✅ PIN eliminado tras verificar tu biometría. Crea un PIN nuevo desde Configuración → Seguridad.');
+    v24RenderSecurityPanel();
+  } else {
+    // Sin biometría: opción directa con advertencia
+    const ok = await v25Confirm('¿Eliminar el PIN sin verificación adicional?<br><br><em style="color:#D09A27;font-size:11px;">Tip: activa la biometría para mayor seguridad la próxima vez.</em>');
+    if (!ok) return;
+    localStorage.removeItem(V24_PIN_KEY);
+    localStorage.removeItem(V24_PIN_ENABLED_KEY);
+    await v25Alert('PIN eliminado.');
+    v24RenderSecurityPanel();
+  }
+};
+
 
 setTimeout(() => { if (typeof v17RenderInsights === 'function') v17RenderInsights(); }, 3000);
 setInterval(() => { if (typeof v17RenderInsights === 'function') v17RenderInsights(); }, 60000);
