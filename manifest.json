@@ -1,6 +1,6 @@
 {
-  "name": "Finanzas Gonzalo",
-  "short_name": "Finanzas",
+  "name": "Mis Finanzas",
+  "short_name": "Mis Finanzas",
   "description": "Tu app personal de finanzas",
   "start_url": "./",
   "scope": "./",

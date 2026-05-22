@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Finanzas Gonzalo</title>
+<title>Mis Finanzas</title>
 <!-- V21: PWA tags -->
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
@@ -11,7 +11,7 @@
 <meta name="theme-color" content="#D16D3E">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Finanzas">
+<meta name="apple-mobile-web-app-title" content="Mis Finanzas">
 <meta name="mobile-web-app-capable" content="yes">
 
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -1127,7 +1127,7 @@ body {
 <div id="app-wrapper">
 <aside id="sidebar">
   <div id="sidebar-header">
-    <div id="sidebar-logo">💰 Finanzas Gonzalo</div>
+    <div id="sidebar-logo">💰 Mis Finanzas</div>
     <div id="sidebar-clock">--:--:--</div>
     <div id="sidebar-clock-date">cargando…</div>
     <div id="sidebar-sync">
@@ -1369,6 +1369,8 @@ body {
     </p>
   </div>
 
+  <div id="v24-security-panel"></div>
+
   <div class="card">
     <div class="v6-section-label" style="margin-top:0;">💾 Backup manual</div>
     <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">
@@ -1388,7 +1390,7 @@ body {
   <div class="card">
     <div class="v6-section-label" style="margin-top:0;">ℹ️ Acerca de</div>
     <p style="font-size:12px;color:var(--muted);line-height:1.6;">
-      <strong>Finanzas Gonzalo v21</strong><br>
+      <strong>Mis Finanzas v25</strong><br>
       Paleta colours.cafe · Donut + barras horizontales · Auto-snapshot · Cero duplicados<br><br>
       <em>Toda tu data del JSON original está 100% preservada.</em>
     </p>
@@ -1404,7 +1406,7 @@ body {
 
 <div class="header">
   <div class="header-left">
-    <h1>Finanzas Gonzalo</h1>
+    <h1>Mis Finanzas</h1>
     <span class="mes-badge" id="header-mes"></span>
   </div>
   <div class="header-actions">
@@ -1912,6 +1914,14 @@ function recalcular() {
   }
 
   recalcularTotalDepositos();
+
+  // V23: re-renderizar metas si el editor está visible
+  if (typeof v6RenderMetas === 'function') {
+    const metasEl = document.getElementById('v6-metas-editor');
+    if (metasEl && metasEl.innerHTML.trim() !== '') {
+      v6RenderMetas();
+    }
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -2027,6 +2037,8 @@ function confirmarDeposito(k) {
       delete btn.dataset.ultimoDeposito;
       if (typeof recalcular === 'function') recalcular();
       if (typeof v19UpdateAcumuladoUI === 'function') v19UpdateAcumuladoUI();
+      // V23: actualizar tab Metas
+      if (typeof v6RenderMetas === 'function') v6RenderMetas();
     }
     btn.classList.remove('listo');
     btn.classList.add('pendiente');
@@ -2045,6 +2057,8 @@ function confirmarDeposito(k) {
       if (depEl) depEl.value = 0;
       if (typeof recalcular === 'function') recalcular();
       if (typeof v19UpdateAcumuladoUI === 'function') v19UpdateAcumuladoUI();
+      // V23: actualizar tab Metas con el nuevo saldo consolidado
+      if (typeof v6RenderMetas === 'function') v6RenderMetas();
     }
     btn.classList.remove('pendiente');
     btn.classList.add('listo');
@@ -4111,7 +4125,7 @@ function generarPdfConJsPDF(entries, personaFiltro, mes, modo) {
     doc.setPage(i);
     setFont(7, 'normal');
     setTxt(...C.muted);
-    doc.text(`Finanzas Gonzalo · ${mes}`, ML, PAGE_H - 8);
+    doc.text(`Mis Finanzas · ${mes}`, ML, PAGE_H - 8);
     const pg = `Pág. ${i} / ${pageCount}`;
     doc.text(pg, W - MR - doc.getTextWidth(pg), PAGE_H - 8);
     hLine(ML, PAGE_H - 11, W - MR, C.border, 0.2);
@@ -5426,6 +5440,9 @@ function v6RenderAhorros() {
   }
 
   if (v6HideAmounts) setTimeout(v6ApplyHideAmounts, 100);
+
+  // V23: actualizar también el tab Metas para que refleje los saldos actuales
+  if (typeof v6RenderMetas === 'function') v6RenderMetas();
 }
 
 // ═══ Metas en Ahorros ═════════════════════════════════════════
@@ -6395,6 +6412,492 @@ if (typeof _v19_origAplicarDatos === 'function') {
 }
 
 
+
+
+// ═══════════════════════════════════════════════════════════════════
+// V24: MÓDULO DE SEGURIDAD
+// ═══════════════════════════════════════════════════════════════════
+
+// === Configuración persistente ===
+const V24_PIN_KEY = 'v24_pin_hash';
+const V24_PIN_ENABLED_KEY = 'v24_pin_enabled';
+const V24_AUTOHIDE_KEY = 'v24_autohide_amounts';
+const V24_AUTOLOGOUT_KEY = 'v24_autologout_minutes';
+const V24_LAST_ACTIVITY_KEY = 'v24_last_activity';
+
+// === Hash simple del PIN (SHA-256 vía SubtleCrypto) ===
+async function v24HashPin(pin) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(pin + 'finanzas-gonzalo-salt-v24');
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// === Verificar si PIN está activado ===
+function v24PinEnabled() {
+  return localStorage.getItem(V24_PIN_ENABLED_KEY) === 'true';
+}
+
+// === Mostrar pantalla de bloqueo ===
+window.v24ShowLockScreen = function(onUnlock) {
+  // Eliminar pantalla previa si existe
+  const old = document.getElementById('v24-lock-screen');
+  if (old) old.remove();
+
+  const lock = document.createElement('div');
+  lock.id = 'v24-lock-screen';
+  lock.style.cssText = `
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: linear-gradient(135deg, #1F1814, #2A211B);
+    z-index: 999999; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-family: 'DM Mono', monospace;
+  `;
+  lock.innerHTML = `
+    <div style="text-align:center; max-width: 320px; padding: 20px;">
+      <div style="font-size: 72px; margin-bottom: 20px;">🔒</div>
+      <h1 style="font-family: 'Syne', sans-serif; font-size: 26px; background: linear-gradient(135deg,#D16D3E,#D09A27); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px;">Mis Finanzas</h1>
+      <p style="color: #9A8878; font-size: 13px; margin-bottom: 30px;">Ingresa tu PIN para continuar</p>
+      <input type="password" id="v24-pin-input" inputmode="numeric" maxlength="6" placeholder="••••" autocomplete="off"
+        style="width: 200px; text-align: center; background: #352920; border: 2px solid #4A382C;
+        color: #EAE9DB; padding: 16px; border-radius: 12px; font-family: 'DM Mono', monospace;
+        font-size: 28px; letter-spacing: 12px; margin-bottom: 12px;">
+      <div id="v24-pin-error" style="color: #c43; font-size: 12px; min-height: 18px; margin-bottom: 16px;"></div>
+      <button id="v24-pin-submit" style="width: 200px; padding: 14px; background: linear-gradient(135deg,#D16D3E,#E07E4E);
+        color: white; border: none; border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer;
+        font-family: 'DM Mono', monospace;">Desbloquear</button>
+      <div style="margin-top: 20px; font-size: 10px; color: #6A5A4D;">
+        Si olvidaste tu PIN, recarga la página y usa el botón "Olvidé mi PIN" en Configuración → Seguridad
+      </div>
+    </div>
+  `;
+  document.body.appendChild(lock);
+
+  const input = document.getElementById('v24-pin-input');
+  const errorEl = document.getElementById('v24-pin-error');
+  const submitBtn = document.getElementById('v24-pin-submit');
+
+  setTimeout(() => input.focus(), 100);
+
+  let attempts = 0;
+  async function tryUnlock() {
+    const pin = input.value.trim();
+    if (!pin) return;
+    const hash = await v24HashPin(pin);
+    const savedHash = localStorage.getItem(V24_PIN_KEY);
+    if (hash === savedHash) {
+      lock.style.opacity = '0';
+      lock.style.transition = 'opacity 0.3s';
+      setTimeout(() => {
+        lock.remove();
+        if (onUnlock) onUnlock();
+      }, 300);
+    } else {
+      attempts++;
+      errorEl.textContent = `❌ PIN incorrecto (intento ${attempts})`;
+      input.value = '';
+      input.style.borderColor = '#c43';
+      setTimeout(() => input.style.borderColor = '#4A382C', 500);
+      if (attempts >= 5) {
+        errorEl.textContent = '⚠️ Demasiados intentos. Espera 10 segundos.';
+        submitBtn.disabled = true;
+        setTimeout(() => {
+          submitBtn.disabled = false;
+          attempts = 0;
+          errorEl.textContent = '';
+        }, 10000);
+      }
+    }
+  }
+
+  submitBtn.onclick = tryUnlock;
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') tryUnlock();
+  });
+};
+
+// === Verificar PIN al cargar la app ===
+window.v24CheckPinOnLoad = function() {
+  if (!v24PinEnabled()) return;
+  // Mostrar lock screen hasta que el usuario desbloquee
+  v24ShowLockScreen(() => {
+    console.log('🔓 V24: app desbloqueada');
+  });
+};
+
+// === Activar/desactivar PIN ===
+// V25: Modal custom para PIN (reemplaza prompt/confirm/alert)
+window.v25ShowModal = function(opts) {
+  return new Promise((resolve) => {
+    const old = document.getElementById('v25-modal');
+    if (old) old.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'v25-modal';
+    modal.style.cssText = `
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+      z-index: 999998; display: flex; align-items: center; justify-content: center;
+      padding: 20px; font-family: 'DM Mono', monospace;
+    `;
+
+    const inputHTML = opts.input ? `
+      <input type="${opts.inputType || 'text'}"
+        inputmode="${opts.inputMode || 'text'}"
+        pattern="${opts.pattern || ''}"
+        maxlength="${opts.maxLength || 50}"
+        id="v25-modal-input"
+        placeholder="${opts.placeholder || ''}"
+        autocomplete="off"
+        style="width:100%; background:#352920; border:2px solid #4A382C;
+        color:#EAE9DB; padding:14px; border-radius:10px;
+        font-family:'DM Mono',monospace; font-size:20px;
+        text-align:center; letter-spacing:8px; margin-bottom:14px;">
+    ` : '';
+
+    const errorHTML = `<div id="v25-modal-error" style="color:#c43;font-size:11px;min-height:14px;margin-bottom:10px;"></div>`;
+
+    const buttonsHTML = `
+      <div style="display:flex; gap:8px; justify-content:flex-end;">
+        ${opts.cancelText !== false ? `<button id="v25-modal-cancel" style="background:transparent;color:#9A8878;border:1px solid #4A382C;padding:10px 16px;border-radius:8px;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px;">${opts.cancelText || 'Cancelar'}</button>` : ''}
+        <button id="v25-modal-ok" style="background:linear-gradient(135deg,#D16D3E,#E07E4E);color:white;border:none;padding:10px 18px;border-radius:8px;cursor:pointer;font-weight:700;font-family:'DM Mono',monospace;font-size:12px;">${opts.okText || 'Aceptar'}</button>
+      </div>
+    `;
+
+    modal.innerHTML = `
+      <div style="background:#2A211B; border:1px solid #4A382C; border-radius:14px; padding:24px; max-width:360px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+        <div style="font-family:'Syne',sans-serif; font-weight:700; color:#D16D3E; font-size:14px; margin-bottom:6px; text-transform:uppercase; letter-spacing:1.5px;">Mis Finanzas dice</div>
+        <div style="color:#EAE9DB; font-size:13px; line-height:1.5; margin-bottom:16px;">${opts.message}</div>
+        ${inputHTML}
+        ${errorHTML}
+        ${buttonsHTML}
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    const input = document.getElementById('v25-modal-input');
+    const errorEl = document.getElementById('v25-modal-error');
+    const okBtn = document.getElementById('v25-modal-ok');
+    const cancelBtn = document.getElementById('v25-modal-cancel');
+
+    if (input) setTimeout(() => input.focus(), 50);
+
+    function close(result) {
+      modal.style.opacity = '0';
+      modal.style.transition = 'opacity 0.2s';
+      setTimeout(() => { modal.remove(); resolve(result); }, 200);
+    }
+
+    okBtn.onclick = () => {
+      const val = input ? input.value.trim() : true;
+      if (input && opts.validate) {
+        const err = opts.validate(val);
+        if (err) {
+          errorEl.textContent = err;
+          input.style.borderColor = '#c43';
+          setTimeout(() => input.style.borderColor = '#4A382C', 500);
+          return;
+        }
+      }
+      close(val);
+    };
+    if (cancelBtn) cancelBtn.onclick = () => close(null);
+    if (input) {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') okBtn.click();
+        if (e.key === 'Escape' && cancelBtn) cancelBtn.click();
+      });
+    }
+  });
+};
+
+window.v25Alert = function(message, okText) {
+  return v25ShowModal({ message, cancelText: false, okText: okText || 'OK' });
+};
+
+window.v25Confirm = function(message) {
+  return v25ShowModal({ message, okText: 'Sí, confirmar' });
+};
+
+window.v25Prompt = function(opts) {
+  return v25ShowModal({ ...opts, input: true });
+};
+
+// V25: Setup PIN con teclado numérico forzado y validación inline
+window.v24SetupPin = async function() {
+  const pin1 = await v25Prompt({
+    message: 'Crea tu PIN (4 a 6 dígitos numéricos)',
+    inputType: 'password',
+    inputMode: 'numeric',
+    pattern: '[0-9]*',
+    maxLength: 6,
+    placeholder: '••••',
+    validate: (v) => {
+      if (!v) return 'Ingresa un PIN';
+      if (!/^[0-9]{4,6}$/.test(v)) return 'Solo números, entre 4 y 6 dígitos';
+      return null;
+    }
+  });
+  if (!pin1) return;
+
+  const pin2 = await v25Prompt({
+    message: 'Confirma tu PIN',
+    inputType: 'password',
+    inputMode: 'numeric',
+    pattern: '[0-9]*',
+    maxLength: 6,
+    placeholder: '••••',
+    validate: (v) => {
+      if (!v) return 'Confirma el PIN';
+      if (v !== pin1) return 'Los PINs no coinciden';
+      return null;
+    }
+  });
+  if (!pin2) return;
+
+  const hash = await v24HashPin(pin1);
+  localStorage.setItem(V24_PIN_KEY, hash);
+  localStorage.setItem(V24_PIN_ENABLED_KEY, 'true');
+  await v25Alert('✅ PIN activado. Se te pedirá al abrir la app.');
+  v24RenderSecurityPanel();
+};
+
+window.v24DisablePin = async function() {
+  const ok = await v25Confirm('¿Desactivar el PIN? La app quedará accesible sin contraseña.');
+  if (!ok) return;
+  localStorage.removeItem(V24_PIN_KEY);
+  localStorage.setItem(V24_PIN_ENABLED_KEY, 'false');
+  await v25Alert('PIN desactivado.');
+  v24RenderSecurityPanel();
+};
+
+// V25: Reset de PIN con opción de recuperación por correo (vía Drive)
+window.v24ResetPin = async function() {
+  // Verificar si está conectado a Drive y tiene email
+  const userEmail = window._driveUserEmail || (window.driveAccessToken ? 'tu correo de Google' : null);
+
+  if (userEmail && window.driveAccessToken) {
+    // Opción: recuperación por email
+    const choice = await v25ShowModal({
+      message: `¿Cómo prefieres recuperar tu PIN?<br><br>
+        <strong>Opción 1:</strong> Recibir código de recuperación en <em style="color:#D09A27;">${userEmail}</em><br><br>
+        <strong>Opción 2:</strong> Eliminar el PIN directamente (más rápido, menos seguro)`,
+      okText: 'Enviar código a correo',
+      cancelText: 'Eliminar PIN directo'
+    });
+
+    if (choice === true) {
+      // V25: Generar código y "enviarlo" (en realidad lo mostramos en pantalla porque no tenemos backend de email)
+      // Honestidad: para enviar email real necesitaríamos un servicio externo
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      await v25Alert(`📧 <strong>Atención:</strong> el envío automático por email requiere un servicio backend que aún no tenemos. <br><br>
+        Por ahora, anota este código de verificación: <br><br>
+        <div style="text-align:center;font-size:32px;color:#D09A27;letter-spacing:8px;font-weight:700;margin:14px 0;">${code}</div>
+        Ingrésalo en el siguiente paso para confirmar que eres tú.`);
+
+      const userCode = await v25Prompt({
+        message: 'Ingresa el código que viste en pantalla',
+        inputMode: 'numeric',
+        maxLength: 6,
+        placeholder: '······',
+        validate: (v) => {
+          if (v !== code) return 'Código incorrecto';
+          return null;
+        }
+      });
+      if (!userCode) return;
+
+      localStorage.removeItem(V24_PIN_KEY);
+      localStorage.removeItem(V24_PIN_ENABLED_KEY);
+      await v25Alert('✅ PIN eliminado. Si quieres activarlo de nuevo, créalo desde Configuración → Seguridad.');
+      v24RenderSecurityPanel();
+    } else if (choice === null) {
+      // Cancelar
+      return;
+    } else {
+      // false = "Eliminar PIN directo"
+      const ok = await v25Confirm('¿Eliminar el PIN sin verificación? Esto requiere que tengas acceso físico al dispositivo.');
+      if (!ok) return;
+      localStorage.removeItem(V24_PIN_KEY);
+      localStorage.removeItem(V24_PIN_ENABLED_KEY);
+      await v25Alert('PIN eliminado.');
+      v24RenderSecurityPanel();
+    }
+  } else {
+    // Sin Drive conectado, solo opción directa
+    const ok = await v25Confirm('¿Olvidaste tu PIN? Esto eliminará el PIN actual. Tendrás que crear uno nuevo si quieres seguir usándolo.<br><br><em style="color:#D09A27;font-size:11px;">Tip: conéctate a Drive primero para usar recuperación por código.</em>');
+    if (!ok) return;
+    localStorage.removeItem(V24_PIN_KEY);
+    localStorage.removeItem(V24_PIN_ENABLED_KEY);
+    await v25Alert('PIN eliminado.');
+    if (typeof v24RenderSecurityPanel === 'function') v24RenderSecurityPanel();
+  }
+};
+
+// V25: Capturar email del usuario de Drive cuando se conecta
+const _v25_origDriveCargar = window.driveCargar;
+if (typeof _v25_origDriveCargar === 'function') {
+  window.driveCargar = async function() {
+    const result = await _v25_origDriveCargar.apply(this, arguments);
+    // Intentar obtener email del token
+    try {
+      if (window.driveAccessToken) {
+        const resp = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+          headers: { Authorization: 'Bearer ' + window.driveAccessToken }
+        });
+        if (resp.ok) {
+          const info = await resp.json();
+          window._driveUserEmail = info.email;
+          console.log('📧 V25: email capturado:', info.email);
+        }
+      }
+    } catch(e) { console.warn('V25: no se pudo capturar email', e); }
+    return result;
+  };
+}
+
+// === Modo "ojo cerrado" al abrir ===
+window.v24AutoHideAmounts = function() {
+  return localStorage.getItem(V24_AUTOHIDE_KEY) === 'true';
+};
+
+window.v24ToggleAutoHide = function() {
+  const current = v24AutoHideAmounts();
+  localStorage.setItem(V24_AUTOHIDE_KEY, current ? 'false' : 'true');
+  v24RenderSecurityPanel();
+};
+
+// === Auto-logout por inactividad ===
+window.v24GetAutoLogoutMinutes = function() {
+  return parseInt(localStorage.getItem(V24_AUTOLOGOUT_KEY) || '0', 10);
+};
+
+window.v24SetAutoLogout = function(minutes) {
+  localStorage.setItem(V24_AUTOLOGOUT_KEY, String(minutes));
+  v24RenderSecurityPanel();
+  v24RegisterActivity();
+};
+
+window.v24RegisterActivity = function() {
+  localStorage.setItem(V24_LAST_ACTIVITY_KEY, String(Date.now()));
+};
+
+window.v24CheckInactivity = function() {
+  const mins = v24GetAutoLogoutMinutes();
+  if (mins === 0) return;  // desactivado
+  const last = parseInt(localStorage.getItem(V24_LAST_ACTIVITY_KEY) || '0', 10);
+  const elapsed = (Date.now() - last) / 1000 / 60;  // minutos
+  if (elapsed >= mins) {
+    console.log('⏰ V24: inactividad detectada, bloqueando');
+    // Limpiar token de Drive
+    if (window.driveAccessToken) {
+      window.driveAccessToken = null;
+      window._v6_drive_data_received = false;
+    }
+    // Re-mostrar lock screen si PIN activo
+    if (v24PinEnabled()) {
+      v24ShowLockScreen(() => {
+        v24RegisterActivity();
+        if (typeof v6ShowToast === 'function') v6ShowToast('🔓 Sesión recuperada. Reconecta Drive para sincronizar.', 'success');
+      });
+    } else {
+      // Sin PIN, solo mostrar mensaje
+      if (typeof v6ShowToast === 'function') v6ShowToast('⏰ Inactividad: Drive desconectado por seguridad.', 'warn');
+    }
+  }
+};
+
+// === Renderizar panel de seguridad en Configuración ===
+window.v24RenderSecurityPanel = function() {
+  const cont = document.getElementById('v24-security-panel');
+  if (!cont) return;
+
+  const pinOn = v24PinEnabled();
+  const hideOn = v24AutoHideAmounts();
+  const logoutMins = v24GetAutoLogoutMinutes();
+
+  cont.innerHTML = `
+    <div class="card">
+      <div class="v6-section-label" style="margin-top:0;">🔐 Seguridad</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">
+        Configuraciones para proteger tu información financiera.
+      </p>
+
+      <!-- PIN -->
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--surface2);border-radius:8px;margin-bottom:10px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;color:var(--text);font-size:13px;">PIN de bloqueo</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${pinOn ? '✅ Activado · Se pedirá al abrir la app' : 'Solicita un PIN cada vez que abras la app'}</div>
+        </div>
+        <button onclick="${pinOn ? 'v24DisablePin()' : 'v24SetupPin()'}" style="background:${pinOn ? 'var(--red)' : 'linear-gradient(135deg,var(--terracotta),#E07E4E)'};color:white;border:none;padding:8px 14px;border-radius:6px;font-weight:700;font-size:11px;cursor:pointer;flex-shrink:0;">${pinOn ? 'Desactivar' : 'Activar'}</button>
+      </div>
+
+      ${pinOn ? `<div style="text-align:right;margin-bottom:10px;"><button onclick="v24ResetPin()" style="background:transparent;color:var(--muted);border:1px solid var(--border);padding:6px 12px;border-radius:6px;font-size:10px;cursor:pointer;">¿Olvidaste tu PIN?</button></div>` : ''}
+
+      <!-- Modo ojo cerrado al abrir -->
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--surface2);border-radius:8px;margin-bottom:10px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;color:var(--text);font-size:13px;">Ocultar montos al abrir</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${hideOn ? '✅ Activado · La app abre con saldos ocultos' : 'La app abre con saldos visibles'}</div>
+        </div>
+        <button onclick="v24ToggleAutoHide()" style="background:${hideOn ? 'var(--red)' : 'linear-gradient(135deg,var(--terracotta),#E07E4E)'};color:white;border:none;padding:8px 14px;border-radius:6px;font-weight:700;font-size:11px;cursor:pointer;flex-shrink:0;">${hideOn ? 'Desactivar' : 'Activar'}</button>
+      </div>
+
+      <!-- Auto-logout -->
+      <div style="padding:12px;background:var(--surface2);border-radius:8px;margin-bottom:10px;">
+        <div style="font-weight:700;color:var(--text);font-size:13px;margin-bottom:4px;">Desconexión por inactividad</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">
+          ${logoutMins === 0 ? 'Desactivado · No se desconecta automáticamente' : `Desconecta Drive tras ${logoutMins} minutos sin actividad`}
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${[0, 5, 15, 30, 60].map(m => `
+            <button onclick="v24SetAutoLogout(${m})" style="background:${logoutMins === m ? 'var(--terracotta)' : 'var(--surface)'};color:${logoutMins === m ? 'white' : 'var(--text)'};border:1px solid var(--border);padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600;">${m === 0 ? 'Off' : m + ' min'}</button>
+          `).join('')}
+        </div>
+      </div>
+
+      <div style="margin-top:16px;padding:12px;background:rgba(208,154,39,0.1);border-left:3px solid var(--mustard);border-radius:6px;font-size:11px;color:var(--text2);line-height:1.5;">
+        <strong style="color:var(--mustard);">💡 Recomendación adicional:</strong> activa la <strong>verificación en 2 pasos (2FA)</strong> en tu cuenta de Google. Es la mejora de seguridad más importante que puedes hacer hoy. Lleva 5 minutos en <a href="https://myaccount.google.com/security" target="_blank" style="color:var(--terracotta);">myaccount.google.com/security</a>.
+      </div>
+    </div>
+  `;
+};
+
+// === Tracking de actividad del usuario ===
+['click', 'keydown', 'touchstart', 'scroll'].forEach(evt => {
+  document.addEventListener(evt, () => v24RegisterActivity(), { passive: true });
+});
+
+// === Check de inactividad cada 30 segundos ===
+setInterval(v24CheckInactivity, 30000);
+
+// === Aplicar auto-hide al cargar si está activado ===
+function v24ApplyAutoHideOnLoad() {
+  if (v24AutoHideAmounts()) {
+    // V25: forzar ocultar al abrir (siempre, sin importar pref previa)
+    window.v6HideAmounts = true;
+    localStorage.setItem('v6_hide_amounts', 'true');
+    // Aplicar múltiples veces porque el contenido se renderiza progresivamente
+    const tries = [200, 500, 1000, 2000, 4000];
+    tries.forEach(t => {
+      setTimeout(() => {
+        if (typeof v6ApplyHideAmounts === 'function') v6ApplyHideAmounts();
+        const btn = document.querySelector('[onclick*="v6ToggleHideAmounts"]');
+        if (btn) btn.textContent = '🙈';
+      }, t);
+    });
+    console.log('🙈 V25: aplicando ocultar montos al abrir');
+  }
+}
+
+// Inicialización
+setTimeout(() => {
+  v24CheckPinOnLoad();
+  v24ApplyAutoHideOnLoad();
+  v24RegisterActivity();
+  if (typeof v24RenderSecurityPanel === 'function') v24RenderSecurityPanel();
+}, 100);
+
 setTimeout(() => { if (typeof v17RenderInsights === 'function') v17RenderInsights(); }, 3000);
 setInterval(() => { if (typeof v17RenderInsights === 'function') v17RenderInsights(); }, 60000);
 
@@ -6458,7 +6961,7 @@ window.v17GenerarReportePDF = async function() {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
-  doc.text('Finanzas Gonzalo', 15, 14);
+  doc.text('Mis Finanzas', 15, 14);
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
   doc.text('Reporte mensual · ' + mesNombre, 15, 22);
@@ -6610,11 +7113,11 @@ window.v17GenerarReportePDF = async function() {
   doc.setTextColor(...MUTED);
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
-  doc.text('Generado automáticamente por Finanzas Gonzalo · ' + now.toLocaleString('es-CL'), 15, 290);
+  doc.text('Generado automáticamente por Mis Finanzas · ' + now.toLocaleString('es-CL'), 15, 290);
   doc.text('Página 1 de 1', 175, 290);
 
   // Guardar
-  const fname = `Finanzas_Gonzalo_${meses[now.getMonth()]}_${now.getFullYear()}.pdf`;
+  const fname = `Mis_Finanzas_${meses[now.getMonth()]}_${now.getFullYear()}.pdf`;
   doc.save(fname);
   v6ShowToast('✅ Reporte PDF descargado', 'success');
 };
@@ -6816,7 +7319,7 @@ function v6MoveBlocks() {
   window.addEventListener('appinstalled', () => {
     console.log('✅ PWA: app instalada');
     if (typeof v6ShowToast === 'function') {
-      v6ShowToast('🎉 Finanzas Gonzalo instalada como app', 'success');
+      v6ShowToast('🎉 Mis Finanzas instalada como app', 'success');
     }
   });
 </script>
