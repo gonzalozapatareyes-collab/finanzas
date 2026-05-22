@@ -1390,7 +1390,7 @@ body {
   <div class="card">
     <div class="v6-section-label" style="margin-top:0;">ℹ️ Acerca de</div>
     <p style="font-size:12px;color:var(--muted);line-height:1.6;">
-      <strong>Mis Finanzas v26</strong><br>
+      <strong>Mis Finanzas v27</strong><br>
       Paleta colours.cafe · Donut + barras horizontales · Auto-snapshot · Cero duplicados<br><br>
       <em>Toda tu data del JSON original está 100% preservada.</em>
     </p>
@@ -2421,7 +2421,8 @@ function driveHandleToken(resp) {
         if (resp.ok) {
           const info = await resp.json();
           window._driveUserEmail = info.email;
-          console.log('📧 V26: email capturado para recuperación:', info.email);
+          localStorage.setItem('v27_drive_email', info.email);
+          console.log('📧 V27: email capturado y persistido:', info.email);
         } else {
           console.warn('V26: userinfo respondió', resp.status);
         }
@@ -6691,10 +6692,11 @@ window.v24DisablePin = async function() {
 
 // V25: Reset de PIN con opción de recuperación por correo (vía Drive)
 window.v24ResetPin = async function() {
-  // Verificar si está conectado a Drive y tiene email
-  const userEmail = window._driveUserEmail || (window.driveAccessToken ? 'tu correo de Google' : null);
+  // V27: usar email guardado en localStorage (persiste entre sesiones)
+  // No requerir token activo - basta con tener el email capturado alguna vez
+  const userEmail = window._driveUserEmail || localStorage.getItem('v27_drive_email');
 
-  if (userEmail && window.driveAccessToken) {
+  if (userEmail) {
     // Opción: recuperación por email
     const choice = await v25ShowModal({
       message: `¿Cómo prefieres recuperar tu PIN?<br><br>
@@ -6912,6 +6914,12 @@ function v24ApplyAutoHideOnLoad() {
 
 // Inicialización
 setTimeout(() => {
+  // V27: restaurar email guardado de sesión previa
+  const savedEmail = localStorage.getItem('v27_drive_email');
+  if (savedEmail) {
+    window._driveUserEmail = savedEmail;
+    console.log('📧 V27: email restaurado de sesión previa:', savedEmail);
+  }
   v24CheckPinOnLoad();
   v24ApplyAutoHideOnLoad();
   v24RegisterActivity();
