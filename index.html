@@ -1390,7 +1390,7 @@ body {
   <div class="card">
     <div class="v6-section-label" style="margin-top:0;">ℹ️ Acerca de</div>
     <p style="font-size:12px;color:var(--muted);line-height:1.6;">
-      <strong>Mis Finanzas v25</strong><br>
+      <strong>Mis Finanzas v26</strong><br>
       Paleta colours.cafe · Donut + barras horizontales · Auto-snapshot · Cero duplicados<br><br>
       <em>Toda tu data del JSON original está 100% preservada.</em>
     </p>
@@ -2337,7 +2337,7 @@ function renderDeudores() {
 // ══════════════════════════════════════════════════════════════════
 const DRIVE_CLIENT_ID  = '780302762181-g9i3r0cp7mfmssmj0pjs0t75va2198i8.apps.googleusercontent.com';
 const DRIVE_FILE_NAME  = 'finanzas_gonzalo_data.json';
-const DRIVE_SCOPE      = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file';
+const DRIVE_SCOPE      = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email';
 const LS_TOKEN_KEY     = 'fg_drive_token';
 const LS_DATA_KEY      = 'finanzas_gonzalo_v4';
 
@@ -2411,6 +2411,24 @@ function driveDesconectar() {
 
 // ─── Callback con el token ───────────────────────────────────────
 function driveHandleToken(resp) {
+  // V26: capturar email del usuario para recuperación de PIN
+  setTimeout(async () => {
+    try {
+      if (driveAccessToken) {
+        const resp = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+          headers: { Authorization: 'Bearer ' + driveAccessToken }
+        });
+        if (resp.ok) {
+          const info = await resp.json();
+          window._driveUserEmail = info.email;
+          console.log('📧 V26: email capturado para recuperación:', info.email);
+        } else {
+          console.warn('V26: userinfo respondió', resp.status);
+        }
+      }
+    } catch(e) { console.warn('V26: no se pudo capturar email', e); }
+  }, 500);
+
   if (resp.error) {
     driveSetStatus('error', '☁️ Error'); return;
   }
@@ -6874,19 +6892,21 @@ setInterval(v24CheckInactivity, 30000);
 // === Aplicar auto-hide al cargar si está activado ===
 function v24ApplyAutoHideOnLoad() {
   if (v24AutoHideAmounts()) {
-    // V25: forzar ocultar al abrir (siempre, sin importar pref previa)
+    // V26 FIX: la key correcta es 'fg_v6_hide_amounts' y el valor es '1' (no 'true')
     window.v6HideAmounts = true;
-    localStorage.setItem('v6_hide_amounts', 'true');
+    localStorage.setItem('fg_v6_hide_amounts', '1');
     // Aplicar múltiples veces porque el contenido se renderiza progresivamente
-    const tries = [200, 500, 1000, 2000, 4000];
+    const tries = [100, 300, 600, 1200, 2500, 5000];
     tries.forEach(t => {
       setTimeout(() => {
+        // Re-forzar la pref en cada tick por si algo la limpió
+        window.v6HideAmounts = true;
         if (typeof v6ApplyHideAmounts === 'function') v6ApplyHideAmounts();
         const btn = document.querySelector('[onclick*="v6ToggleHideAmounts"]');
         if (btn) btn.textContent = '🙈';
       }, t);
     });
-    console.log('🙈 V25: aplicando ocultar montos al abrir');
+    console.log('🙈 V26: aplicando ocultar montos al abrir (key fg_v6_hide_amounts)');
   }
 }
 

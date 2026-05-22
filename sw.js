@@ -1,5 +1,5 @@
-// Service Worker v25 - Mis Finanzas
-const CACHE_NAME = 'mis-finanzas-v25';
+// Service Worker v26 - Mis Finanzas
+const CACHE_NAME = 'mis-finanzas-v26';
 const APP_FILES = [
   './',
   './index.html',
