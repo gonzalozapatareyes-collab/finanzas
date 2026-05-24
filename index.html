@@ -1390,7 +1390,7 @@ body {
   <div class="card">
     <div class="v6-section-label" style="margin-top:0;">ℹ️ Acerca de</div>
     <p style="font-size:12px;color:var(--muted);line-height:1.6;">
-      <strong>Mis Finanzas v28</strong><br>
+      <strong>Mis Finanzas v29</strong><br>
       Paleta colours.cafe · Donut + barras horizontales · Auto-snapshot · Cero duplicados<br><br>
       <em>Toda tu data del JSON original está 100% preservada.</em>
     </p>
@@ -1973,7 +1973,10 @@ function recalcularTotalDepositos() {
   let totalDep = 0;
   ['mp','be','fr','fc','cripto'].forEach(k => {
     const el = document.getElementById('dep-'+k);
-    totalDep += parseFloat(el ? el.value : 0) || 0;
+    const valInput = parseFloat(el ? el.value : 0) || 0;
+    // V29: incluir acumulado mensual consolidado
+    const acumMes = (window._acumuladoMes && window._acumuladoMes[k]) || 0;
+    totalDep += valInput + acumMes;
   });
 
   // Total saldos actuales (sin depósitos)
@@ -2032,8 +2035,9 @@ function confirmarDeposito(k) {
     if (saldoEl && ultimoDep > 0) {
       saldoEl.value = (parseFloat(saldoEl.value) || 0) - ultimoDep;
       if (depEl) depEl.value = ultimoDep;
-      // V19: descontar también del acumulado
+      // V19+V29: descontar del acumulado + actualizar localStorage
       window._acumuladoMes[k] = Math.max(0, (window._acumuladoMes[k] || 0) - ultimoDep);
+      try { localStorage.setItem('v29_acumulado_mes', JSON.stringify(window._acumuladoMes)); } catch(e) {}
       delete btn.dataset.ultimoDeposito;
       if (typeof recalcular === 'function') recalcular();
       if (typeof v19UpdateAcumuladoUI === 'function') v19UpdateAcumuladoUI();
@@ -2052,8 +2056,9 @@ function confirmarDeposito(k) {
     if (saldoEl && monto > 0) {
       saldoEl.value = (parseFloat(saldoEl.value) || 0) + monto;
       btn.dataset.ultimoDeposito = monto;
-      // V19: sumar al acumulado mensual (puede haber depositado antes en este mes)
+      // V19+V29: sumar al acumulado mensual + persistir en localStorage como respaldo
       window._acumuladoMes[k] = (window._acumuladoMes[k] || 0) + monto;
+      try { localStorage.setItem('v29_acumulado_mes', JSON.stringify(window._acumuladoMes)); } catch(e) {}
       if (depEl) depEl.value = 0;
       if (typeof recalcular === 'function') recalcular();
       if (typeof v19UpdateAcumuladoUI === 'function') v19UpdateAcumuladoUI();
@@ -6017,13 +6022,29 @@ if (typeof _v6_origDriveCargar === 'function') {
 // V14: Mover botón menú dentro del header en mobile
 function v6FixMobileMenuButton() {
   const btn = document.getElementById('mobile-toggle');
+  const headerLeft = document.getElementById('page-header-left');
   const header = document.getElementById('page-header');
   if (!btn || !header) return;
   if (window.innerWidth <= 768) {
-    if (btn.parentElement !== header) {
+    // V29: el botón ☰ debe ir DENTRO de header-left, antes del título h1
+    // Así está alineado con el título y NO lo tapa
+    if (headerLeft && btn.parentElement !== headerLeft) {
+      headerLeft.insertBefore(btn, headerLeft.firstChild);
+    } else if (!headerLeft && btn.parentElement !== header) {
       header.insertBefore(btn, header.firstChild);
     }
   }
+}
+
+// V29: re-fix después de cada cambio de página
+window.addEventListener('hashchange', () => setTimeout(v6FixMobileMenuButton, 50));
+const _v29_origGo = window.v6Go;
+if (typeof _v29_origGo === 'function') {
+  window.v6Go = function() {
+    const r = _v29_origGo.apply(this, arguments);
+    setTimeout(v6FixMobileMenuButton, 50);
+    return r;
+  };
 }
 window.addEventListener('resize', v6FixMobileMenuButton);
 
@@ -6393,8 +6414,19 @@ window.v19CheckMonthReset = function() {
 
 // Inicial + check periódico
 setTimeout(() => {
+  // V29: si no hay acumulado en memoria, intentar restaurarlo de localStorage
+  if (!window._acumuladoMes || Object.keys(window._acumuladoMes).length === 0) {
+    try {
+      const saved = localStorage.getItem('v29_acumulado_mes');
+      if (saved) {
+        window._acumuladoMes = JSON.parse(saved);
+        console.log('📦 V29: acumulado restaurado de localStorage:', window._acumuladoMes);
+      }
+    } catch(e) {}
+  }
   v19CheckMonthReset();
   v19UpdateAcumuladoUI();
+  if (typeof v6RenderDashboard === 'function') v6RenderDashboard();
 }, 1500);
 setInterval(v19CheckMonthReset, 60000);  // chequeo cada minuto
 
@@ -6419,13 +6451,15 @@ if (typeof _v19_origAplicarDatos === 'function') {
     if (d && d.acumuladoMes) {
       window._acumuladoMes = d.acumuladoMes;
       console.log('📥 V19: acumuladoMes restaurado desde Drive');
-      // Verificar reset por cambio de mes
-      setTimeout(() => {
-        v19CheckMonthReset();
-        v19UpdateAcumuladoUI();
-        if (typeof v6RenderDashboard === 'function') v6RenderDashboard();
-      }, 100);
     }
+    // V29: SIEMPRE re-renderizar dashboard y UI después de aplicar datos,
+    // tenga o no acumuladoMes (puede estar persistido en localStorage)
+    setTimeout(() => {
+      v19CheckMonthReset();
+      v19UpdateAcumuladoUI();
+      if (typeof v6RenderDashboard === 'function') v6RenderDashboard();
+      console.log('🔄 V29: Dashboard re-renderizado con acumulado:', window._acumuladoMes);
+    }, 100);
     return result;
   };
 }

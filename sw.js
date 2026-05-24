@@ -1,5 +1,5 @@
-// Service Worker v28 - Mis Finanzas con biometría
-const CACHE_NAME = 'mis-finanzas-v28';
+// Service Worker v29 - Mis Finanzas
+const CACHE_NAME = 'mis-finanzas-v29';
 const APP_FILES = [
   './',
   './index.html',
