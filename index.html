@@ -1390,7 +1390,7 @@ body {
   <div class="card">
     <div class="v6-section-label" style="margin-top:0;">ℹ️ Acerca de</div>
     <p style="font-size:12px;color:var(--muted);line-height:1.6;">
-      <strong>Mis Finanzas v29</strong><br>
+      <strong>Mis Finanzas v30</strong><br>
       Paleta colours.cafe · Donut + barras horizontales · Auto-snapshot · Cero duplicados<br><br>
       <em>Toda tu data del JSON original está 100% preservada.</em>
     </p>
@@ -5261,12 +5261,13 @@ function v6RenderHBars(containerId, items) {
 // ═══ Render Dashboard ═════════════════════════════════════════
 function v6RenderDashboard() {
   if (typeof val !== 'function') return;
-  // Patrimonio total = saldo actual + depósito del mes (= total proyectado de Cuentas)
+  // V30: Patrimonio total = saldo + input dep + acumulado mensual (= total real en banco)
   const total = ['mp','be','fr','fc','cripto'].reduce((s,k) => {
     const saldo = val('c-'+k) || 0;
     const depEl = document.getElementById('dep-'+k);
     const dep = depEl ? (parseFloat(depEl.value)||0) : 0;
-    return s + saldo + dep;
+    const acumMes = (window._acumuladoMes && window._acumuladoMes[k]) || 0;
+    return s + saldo + dep + acumMes;
   }, 0);
   const totDep = ['mp','be','fr','fc','cripto'].reduce((s,k) => {
     const elActual = document.getElementById('dep-'+k);
@@ -5290,10 +5291,12 @@ function v6RenderDashboard() {
   setEl('v6-dash-tc', '$' + totTC.toLocaleString('es-CL'));
   setEl('v6-dash-deudores', '$' + deudoresTotal.toLocaleString('es-CL'));
 
-  // Meta más cercana
-  const autoSaldo = val('c-mp') || 0;
+  // V30: Meta más cercana - usar saldo + acumulado del mes
+  const _acumMP = (window._acumuladoMes && window._acumuladoMes.mp) || 0;
+  const _acumBE = (window._acumuladoMes && window._acumuladoMes.be) || 0;
+  const autoSaldo = (val('c-mp') || 0) + _acumMP;
   const autoMeta = val('auto-meta') || 0;
-  const vivSaldo = val('c-be') || 0;
+  const vivSaldo = (val('c-be') || 0) + _acumBE;
   const vivMeta = val('viv-meta') || 0;
   const autoPct = autoMeta ? autoSaldo/autoMeta : 0;
   const vivPct = vivMeta ? vivSaldo/vivMeta : 0;
@@ -5309,13 +5312,15 @@ function v6RenderDashboard() {
   }
 
   // Donut de ahorros
+  // V30: sumar saldo + input dep + acumulado mensual para mostrar total REAL en el banco
   const _ge = (id) => { const e = document.getElementById(id); return e ? (parseFloat(e.value)||0) : 0; };
+  const _acumK = (k) => (window._acumuladoMes && window._acumuladoMes[k]) || 0;
   v6RenderDonut('v6-dash-donut', [
-    { name: 'MercadoPago', value: (val('c-mp')||0) + _ge('dep-mp'), color: '#D09A27' },
-    { name: 'BancoEstado', value: (val('c-be')||0) + _ge('dep-be'), color: '#D16D3E' },
-    { name: 'Fintual Reserva', value: (val('c-fr')||0) + _ge('dep-fr'), color: '#B5856B' },
-    { name: 'Fintual Capital', value: (val('c-fc')||0) + _ge('dep-fc'), color: '#D9B1A7' },
-    { name: 'Cripto', value: (val('c-cripto')||0) + _ge('dep-cripto'), color: '#6B9B3F' }
+    { name: 'MercadoPago', value: (val('c-mp')||0) + _ge('dep-mp') + _acumK('mp'), color: '#D09A27' },
+    { name: 'BancoEstado', value: (val('c-be')||0) + _ge('dep-be') + _acumK('be'), color: '#D16D3E' },
+    { name: 'Fintual Reserva', value: (val('c-fr')||0) + _ge('dep-fr') + _acumK('fr'), color: '#B5856B' },
+    { name: 'Fintual Capital', value: (val('c-fc')||0) + _ge('dep-fc') + _acumK('fc'), color: '#D9B1A7' },
+    { name: 'Cripto', value: (val('c-cripto')||0) + _ge('dep-cripto') + _acumK('cripto'), color: '#6B9B3F' }
   ], 'Total');
 
   // Barras horizontales TC por persona
@@ -5376,10 +5381,17 @@ function v6RenderAhorros() {
 
   if (typeof val === 'function') {
     const mes = v6GetMesActualNombre();
-    const total = ['mp','be','fr','fc','cripto'].reduce((s,k) => s + (val('c-'+k)||0), 0);
+    // V30: incluir acumulado mensual en total y totDep para vista de evolución mes actual
+    const total = ['mp','be','fr','fc','cripto'].reduce((s,k) => {
+      const saldo = val('c-'+k) || 0;
+      const acum = (window._acumuladoMes && window._acumuladoMes[k]) || 0;
+      return s + saldo + acum;
+    }, 0);
     const totDep = ['mp','be','fr','fc','cripto'].reduce((s,k) => {
       const el = document.getElementById('dep-'+k);
-      return s + (el ? (parseFloat(el.value)||0) : 0);
+      const vIn = el ? (parseFloat(el.value)||0) : 0;
+      const acum = (window._acumuladoMes && window._acumuladoMes[k]) || 0;
+      return s + vIn + acum;
     }, 0);
     if (!hist.find(h => h.mes === mes)) {
       allMonths.push({ mes, saldo: total, deposito: totDep, ts: Date.now(), _esActual: true });
@@ -5407,11 +5419,13 @@ function v6RenderAhorros() {
     if (allMonths.length === 0) {
       insightsEl.innerHTML = '';
     } else {
+      // V30: incluir acumulado mensual
       const totActual = ['mp','be','fr','fc','cripto'].reduce((s,k) => {
         const saldo = val('c-'+k) || 0;
         const depEl = document.getElementById('dep-'+k);
         const dep = depEl ? (parseFloat(depEl.value)||0) : 0;
-        return s + saldo + dep;
+        const acumMes = (window._acumuladoMes && window._acumuladoMes[k]) || 0;
+        return s + saldo + dep + acumMes;
       }, 0);
       const totAportes = allMonths.reduce((s,m) => s + (m.deposito||0), 0);
       const numMeses = allMonths.length;
@@ -5454,12 +5468,14 @@ function v6RenderAhorros() {
   // Distribución (donut también aquí)
   if (typeof val === 'function') {
     const _ge2 = (id) => { const e = document.getElementById(id); return e ? (parseFloat(e.value)||0) : 0; };
+    // V30: incluir acumulado mensual
+    const _acK2 = (k) => (window._acumuladoMes && window._acumuladoMes[k]) || 0;
     v6RenderDonut('v6-distribucion', [
-      { name: 'MercadoPago', value: (val('c-mp')||0) + _ge2('dep-mp'), color: '#D09A27' },
-      { name: 'BancoEstado', value: (val('c-be')||0) + _ge2('dep-be'), color: '#D16D3E' },
-      { name: 'Fintual Reserva', value: (val('c-fr')||0) + _ge2('dep-fr'), color: '#B5856B' },
-      { name: 'Fintual Capital', value: (val('c-fc')||0) + _ge2('dep-fc'), color: '#D9B1A7' },
-      { name: 'Cripto', value: (val('c-cripto')||0) + _ge2('dep-cripto'), color: '#6B9B3F' }
+      { name: 'MercadoPago', value: (val('c-mp')||0) + _ge2('dep-mp') + _acK2('mp'), color: '#D09A27' },
+      { name: 'BancoEstado', value: (val('c-be')||0) + _ge2('dep-be') + _acK2('be'), color: '#D16D3E' },
+      { name: 'Fintual Reserva', value: (val('c-fr')||0) + _ge2('dep-fr') + _acK2('fr'), color: '#B5856B' },
+      { name: 'Fintual Capital', value: (val('c-fc')||0) + _ge2('dep-fc') + _acK2('fc'), color: '#D9B1A7' },
+      { name: 'Cripto', value: (val('c-cripto')||0) + _ge2('dep-cripto') + _acK2('cripto'), color: '#6B9B3F' }
     ], 'Total');
   }
 
@@ -6071,12 +6087,14 @@ window.v17GenerarInsights = function() {
   const val = (id) => parseFloat(document.getElementById(id)?.value) || 0;
   const hist = window._historialAhorros || [];
 
+  // V30: incluir acumulado del mes en cada cuenta
+  const _ac = window._acumuladoMes || {};
   const cuentas = {
-    mp: val('c-mp') + val('dep-mp'),
-    be: val('c-be') + val('dep-be'),
-    fr: val('c-fr') + val('dep-fr'),
-    fc: val('c-fc') + val('dep-fc'),
-    cripto: val('c-cripto') + val('dep-cripto')
+    mp: val('c-mp') + val('dep-mp') + (_ac.mp || 0),
+    be: val('c-be') + val('dep-be') + (_ac.be || 0),
+    fr: val('c-fr') + val('dep-fr') + (_ac.fr || 0),
+    fc: val('c-fc') + val('dep-fc') + (_ac.fc || 0),
+    cripto: val('c-cripto') + val('dep-cripto') + (_ac.cripto || 0)
   };
   const patrimonioActual = Object.values(cuentas).reduce((a,b) => a+b, 0);
   const depositoMes = (function(){
