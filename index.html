@@ -1411,7 +1411,7 @@ body {
     <div class="v6-section-label" style="margin-top:0;">ℹ️ Acerca de</div>
     <p style="font-size:12px;color:var(--muted);line-height:1.6;">
       <strong>Mis Finanzas v31</strong><br>
-      Modo seguro 🔒 · Asignador reordenado · Snapshot live del mes · Tip pineado · v6_snapshots en Drive · ⬇ Retiros con motivo + audit · Fix scope <code>driveAccessToken</code> (autosaves a Drive ya funcionan)<br><br>
+      Modo seguro 🔒 · Asignador reordenado · Snapshot live del mes · Tip pineado · v6_snapshots en Drive · ⬇ Retiros con motivo + audit · Fix scope <code>driveAccessToken</code> · Inputs sin defaults hardcoded · Render completo post-Drive (no requiere navegar)<br><br>
       <em>Toda tu data del JSON original está 100% preservada.</em>
     </p>
   </div>
@@ -1596,7 +1596,7 @@ body {
     <div class="ahorro-controls">
       <div class="ahorro-field">
         <span class="ahorro-field-label">Saldo actual</span>
-        <input class="editable" type="number" id="c-mp" value="2869825" onchange="recalcular()" style="color:var(--yellow);width:140px;">
+        <input class="editable" type="number" id="c-mp" value="" placeholder="0" onchange="recalcular()" style="color:var(--yellow);width:140px;">
       </div>
       <div class="ahorro-field">
         <span class="ahorro-field-label">Deposité este mes</span>
@@ -1618,7 +1618,7 @@ body {
     <div class="ahorro-controls">
       <div class="ahorro-field">
         <span class="ahorro-field-label">Saldo actual</span>
-        <input class="editable" type="number" id="c-be" value="3235727" onchange="recalcular()" style="color:var(--blue);width:140px;">
+        <input class="editable" type="number" id="c-be" value="" placeholder="0" onchange="recalcular()" style="color:var(--blue);width:140px;">
       </div>
       <div class="ahorro-field">
         <span class="ahorro-field-label">Deposité este mes</span>
@@ -1640,7 +1640,7 @@ body {
     <div class="ahorro-controls">
       <div class="ahorro-field">
         <span class="ahorro-field-label">Saldo actual</span>
-        <input class="editable" type="number" id="c-fr" value="1427485" onchange="recalcular()" style="color:var(--purple);width:140px;">
+        <input class="editable" type="number" id="c-fr" value="" placeholder="0" onchange="recalcular()" style="color:var(--purple);width:140px;">
       </div>
       <div class="ahorro-field">
         <span class="ahorro-field-label">Deposité este mes</span>
@@ -1662,7 +1662,7 @@ body {
     <div class="ahorro-controls">
       <div class="ahorro-field">
         <span class="ahorro-field-label">Saldo actual</span>
-        <input class="editable" type="number" id="c-fc" value="1003675" onchange="recalcular()" style="color:var(--purple);opacity:.85;width:140px;">
+        <input class="editable" type="number" id="c-fc" value="" placeholder="0" onchange="recalcular()" style="color:var(--purple);opacity:.85;width:140px;">
       </div>
       <div class="ahorro-field">
         <span class="ahorro-field-label">Deposité este mes</span>
@@ -1686,7 +1686,7 @@ body {
     <div class="ahorro-controls">
       <div class="ahorro-field">
         <span class="ahorro-field-label">Saldo actual</span>
-        <input class="editable" type="number" id="c-cripto" value="32218" onchange="recalcular()" style="color:var(--green);width:140px;">
+        <input class="editable" type="number" id="c-cripto" value="" placeholder="0" onchange="recalcular()" style="color:var(--green);width:140px;">
       </div>
       <div class="ahorro-field">
         <span class="ahorro-field-label">Deposité este mes</span>
@@ -2473,14 +2473,30 @@ function driveHandleToken(resp) {
   const expiry = Date.now() + (resp.expires_in - 60) * 1000;
   localStorage.setItem(LS_TOKEN_KEY, JSON.stringify({ token: driveAccessToken, expiry }));
   driveSetStatus('sincronizando', '☁️ Cargando…');
-  // Auto-carga datos desde Drive al conectar — sin necesidad de F5
-  cargar().then(() => {
-    recalcular();
-    calcGrandTotal();
-    renderHistorial();
-    driveSetStatus('conectado', '☁️ Drive ✓');
-  });
-  driveFindFile();
+  // V31 FIX: encontrar el archivo y cargar de forma ordenada,
+  // luego forzar re-render de TODAS las vistas para que no haya que
+  // navegar entre menús para ver los datos frescos.
+  (async () => {
+    try {
+      await driveFindFile();    // localiza el archivo primero
+      await cargar();           // lee Drive y aplica datos a los inputs
+      // Re-render completo de las vistas dinámicas
+      if (typeof recalcular === 'function') recalcular();
+      if (typeof calcGrandTotal === 'function') calcGrandTotal();
+      if (typeof renderHistorial === 'function') renderHistorial();
+      if (typeof v6RenderDashboard === 'function') v6RenderDashboard();
+      if (typeof v6RenderAhorros === 'function') v6RenderAhorros();
+      if (typeof v6RenderMetas === 'function') v6RenderMetas();
+      if (typeof v6RenderHistorico === 'function') v6RenderHistorico();
+      if (typeof v17RenderInsights === 'function') v17RenderInsights();
+      if (typeof renderRetiros === 'function') renderRetiros();
+      if (typeof v19UpdateAcumuladoUI === 'function') v19UpdateAcumuladoUI();
+      driveSetStatus('conectado', '☁️ Drive ✓');
+    } catch(e) {
+      console.error('V31: error en flujo post-conexión Drive:', e);
+      driveSetStatus('error', '☁️ Error');
+    }
+  })();
 }
 
 // ─── Busca el archivo en Drive (Drive.file scope) ───────────────
@@ -2976,6 +2992,10 @@ window.onload = async function() {
   driveInit();
   // Espera breve para que Google Identity Services inicialice y restaure token
   await new Promise(r => setTimeout(r, 800));
+  // V31: si hay token auto-restaurado, asegurar findFile antes de cargar
+  if (driveAccessToken && typeof driveFindFile === 'function') {
+    try { await driveFindFile(); } catch(e) {}
+  }
   await cargar();
   recalcular();
   calcGrandTotal();
@@ -2983,6 +3003,14 @@ window.onload = async function() {
   loadFijos();
   loadDeudores();
   initHeroHidden();
+  // V31: render completo después de la carga inicial (no esperar a navegar)
+  setTimeout(() => {
+    if (typeof v6RenderDashboard === 'function') v6RenderDashboard();
+    if (typeof v6RenderAhorros === 'function') v6RenderAhorros();
+    if (typeof v6RenderMetas === 'function') v6RenderMetas();
+    if (typeof v6RenderHistorico === 'function') v6RenderHistorico();
+    if (typeof renderRetiros === 'function') renderRetiros();
+  }, 150);
 };
 
 // ─── MODAL COMPARTIDO ────────────────────────────────────────────
