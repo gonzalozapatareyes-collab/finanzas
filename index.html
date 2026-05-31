@@ -1411,7 +1411,7 @@ body {
     <div class="v6-section-label" style="margin-top:0;">ℹ️ Acerca de</div>
     <p style="font-size:12px;color:var(--muted);line-height:1.6;">
       <strong>Mis Finanzas v31</strong><br>
-      Modo seguro 🔒 · Asignador reordenado · Snapshot live del mes en curso · Tip pineado · v6_snapshots en Drive · ⬇ Retiros con motivo + audit trail<br><br>
+      Modo seguro 🔒 · Asignador reordenado · Snapshot live del mes · Tip pineado · v6_snapshots en Drive · ⬇ Retiros con motivo + audit · Fix scope <code>driveAccessToken</code> (autosaves a Drive ya funcionan)<br><br>
       <em>Toda tu data del JSON original está 100% preservada.</em>
     </p>
   </div>
@@ -2090,7 +2090,7 @@ function confirmarDeposito(k) {
     btn.textContent = '✅ Listo';
     actualizarListoTag(k, monto);
     guardarSnapshotHistorial();
-    if (window.driveAccessToken && typeof guardar === 'function') {
+    if (driveAccessToken && typeof guardar === 'function') {
       setTimeout(guardar, 200);
     }
     const acumK = window._acumuladoMes[k] || 0;
@@ -2261,7 +2261,7 @@ function toggleFijo(id, btn) {
 
 function saveFijos() {
   // Siempre guarda en Drive si está conectado (los fijos quedan en _buildData)
-  if (window.driveAccessToken) guardar();
+  if (driveAccessToken) guardar();
 }
 
 function loadFijos() {
@@ -2305,7 +2305,7 @@ function loadDeudores() {
 function saveDeudores() {
   // V18: persistir también en localStorage como backup
   try { localStorage.setItem(DEUDORES_KEY, JSON.stringify(window._deudores || [])); } catch(e) {}
-  if (window.driveAccessToken) guardar();
+  if (driveAccessToken) guardar();
 }
 
 function agregarDeudor() {
@@ -4946,9 +4946,13 @@ function v6UpdateSync(state, text) {
 }
 
 // ═══ V13: Estado de Drive basado en la app original ═══════════════
-// IMPORTANTE: el token está en un closure privado del HTML original,
-// NO en window.driveAccessToken. Por eso no podemos hacer ping preventivo.
-// Solo confiamos en lo que diga driveSetStatus(estado) del original.
+// HISTORIA: hasta v30 el token estaba en un closure y mucho código
+// chequeaba window.driveAccessToken (que era undefined), por lo que
+// los auto-saves en confirmarDeposito / saveFijos / etc no llegaban
+// a Drive en silencio.
+// V31 FIX: ahora todos los chequeos usan la referencia bare driveAccessToken
+// (que es la variable real del módulo, accesible desde cualquier <script>).
+// Igual mantenemos el hook a driveSetStatus para sincronizar la UI.
 
 const _v6_origDriveSetStatus = window.driveSetStatus;
 window.driveSetStatus = function(estado, texto) {
@@ -5181,7 +5185,7 @@ function v6CerrarMesManual() {
   else snaps.push(snap);
   v6SaveSnapshots(snaps);
   v6LimpiarMesActualUI();
-  if (window.driveAccessToken && typeof guardar === 'function') guardar();
+  if (driveAccessToken && typeof guardar === 'function') guardar();
   alert('✅ Snapshot de ' + mes + ' guardado.\nEl mes nuevo está limpio.');
   v6RenderHistorico();
 }
@@ -5215,7 +5219,7 @@ function v6CheckAutoSnapshot() {
         else snaps.push(snap);
         v6SaveSnapshots(snaps);
         v6LimpiarMesActualUI();
-        if (window.driveAccessToken && typeof guardar === 'function') guardar();
+        if (driveAccessToken && typeof guardar === 'function') guardar();
       }
     }
     localStorage.setItem(V6_LAST_MONTH_KEY, currentMonth);
@@ -5628,7 +5632,7 @@ function v6UpdateMeta(tipo, nuevoValor) {
     if (typeof recalcular === 'function') recalcular();
   }
   v6RenderMetas();
-  if (window.driveAccessToken && typeof guardar === 'function') guardar();
+  if (driveAccessToken && typeof guardar === 'function') guardar();
 }
 function v6UpdateMetaFecha(tipo, valor) {
   localStorage.setItem('fg_v6_' + tipo + '_fecha', valor);
@@ -6493,7 +6497,7 @@ window.v19CheckMonthReset = function() {
     window._acumuladoMes = { _mes: mesActual };
     v19UpdateAcumuladoUI();
     if (typeof v6RenderDashboard === 'function') v6RenderDashboard();
-    if (typeof guardar === 'function' && window.driveAccessToken) setTimeout(guardar, 500);
+    if (typeof guardar === 'function' && driveAccessToken) setTimeout(guardar, 500);
   } else if (!mesPrevio) {
     window._acumuladoMes._mes = mesActual;
   }
@@ -6882,9 +6886,9 @@ if (typeof _v25_origDriveCargar === 'function') {
     const result = await _v25_origDriveCargar.apply(this, arguments);
     // Intentar obtener email del token
     try {
-      if (window.driveAccessToken) {
+      if (driveAccessToken) {
         const resp = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-          headers: { Authorization: 'Bearer ' + window.driveAccessToken }
+          headers: { Authorization: 'Bearer ' + driveAccessToken }
         });
         if (resp.ok) {
           const info = await resp.json();
@@ -6931,8 +6935,8 @@ window.v24CheckInactivity = function() {
   if (elapsed >= mins) {
     console.log('⏰ V24: inactividad detectada, bloqueando');
     // Limpiar token de Drive
-    if (window.driveAccessToken) {
-      window.driveAccessToken = null;
+    if (driveAccessToken) {
+      driveAccessToken = null;
       window._v6_drive_data_received = false;
     }
     // Re-mostrar lock screen si PIN activo
@@ -7930,7 +7934,7 @@ function v6MoveBlocks() {
   // Mostrar banner al cargar si no hay token Drive en localStorage
   setTimeout(() => {
     const tok = localStorage.getItem('fg_drive_token');
-    if (!tok && !window.driveAccessToken) v31ShowLockBanner();
+    if (!tok && !driveAccessToken) v31ShowLockBanner();
   }, 800);
   // Hook a driveHandleToken para ocultar el banner al conectar OK
   const _v31_origHandleToken = window.driveHandleToken;
