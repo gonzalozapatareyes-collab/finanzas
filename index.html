@@ -1341,6 +1341,18 @@ body {
     <div style="font-size:13px;color:var(--muted);">Análisis automático basado en tu data. Se actualiza cada vez que abres esta sección.</div>
     <button class="icon-btn primary" style="width:auto;padding:0 14px;height:36px;" onclick="v17RenderInsights()">🔄 Refrescar</button>
   </div>
+  <!-- V31: Tip pineado · siempre visible, no depende de los insights dinámicos -->
+  <div class="card" style="border-left:3px solid var(--mustard);background:linear-gradient(180deg,var(--mustard-dim,#fcefc7) 0%,var(--surface) 100%);margin-bottom:16px;">
+    <div style="display:flex;align-items:flex-start;gap:12px;">
+      <div style="font-size:22px;line-height:1;flex-shrink:0;margin-top:2px;">📌</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:700;margin-bottom:6px;">Recordatorio fijo · hábito de ahorro</div>
+        <div style="font-size:14px;color:var(--text);line-height:1.5;">
+          Recuerda depositar todos los meses en tu cuenta <strong>Vivienda</strong>. No importa si son <strong>15 o 20 lucas</strong> — lo importante es mantener el hábito, no el monto.
+        </div>
+      </div>
+    </div>
+  </div>
   <div id="v17-insights-content"></div>
 </div>
 
@@ -1390,8 +1402,8 @@ body {
   <div class="card">
     <div class="v6-section-label" style="margin-top:0;">ℹ️ Acerca de</div>
     <p style="font-size:12px;color:var(--muted);line-height:1.6;">
-      <strong>Mis Finanzas v30</strong><br>
-      Paleta colours.cafe · Donut + barras horizontales · Auto-snapshot · Cero duplicados<br><br>
+      <strong>Mis Finanzas v31</strong><br>
+      Modo seguro 🔒 (Drive como llave) · Asignador reordenado · Snapshot live del mes en curso · Tip pineado en insights · v6_snapshots persistidos en Drive<br><br>
       <em>Toda tu data del JSON original está 100% preservada.</em>
     </p>
   </div>
@@ -2404,14 +2416,25 @@ function driveConectar() {
 
 // ─── Desconectar Drive ───────────────────────────────────────────
 function driveDesconectar() {
-  const ok = confirm('¿Desconectar Google Drive?\n\nLos datos quedarán en localStorage hasta que vuelvas a conectar.');
+  const ok = confirm('¿Desconectar Google Drive?\n\n🔒 V31 modo seguro: al desconectar se borrarán TODOS los datos en caché de este navegador. La info original sigue intacta en Drive — vuelve a conectar para verla.');
   if (!ok) return;
   if (driveAccessToken) {
     try { google.accounts.oauth2.revoke(driveAccessToken, () => {}); } catch(e) {}
     driveAccessToken = null;
   }
+  // V31 SECURITY: limpiar todos los rastros de data en localStorage
   localStorage.removeItem('finanzas_drive_token');
+  localStorage.removeItem(LS_TOKEN_KEY);
+  localStorage.removeItem(LS_DATA_KEY);
+  localStorage.removeItem('finanzas_gonzalo_v3');
+  localStorage.removeItem('v29_acumulado_mes');
+  localStorage.removeItem('v27_drive_email');
+  localStorage.removeItem(V6_LAST_MONTH_KEY);
+  localStorage.removeItem(V6_SNAPSHOTS_KEY);
+  try { localStorage.removeItem('finanzas_deudores_v18'); } catch(e) {}
   driveSetStatus('desconectado', '☁️ Drive');
+  // Recarga para resetear toda la UI a estado vacío
+  setTimeout(() => location.reload(), 300);
 }
 
 // ─── Callback con el token ───────────────────────────────────────
@@ -2537,6 +2560,8 @@ function _buildData() {
     depositos: {},
     historialAhorros: window._historialAhorros || [],
     deudores: window._deudores || [],
+    // V31: snapshots de la página Histórico (antes sólo en localStorage)
+    v6_snapshots: (typeof v6GetSnapshots === 'function') ? v6GetSnapshots() : [],
     fijosPagados: (function() {
       const estado = {};
       document.querySelectorAll('.fijo-check').forEach(btn => {
@@ -2650,6 +2675,13 @@ function _aplicarDatos(d) {
     if (d.historialAhorros) {
       window._historialAhorros = d.historialAhorros;
       renderHistorial();
+    }
+
+    // ── V31: v6_snapshots (página Histórico) ──────────────────
+    // Antes vivían sólo en localStorage. Ahora se persisten en Drive
+    // para que la página Histórico sobreviva cambios de navegador.
+    if (d.v6_snapshots && Array.isArray(d.v6_snapshots) && typeof v6SaveSnapshots === 'function') {
+      v6SaveSnapshots(d.v6_snapshots);
     }
 
     // ── Deudores ───────────────────────────────────────────────
@@ -2825,17 +2857,22 @@ async function cargar() {
     } catch(e) { console.warn('No se pudo leer Drive:', e); }
   }
 
-  // 2. Fallback: localStorage (v4 → v3)
-  if (!raw) {
+  // 2. V31 SECURITY: localStorage SOLO si Drive está conectado.
+  //    Sin Drive → UI vacía (toda en cero, sin info). El Drive es la llave.
+  if (!raw && driveAccessToken) {
     raw = localStorage.getItem(LS_DATA_KEY);
     if (!raw) {
       const oldRaw = localStorage.getItem('finanzas_gonzalo_v3');
       if (oldRaw) raw = oldRaw;
     }
-    if (raw) console.log('Datos cargados desde localStorage ✓');
+    if (raw) console.log('Datos cargados desde localStorage (backup offline con Drive activo) ✓');
   }
 
-  if (!raw) return;
+  if (!raw) {
+    // V31: si no hay Drive ni datos, asegurarse de mostrar el banner de bloqueo
+    if (!driveAccessToken && typeof v31ShowLockBanner === 'function') v31ShowLockBanner();
+    return;
+  }
 
   try {
     const d = JSON.parse(raw);
@@ -5585,7 +5622,23 @@ function v6UpdateMetaFecha(tipo, valor) {
 function v6RenderHistorico() {
   const cont = document.getElementById('v6-historico-list');
   if (!cont) return;
-  const snaps = v6GetSnapshots();
+  let snaps = v6GetSnapshots();
+
+  // V31: refrescar el snapshot del mes en curso para que refleje estado live.
+  // Sin esto, marcar un fijo / pagar TC / depositar no se refleja hasta cerrar el mes.
+  if (typeof v6TomarSnapshot === 'function' && typeof v6GetMesActualNombre === 'function') {
+    const mesActual = v6GetMesActualNombre();
+    const liveSnap = v6TomarSnapshot(mesActual);
+    if (liveSnap) {
+      const i = snaps.findIndex(s => s.mes === mesActual);
+      if (i >= 0) {
+        liveSnap.ts = snaps[i].ts; // preservar timestamp original
+        snaps[i] = liveSnap;
+        v6SaveSnapshots(snaps); // persistir actualización en localStorage
+      }
+    }
+  }
+
   if (snaps.length === 0) {
     cont.innerHTML = `<div class="v6-empty">
       <h3>📅 Sin snapshots aún</h3>
@@ -7612,9 +7665,9 @@ function v6MoveBlocks() {
     return fragments;
   }
 
-  // === ASIGNADOR ===
-  // Mover TODO el módulo asignador tal cual está en el original (uploads + tabla + controles).
-  // No ocultamos nada; el bloque unificado de arriba ES UN EXTRA, pero la UI original sigue intacta.
+  // === ASIGNADOR === (V31: orden upload → asignador → modo manual → resumen)
+  // Antes: TODO estaba metido dentro de un <details> "Modo manual", lo que
+  // ocultaba la tabla de transacciones hasta que se expandía. Ahora separamos.
   {
     const lbl = findLabel('Asignador de gastos');
     const target = document.getElementById('v6-asignador-mount');
@@ -7622,37 +7675,55 @@ function v6MoveBlocks() {
       const blocks = extractBlock(lbl);
       blocks.shift(); // quitar el label propio
       blocks.forEach(el => target.appendChild(el));
-      // NO ocultamos el card de uploads viejos: si el unificado falla, queda como fallback.
-      // Pero les agregamos un detalle visual: lo envolvemos en un <details> colapsable
-      const oldUploadCard = target.querySelector('.card');
-      if (oldUploadCard && oldUploadCard.querySelector('#up-cmr')) {
-        const details = document.createElement('details');
-        details.style.marginBottom = '14px';
-        const summary = document.createElement('summary');
-        summary.textContent = '⚙️ Modo manual (subir cada archivo por separado)';
-        summary.style.cursor = 'pointer';
-        summary.style.padding = '8px 12px';
-        summary.style.background = 'var(--surface2)';
-        summary.style.borderRadius = '8px';
-        summary.style.fontSize = '12px';
-        summary.style.color = 'var(--muted)';
-        summary.style.fontWeight = '600';
-        details.appendChild(summary);
-        oldUploadCard.parentNode.insertBefore(details, oldUploadCard);
-        details.appendChild(oldUploadCard);
-        oldUploadCard.style.display = '';
+
+      // V31: extraer el grid de uploads y el botón Importar a una card separada
+      const oldCard = target.querySelector('.card');
+      if (oldCard) {
+        const upCmr = oldCard.querySelector('#up-cmr');
+        const uploadGrid = upCmr ? upCmr.closest('div[style*="grid-template-columns"]') : null;
+        const importInput = oldCard.querySelector('#import-input');
+        const importarRow = importInput ? importInput.parentElement : null;
+
+        // Renombrar el titulo de la card original (ahora solo asignador, no uploads)
+        const cardTitle = oldCard.querySelector('.card-title');
+        if (cardTitle) cardTitle.textContent = '💳 Transacciones detectadas — asigna cada gasto';
+
+        // Construir card "Modo manual" con los uploads separados + Importar
+        const modoManualCard = document.createElement('div');
+        modoManualCard.className = 'card';
+        modoManualCard.style.marginTop = '16px';
+        const modoTitle = document.createElement('div');
+        modoTitle.className = 'card-title';
+        modoTitle.textContent = '📂 Modo manual — un archivo por banco';
+        const modoDesc = document.createElement('p');
+        modoDesc.style.cssText = 'font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5;';
+        modoDesc.textContent = 'Útil si el detector unificado falla. Sube cada estado de cuenta por separado.';
+        modoManualCard.appendChild(modoTitle);
+        modoManualCard.appendChild(modoDesc);
+        if (uploadGrid) modoManualCard.appendChild(uploadGrid);
+        if (importarRow) modoManualCard.appendChild(importarRow);
+
+        // Insertar modo manual DESPUÉS de la card de asignador
+        oldCard.parentNode.appendChild(modoManualCard);
       }
     }
   }
 
-  // === RESUMEN (busca por ID directo) ===
+  // === RESUMEN === (V31: mover al final del tab Asignador, no a su tab separado)
   {
     const resumen = stash.querySelector('#resumen-section');
-    const target = document.getElementById('v6-resumen-mount');
+    const target = document.getElementById('v6-asignador-mount');
     if (resumen && target) {
       target.appendChild(resumen);
-      resumen.style.display = '';
+      // resumen-section sigue siendo controlado por su display:none/block desde el resto del código
     }
+    // Ocultar el tab "Resumen" del header (su contenido vive ahora dentro de Asignador TC)
+    const tabBtns = document.querySelectorAll('#tabs-gastos .v6-tab');
+    tabBtns.forEach(btn => {
+      if (btn.textContent.trim().includes('Resumen')) btn.style.display = 'none';
+    });
+    const resumenPanel = document.querySelector('#tabs-gastos [data-tab="resumen"]');
+    if (resumenPanel) resumenPanel.style.display = 'none';
   }
 
   // === ESTE MES (separar fijos vs tarjetas) ===
@@ -7777,6 +7848,85 @@ function v6MoveBlocks() {
       v6ShowToast('🎉 Mis Finanzas instalada como app', 'success');
     }
   });
+
+  // ═══ V31: BANNER DE BLOQUEO POR SEGURIDAD ════════════════════════
+  // Cuando no hay Drive conectado, mostrar un banner suave arriba de
+  // la pantalla recordando que la data está protegida y que sólo se
+  // ve al conectar Google Drive. Se oculta automáticamente al conectar.
+  function v31InjectLockBannerStyle() {
+    if (document.getElementById('v31-lock-style')) return;
+    const st = document.createElement('style');
+    st.id = 'v31-lock-style';
+    st.textContent = `
+      #v31-lock-banner {
+        position: sticky; top: 0; left: 0; right: 0;
+        z-index: 999;
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 12px;
+        padding: 10px 16px;
+        background: var(--yellow-dim, #f7e7c4);
+        color: var(--text, #1a1a18);
+        border-bottom: 1px solid var(--border, rgba(0,0,0,.1));
+        font-family: 'Inter', sans-serif;
+        font-size: 13px;
+        line-height: 1.4;
+      }
+      #v31-lock-banner .v31-lock-text { display: flex; align-items: center; gap: 8px; }
+      #v31-lock-banner .v31-lock-icon { font-size: 16px; }
+      #v31-lock-banner button {
+        padding: 6px 14px;
+        background: var(--accent, #d16d3e);
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      #v31-lock-banner button:hover { filter: brightness(1.08); }
+      @media (max-width: 600px) {
+        #v31-lock-banner { font-size: 12px; padding: 8px 12px; }
+        #v31-lock-banner .v31-lock-text span:not(.v31-lock-icon) { font-size: 11px; }
+      }
+    `;
+    document.head.appendChild(st);
+  }
+  window.v31ShowLockBanner = function() {
+    v31InjectLockBannerStyle();
+    if (document.getElementById('v31-lock-banner')) return;
+    const banner = document.createElement('div');
+    banner.id = 'v31-lock-banner';
+    banner.innerHTML = `
+      <div class="v31-lock-text">
+        <span class="v31-lock-icon">🔒</span>
+        <span><strong>Datos protegidos.</strong> Conecta Google Drive para desbloquear tu información.</span>
+      </div>
+      <button onclick="driveConectar()">☁️ Conectar Drive</button>
+    `;
+    document.body.insertBefore(banner, document.body.firstChild);
+  };
+  window.v31HideLockBanner = function() {
+    const b = document.getElementById('v31-lock-banner');
+    if (b) b.remove();
+  };
+  // Mostrar banner al cargar si no hay token Drive en localStorage
+  setTimeout(() => {
+    const tok = localStorage.getItem('fg_drive_token');
+    if (!tok && !window.driveAccessToken) v31ShowLockBanner();
+  }, 800);
+  // Hook a driveHandleToken para ocultar el banner al conectar OK
+  const _v31_origHandleToken = window.driveHandleToken;
+  if (typeof _v31_origHandleToken === 'function') {
+    window.driveHandleToken = function(resp) {
+      const r = _v31_origHandleToken.apply(this, arguments);
+      if (resp && resp.access_token) {
+        setTimeout(v31HideLockBanner, 200);
+      }
+      return r;
+    };
+  }
 </script>
 
 </body>
