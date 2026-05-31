@@ -1287,6 +1287,7 @@ body {
       <button class="v6-tab" onclick="v6SwitchTab('tabs-ahorros','evolucion',this); v6RenderAhorros();">📈 Evolución</button>
       <button class="v6-tab" onclick="v6SwitchTab('tabs-ahorros','metas',this); v6RenderMetas();">🎯 Metas</button>
       <button class="v6-tab" onclick="v6SwitchTab('tabs-ahorros','tabla',this); v6RenderAhorros();">📋 Tabla histórica</button>
+      <button class="v6-tab" onclick="v6SwitchTab('tabs-ahorros','retiros',this); if(typeof renderRetiros==='function')renderRetiros();">⬇ Retiros</button>
     </div>
 
     <div class="v6-tab-panel active" data-tab="resumen">
@@ -1319,6 +1320,13 @@ body {
         <div class="chart-title">Historial mensual</div>
         <div id="v6-tabla-historica"></div>
       </div>
+    </div>
+
+    <div class="v6-tab-panel" data-tab="retiros">
+      <div style="margin-bottom:16px;font-size:12px;color:var(--muted);line-height:1.6;">
+        Cada retiro de tus cuentas de ahorro queda registrado con motivo y fecha. Sirve como espejo: si en algún momento dudás si vale la pena romper un objetivo, esta vista te muestra cuántas veces ya lo hiciste y por qué.
+      </div>
+      <div id="retiros-content"></div>
     </div>
   </div>
 </div>
@@ -1403,7 +1411,7 @@ body {
     <div class="v6-section-label" style="margin-top:0;">ℹ️ Acerca de</div>
     <p style="font-size:12px;color:var(--muted);line-height:1.6;">
       <strong>Mis Finanzas v31</strong><br>
-      Modo seguro 🔒 (Drive como llave) · Asignador reordenado · Snapshot live del mes en curso · Tip pineado en insights · v6_snapshots persistidos en Drive<br><br>
+      Modo seguro 🔒 · Asignador reordenado · Snapshot live del mes en curso · Tip pineado · v6_snapshots en Drive · ⬇ Retiros con motivo + audit trail<br><br>
       <em>Toda tu data del JSON original está 100% preservada.</em>
     </p>
   </div>
@@ -2562,6 +2570,8 @@ function _buildData() {
     deudores: window._deudores || [],
     // V31: snapshots de la página Histórico (antes sólo en localStorage)
     v6_snapshots: (typeof v6GetSnapshots === 'function') ? v6GetSnapshots() : [],
+    // V31: retiros de cuentas de ahorro (audit trail con motivo y nota)
+    retiros: window._retiros || [],
     fijosPagados: (function() {
       const estado = {};
       document.querySelectorAll('.fijo-check').forEach(btn => {
@@ -2682,6 +2692,12 @@ function _aplicarDatos(d) {
     // para que la página Histórico sobreviva cambios de navegador.
     if (d.v6_snapshots && Array.isArray(d.v6_snapshots) && typeof v6SaveSnapshots === 'function') {
       v6SaveSnapshots(d.v6_snapshots);
+    }
+
+    // ── V31: retiros de cuentas (audit trail) ─────────────────
+    if (d.retiros && Array.isArray(d.retiros)) {
+      window._retiros = d.retiros;
+      if (typeof renderRetiros === 'function') renderRetiros();
     }
 
     // ── Deudores ───────────────────────────────────────────────
@@ -7927,6 +7943,484 @@ function v6MoveBlocks() {
       return r;
     };
   }
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  V31: RETIROS DE CUENTAS DE AHORRO
+  //  Audit trail con motivo + fricción visual para desincentivar el uso
+  //  del ahorro fuera del objetivo para el cual fue creado.
+  // ═══════════════════════════════════════════════════════════════════
+  window._retiros = window._retiros || [];
+
+  // Catálogo de cuentas (label + emoji para mostrar en el modal y el log)
+  const RETIRO_CUENTAS = {
+    mp:     { nombre: 'MercadoPago',           tag: '🚗 Auto' },
+    be:     { nombre: 'BancoEstado Vivienda',  tag: '🏠 Vivienda' },
+    fr:     { nombre: 'Fintual Reserva',       tag: '📦 Emergencia/Importación' },
+    fc:     { nombre: 'Fintual Capital Importar', tag: '📦 Importación' },
+    cripto: { nombre: 'ETH + BTC (MP)',        tag: '₿ Cripto' }
+  };
+
+  const RETIRO_MOTIVOS = [
+    'Emergencia médica',
+    'Imprevisto del hogar',
+    'Compra anticipada relacionada con la meta',
+    'Reasignación de monto a otro objetivo',
+    'Otro motivo'
+  ];
+
+  // ─── Inyectar CSS ─────────────────────────────────────────────
+  (function injectRetiroCSS(){
+    if (document.getElementById('v31-retiros-style')) return;
+    const st = document.createElement('style');
+    st.id = 'v31-retiros-style';
+    st.textContent = `
+      .retiro-link {
+        font-family: 'DM Mono', monospace;
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--muted);
+        background: transparent;
+        border: 0.5px dashed var(--border-md, rgba(0,0,0,.18));
+        border-radius: 6px;
+        padding: 3px 9px;
+        cursor: pointer;
+        margin-left: 8px;
+        transition: all .15s;
+        white-space: nowrap;
+      }
+      .retiro-link:hover {
+        color: var(--red);
+        border-color: var(--red);
+        background: var(--red-dim);
+      }
+      @media (max-width: 420px) {
+        .retiro-link { margin-left: 0; margin-top: 6px; display: inline-block; }
+      }
+
+      /* Modal */
+      .retiro-modal-overlay {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,.55);
+        z-index: 2000;
+        display: none;
+        align-items: center; justify-content: center;
+        padding: 16px;
+      }
+      .retiro-modal-overlay.active { display: flex; }
+      .retiro-modal {
+        background: var(--surface);
+        border-radius: 14px;
+        padding: 24px;
+        max-width: 480px; width: 100%;
+        max-height: 90vh; overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0,0,0,.3);
+        font-family: 'Inter', sans-serif;
+      }
+      .retiro-modal h3 {
+        font-family: 'Syne', sans-serif;
+        font-size: 18px;
+        color: var(--text);
+        margin-bottom: 4px;
+      }
+      .retiro-modal .subtitle {
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 18px;
+      }
+      .retiro-modal label {
+        display: block;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        color: var(--muted);
+        font-weight: 700;
+        margin-bottom: 6px;
+        margin-top: 14px;
+      }
+      .retiro-modal input[type="number"],
+      .retiro-modal select,
+      .retiro-modal textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--bg);
+        color: var(--text);
+        font-family: inherit;
+        font-size: 14px;
+        box-sizing: border-box;
+      }
+      .retiro-modal input[type="number"]:focus,
+      .retiro-modal select:focus,
+      .retiro-modal textarea:focus {
+        outline: none;
+        border-color: var(--terracotta, var(--accent));
+      }
+      .retiro-modal textarea { resize: vertical; min-height: 60px; }
+      .retiro-warning {
+        margin-top: 18px;
+        padding: 12px 14px;
+        background: var(--yellow-dim, #fcefc7);
+        border-left: 3px solid var(--mustard, #d09a27);
+        border-radius: 6px;
+        font-size: 12px;
+        color: var(--text);
+        line-height: 1.5;
+      }
+      .retiro-modal-actions {
+        display: flex; gap: 10px; justify-content: flex-end;
+        margin-top: 22px;
+      }
+      .retiro-modal-actions button {
+        padding: 9px 16px;
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid var(--border);
+      }
+      .retiro-btn-cancel { background: var(--surface2); color: var(--muted); }
+      .retiro-btn-confirm {
+        background: var(--red-dim);
+        color: var(--red);
+        border-color: var(--red);
+      }
+      .retiro-btn-confirm:hover { filter: brightness(1.06); }
+      .retiro-btn-confirm:disabled { opacity: .4; cursor: not-allowed; }
+
+      /* Lista de retiros */
+      .retiro-empty {
+        padding: 32px 16px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 13px;
+        border: 1px dashed var(--border);
+        border-radius: 10px;
+      }
+      .retiro-summary-bar {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .retiro-stat {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--red);
+        padding: 12px 14px;
+        border-radius: 8px;
+      }
+      .retiro-stat-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--muted);
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
+      .retiro-stat-value {
+        font-family: 'Inter', sans-serif;
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text);
+      }
+      .retiro-item {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--red);
+        padding: 14px 16px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+      }
+      .retiro-item-head {
+        display: flex; justify-content: space-between;
+        align-items: flex-start; gap: 12px;
+        margin-bottom: 8px; flex-wrap: wrap;
+      }
+      .retiro-item-cuenta {
+        font-family: 'Syne', sans-serif;
+        font-weight: 700;
+        font-size: 14px;
+        color: var(--text);
+      }
+      .retiro-item-monto {
+        font-family: 'Inter', sans-serif;
+        font-size: 15px;
+        font-weight: 800;
+        color: var(--red);
+        white-space: nowrap;
+      }
+      .retiro-item-meta {
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+      .retiro-item-motivo {
+        display: inline-block;
+        font-size: 11px;
+        background: var(--red-dim);
+        color: var(--red);
+        padding: 3px 9px;
+        border-radius: 4px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      .retiro-item-nota {
+        font-size: 12px;
+        color: var(--text2);
+        line-height: 1.5;
+        padding: 8px 10px;
+        background: var(--surface2);
+        border-radius: 6px;
+        margin-top: 6px;
+      }
+      .retiro-item-delete {
+        background: transparent;
+        border: 0.5px solid var(--border);
+        border-radius: 6px;
+        font-size: 10px;
+        padding: 3px 8px;
+        cursor: pointer;
+        color: var(--muted);
+      }
+      .retiro-item-delete:hover { color: var(--red); border-color: var(--red); }
+    `;
+    document.head.appendChild(st);
+  })();
+
+  // ─── Inyectar modal en el DOM ─────────────────────────────────
+  (function injectRetiroModal(){
+    if (document.getElementById('retiro-modal')) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'retiro-modal';
+    overlay.className = 'retiro-modal-overlay';
+    overlay.innerHTML = `
+      <div class="retiro-modal" onclick="event.stopPropagation()">
+        <h3>⬇ Retirar de <span id="retiro-cuenta-label">—</span></h3>
+        <div class="subtitle" id="retiro-cuenta-tag">—</div>
+
+        <label for="retiro-monto-input">Monto a retirar</label>
+        <input type="number" id="retiro-monto-input" placeholder="0" min="1">
+
+        <label for="retiro-motivo-select">Motivo (obligatorio)</label>
+        <select id="retiro-motivo-select">
+          <option value="">— elegir motivo —</option>
+          ${RETIRO_MOTIVOS.map(m => `<option value="${m}">${m}</option>`).join('')}
+        </select>
+
+        <label for="retiro-nota-input">Nota adicional (opcional)</label>
+        <textarea id="retiro-nota-input" placeholder="Más contexto sobre el retiro, o detalle si elegiste 'Otro motivo'…"></textarea>
+
+        <div class="retiro-warning">
+          ⚠️ Esta cuenta tiene un objetivo asignado. Retirar significa posponer esa meta. ¿Vale la pena?
+        </div>
+
+        <div class="retiro-modal-actions">
+          <button type="button" class="retiro-btn-cancel" onclick="closeRetiroModal()">Cancelar</button>
+          <button type="button" class="retiro-btn-confirm" onclick="confirmarRetiro()">Confirmar retiro</button>
+        </div>
+      </div>
+    `;
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeRetiroModal(); });
+    document.body.appendChild(overlay);
+  })();
+
+  // ─── Inyectar botón "⬇ Retirar" en cada cuenta ──────────────
+  function injectRetiroButtons() {
+    Object.keys(RETIRO_CUENTAS).forEach(k => {
+      const listoBtn = document.getElementById('btn-'+k);
+      if (!listoBtn) return;
+      // Evitar duplicar si ya está inyectado
+      if (listoBtn.parentElement.querySelector('.retiro-link[data-cuenta="'+k+'"]')) return;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'retiro-link';
+      btn.dataset.cuenta = k;
+      btn.textContent = '⬇ Retirar';
+      btn.title = 'Registrar un retiro de esta cuenta con motivo';
+      btn.onclick = () => openRetiroModal(k);
+      listoBtn.insertAdjacentElement('afterend', btn);
+    });
+  }
+  // Esperamos un tick para que el DOM esté listo
+  setTimeout(injectRetiroButtons, 400);
+  setTimeout(injectRetiroButtons, 1500); // safety pass tras la inicialización V6
+
+  // ─── Abrir / cerrar modal ─────────────────────────────────────
+  window._retiroCuentaActual = null;
+  window.openRetiroModal = function(cuentaKey) {
+    const meta = RETIRO_CUENTAS[cuentaKey];
+    if (!meta) return;
+    window._retiroCuentaActual = cuentaKey;
+    document.getElementById('retiro-cuenta-label').textContent = meta.nombre;
+    document.getElementById('retiro-cuenta-tag').textContent = meta.tag;
+    document.getElementById('retiro-monto-input').value = '';
+    document.getElementById('retiro-motivo-select').value = '';
+    document.getElementById('retiro-nota-input').value = '';
+    document.getElementById('retiro-modal').classList.add('active');
+    setTimeout(() => document.getElementById('retiro-monto-input').focus(), 100);
+  };
+  window.closeRetiroModal = function() {
+    document.getElementById('retiro-modal').classList.remove('active');
+    window._retiroCuentaActual = null;
+  };
+
+  // ─── Confirmar el retiro ──────────────────────────────────────
+  window.confirmarRetiro = async function() {
+    const k = window._retiroCuentaActual;
+    if (!k) return;
+    const meta = RETIRO_CUENTAS[k];
+    const montoEl  = document.getElementById('retiro-monto-input');
+    const motivoEl = document.getElementById('retiro-motivo-select');
+    const notaEl   = document.getElementById('retiro-nota-input');
+    const monto  = Math.abs(parseFloat(montoEl.value) || 0);
+    const motivo = (motivoEl.value || '').trim();
+    const nota   = (notaEl.value || '').trim();
+
+    if (!monto || monto <= 0) {
+      alert('Ingresa un monto válido a retirar.');
+      montoEl.focus();
+      return;
+    }
+    if (!motivo) {
+      alert('Selecciona un motivo. Es obligatorio.');
+      motivoEl.focus();
+      return;
+    }
+    // Si elige "Otro motivo" → la nota se vuelve obligatoria
+    if (motivo === 'Otro motivo' && nota.length < 5) {
+      alert('Si eliges "Otro motivo", agrega una nota con al menos 5 caracteres para dejar registro.');
+      notaEl.focus();
+      return;
+    }
+
+    const saldoEl = document.getElementById('c-'+k);
+    const saldoActual = parseFloat(saldoEl.value) || 0;
+    if (monto > saldoActual) {
+      const ok = confirm(`El monto ($${monto.toLocaleString('es-CL')}) supera el saldo actual ($${saldoActual.toLocaleString('es-CL')}). Esto dejará la cuenta en negativo. ¿Continuar?`);
+      if (!ok) return;
+    }
+
+    // Aplicar: restar al saldo
+    saldoEl.value = saldoActual - monto;
+    saldoEl.dispatchEvent(new Event('input', { bubbles: true }));
+
+    // Log en _retiros
+    const ahora = new Date();
+    const yyyy = ahora.getFullYear();
+    const mm = String(ahora.getMonth()+1).padStart(2,'0');
+    const dd = String(ahora.getDate()).padStart(2,'0');
+    window._retiros = window._retiros || [];
+    window._retiros.push({
+      id: 'retiro_'+ahora.getTime(),
+      cuenta: k,
+      cuentaNombre: meta.nombre,
+      monto: monto,
+      motivo: motivo,
+      nota: nota,
+      fecha: `${yyyy}-${mm}-${dd}`,
+      ts: ahora.getTime()
+    });
+
+    closeRetiroModal();
+
+    // Re-render
+    ['recalcular','v6RenderDashboard','v6RenderAhorros','v6RenderMetas','renderHistorial','renderRetiros']
+      .forEach(fn => { if (typeof window[fn] === 'function') window[fn](); });
+
+    // Toast
+    if (typeof v6ShowToast === 'function') {
+      v6ShowToast(`⬇ Retiro de $${monto.toLocaleString('es-CL')} registrado en ${meta.nombre}`, 'info');
+    }
+
+    // Guardar en Drive
+    if (typeof guardar === 'function') {
+      await guardar();
+    }
+  };
+
+  // ─── Render del listado de retiros ────────────────────────────
+  window.renderRetiros = function() {
+    const cont = document.getElementById('retiros-content');
+    if (!cont) return;
+    const arr = (window._retiros || []).slice().sort((a,b) => b.ts - a.ts);
+    if (arr.length === 0) {
+      cont.innerHTML = `<div class="retiro-empty">
+        <div style="font-size:32px;margin-bottom:10px;">🛡️</div>
+        <div><strong>Sin retiros registrados.</strong></div>
+        <div style="margin-top:8px;font-size:12px;">Tu disciplina de ahorro está intacta. Cuando necesites retirar, usa el botón <strong>⬇ Retirar</strong> en cada cuenta de la sección Cuentas.</div>
+      </div>`;
+      return;
+    }
+    // Stats
+    const totalRetirado = arr.reduce((s,r) => s + (r.monto||0), 0);
+    const ahora = new Date();
+    const mesActual = ahora.getFullYear()+'-'+String(ahora.getMonth()+1).padStart(2,'0');
+    const totalMes = arr.filter(r => r.fecha && r.fecha.startsWith(mesActual)).reduce((s,r) => s+(r.monto||0), 0);
+    const ultimoYear = ahora.getFullYear();
+    const totalYear = arr.filter(r => r.fecha && r.fecha.startsWith(ultimoYear)).reduce((s,r) => s+(r.monto||0), 0);
+    // Motivo más común
+    const motivosCount = {};
+    arr.forEach(r => { motivosCount[r.motivo] = (motivosCount[r.motivo]||0)+1; });
+    const motivoTop = Object.entries(motivosCount).sort((a,b) => b[1]-a[1])[0];
+
+    const fmt = n => '$' + (n||0).toLocaleString('es-CL');
+    const statsHtml = `
+      <div class="retiro-summary-bar">
+        <div class="retiro-stat">
+          <div class="retiro-stat-label">Total retirado</div>
+          <div class="retiro-stat-value num-sensitive">${fmt(totalRetirado)}</div>
+        </div>
+        <div class="retiro-stat">
+          <div class="retiro-stat-label">Retiros este mes</div>
+          <div class="retiro-stat-value num-sensitive">${fmt(totalMes)}</div>
+        </div>
+        <div class="retiro-stat">
+          <div class="retiro-stat-label">Retiros ${ultimoYear}</div>
+          <div class="retiro-stat-value num-sensitive">${fmt(totalYear)}</div>
+        </div>
+        <div class="retiro-stat">
+          <div class="retiro-stat-label">Motivo más usado</div>
+          <div class="retiro-stat-value" style="font-size:13px;">${motivoTop ? motivoTop[0] + ' ('+motivoTop[1]+'×)' : '—'}</div>
+        </div>
+      </div>
+    `;
+
+    const itemsHtml = arr.map(r => {
+      const meta = RETIRO_CUENTAS[r.cuenta] || { nombre: r.cuentaNombre || r.cuenta, tag: '' };
+      const fechaDisplay = r.fecha ? r.fecha.split('-').reverse().join('/') : '—';
+      const notaHtml = r.nota ? `<div class="retiro-item-nota">📝 ${r.nota.replace(/</g,'&lt;')}</div>` : '';
+      return `<div class="retiro-item">
+        <div class="retiro-item-head">
+          <div>
+            <div class="retiro-item-cuenta">${meta.nombre}</div>
+            <div class="retiro-item-meta">${meta.tag} · ${fechaDisplay}</div>
+          </div>
+          <div class="retiro-item-monto num-sensitive">−${fmt(r.monto)}</div>
+        </div>
+        <div class="retiro-item-motivo">${r.motivo}</div>
+        ${notaHtml}
+        <div style="margin-top:10px;text-align:right;">
+          <button class="retiro-item-delete" onclick="eliminarRetiro('${r.id}')">🗑 Eliminar registro</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    cont.innerHTML = statsHtml + itemsHtml;
+    if (typeof v6HideAmounts !== 'undefined' && v6HideAmounts && typeof v6ApplyHideAmounts === 'function') {
+      setTimeout(v6ApplyHideAmounts, 50);
+    }
+  };
+
+  // ─── Eliminar un registro de retiro (no devuelve el saldo) ────
+  window.eliminarRetiro = async function(id) {
+    const ok = confirm('¿Eliminar este registro de retiro?\n\nOJO: solo elimina la entrada del log, NO devuelve el monto al saldo. Si quieres revertir un retiro, ajusta manualmente el saldo de la cuenta.');
+    if (!ok) return;
+    window._retiros = (window._retiros || []).filter(r => r.id !== id);
+    renderRetiros();
+    if (typeof guardar === 'function') await guardar();
+  };
 </script>
 
 </body>
