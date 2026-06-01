@@ -3456,7 +3456,12 @@ sheetScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.
 document.head.appendChild(sheetScript);
 
 const PERSONAS_LIST = ['— sin asignar —','Yo','Papa/Paola','Vania','Paula','Aldo','Mamá','Rorro Bulla','Luis','Compartido','Otro'];
-let allGastos = [];
+// FIX V31.2: usar window.allGastos para que esté sincronizado con el resto
+// del código (carga de archivos, persistencia Drive, limpieza, etc.).
+// Antes era `let allGastos = []` lo que creaba una variable local del script
+// desconectada de window.allGastos. Eso pasó desapercibido porque este
+// script tenía un error de sintaxis previo y nunca llegaba a ejecutarse.
+window.allGastos = window.allGastos || [];
 let filtroActivo = 'todos';
 
 // ── Normaliza cualquier formato de fecha a dd/mm/yyyy ────────────
