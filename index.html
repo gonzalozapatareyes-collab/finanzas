@@ -8569,10 +8569,12 @@ function v6MoveBlocks() {
         <input type="text" id="add-meta-nombre" placeholder="Ej. Vacaciones Europa 2027">
         <label for="add-meta-target">Monto objetivo</label>
         <input type="number" id="add-meta-target" placeholder="0" min="1">
+        <label for="add-meta-fecha">Fecha objetivo (mes y año)</label>
+        <input type="month" id="add-meta-fecha">
         <label for="add-meta-tracking">Cómo trackear el progreso</label>
         <select id="add-meta-tracking" onchange="toggleMetaManualSaldo()"></select>
         <div id="add-meta-manual-wrap" style="display:none;">
-          <label for="add-meta-saldo-manual">Saldo manual (lo que llevás ahorrado)</label>
+          <label for="add-meta-saldo-manual">Saldo manual (lo que llevas ahorrado)</label>
           <input type="number" id="add-meta-saldo-manual" placeholder="0" min="0">
         </div>
         <div class="custom-modal-actions">
@@ -8808,6 +8810,23 @@ function v6MoveBlocks() {
            <span class="val num-sensitive">$${saldo.toLocaleString('es-CL')}</span>
          </div>`;
 
+      // V31.2: fila opcional con fecha objetivo formateada en español
+      const mesesNombre = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      let fechaRowHtml = '';
+      if (m.fechaObjetivo) {
+        const partes = m.fechaObjetivo.split('-');
+        if (partes.length === 2) {
+          const anio = partes[0];
+          const mesIdx = parseInt(partes[1], 10) - 1;
+          if (mesIdx >= 0 && mesIdx < 12) {
+            fechaRowHtml = `<div class="meta-editor-row">
+              <span class="lbl">Fecha objetivo</span>
+              <span class="val">${mesesNombre[mesIdx]} ${anio}</span>
+            </div>`;
+          }
+        }
+      }
+
       const card = document.createElement('div');
       card.className = 'meta-editor-card meta-custom-injected';
       card.style.borderLeftColor = color;
@@ -8825,6 +8844,7 @@ function v6MoveBlocks() {
           <span class="lbl">Meta</span>
           <span class="val num-sensitive">$${target.toLocaleString('es-CL')}</span>
         </div>
+        ${fechaRowHtml}
         <div class="meta-editor-row">
           <span class="lbl">Faltan</span>
           <span class="val num-sensitive" style="color:var(--mustard);">$${falta.toLocaleString('es-CL')}</span>
@@ -8882,6 +8902,7 @@ function v6MoveBlocks() {
     document.getElementById('add-meta-edit-id').value = '';
     document.getElementById('add-meta-nombre').value = '';
     document.getElementById('add-meta-target').value = '';
+    document.getElementById('add-meta-fecha').value = '';
     document.getElementById('add-meta-tracking').value = '';
     document.getElementById('add-meta-saldo-manual').value = '';
     document.getElementById('add-meta-manual-wrap').style.display = 'none';
@@ -8897,6 +8918,7 @@ function v6MoveBlocks() {
     document.getElementById('add-meta-edit-id').value = id;
     document.getElementById('add-meta-nombre').value = m.nombre || '';
     document.getElementById('add-meta-target').value = m.target || 0;
+    document.getElementById('add-meta-fecha').value = m.fechaObjetivo || '';
     document.getElementById('add-meta-tracking').value = m.tracking || '';
     document.getElementById('add-meta-saldo-manual').value = m.saldoManual || 0;
     document.getElementById('add-meta-manual-wrap').style.display = m.tracking === 'manual' ? 'block' : 'none';
@@ -8914,6 +8936,7 @@ function v6MoveBlocks() {
     const editId = document.getElementById('add-meta-edit-id').value;
     const nombre = document.getElementById('add-meta-nombre').value.trim();
     const target = parseFloat(document.getElementById('add-meta-target').value) || 0;
+    const fechaObjetivo = document.getElementById('add-meta-fecha').value;
     const tracking = document.getElementById('add-meta-tracking').value;
     const saldoManual = parseFloat(document.getElementById('add-meta-saldo-manual').value) || 0;
     if (!nombre) { alert('Ingresa un nombre'); return; }
@@ -8923,11 +8946,12 @@ function v6MoveBlocks() {
       const m = (window._metasCustom || []).find(x => x.id === editId);
       if (m) {
         m.nombre = nombre; m.target = target; m.tracking = tracking;
+        m.fechaObjetivo = fechaObjetivo || '';
         if (tracking === 'manual') m.saldoManual = saldoManual;
       }
     } else {
       window._metasCustom = window._metasCustom || [];
-      const newMeta = { id: 'meta_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), nombre, target, tracking };
+      const newMeta = { id: 'meta_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), nombre, target, tracking, fechaObjetivo: fechaObjetivo || '' };
       if (tracking === 'manual') newMeta.saldoManual = saldoManual;
       window._metasCustom.push(newMeta);
     }
