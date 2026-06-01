@@ -3298,11 +3298,12 @@ function confirmarCompartido() {
         <span id="gastos-count">0</span> transacciones · 
         <span id="gastos-sin-asignar" style="color:var(--yellow);">0 sin asignar</span>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         <button class="filtro-btn active" onclick="filtrar('todos',this)">Todos</button>
         <button class="filtro-btn" onclick="filtrar('sin',this)" style="color:var(--yellow);">Sin asignar</button>
         <button class="filtro-btn" onclick="filtrar('cmr',this)">CMR</button>
         <button class="filtro-btn" onclick="filtrar('chile',this)">Bco Chile</button>
+        <button class="filtro-btn" onclick="limpiarAsignadorCompleto()" style="color:var(--red);border-color:var(--red);background:var(--red-dim);margin-left:8px;" title="Borrar todas las transacciones del asignador">🗑 Limpiar todo</button>
       </div>
     </div>
   </div>
@@ -3616,7 +3617,33 @@ function renderGastos() {
   const container = document.getElementById('gastos-rows');
   container.innerHTML = '';
 
-  filtered.forEach((g, idx) => {
+  // V31.2: agrupar por fuente para que se vea separado CMR, Chile Nacional, Chile Internacional
+  const grupos = [
+    {
+      id: 'cmr',
+      label: '💳 CMR (Banco Falabella)',
+      color: 'var(--red)',
+      bgColor: 'var(--red-dim)',
+      match: g => g.banco === 'CMR'
+    },
+    {
+      id: 'chile-nac',
+      label: '🏦 Banco Chile · Nacional',
+      color: 'var(--blue)',
+      bgColor: 'var(--blue-dim)',
+      match: g => g.banco === 'Bco Chile' && g.moneda !== 'USD'
+    },
+    {
+      id: 'chile-int',
+      label: '🌍 Banco Chile · Internacional (USD)',
+      color: 'var(--purple)',
+      bgColor: 'var(--purple-dim)',
+      match: g => g.banco === 'Bco Chile' && g.moneda === 'USD'
+    }
+  ];
+
+  // Función para construir UNA fila (la lógica original sin cambios)
+  const buildRow = (g) => {
     const realIdx = allGastos.indexOf(g);
     const row = document.createElement('div');
     row.className = 'gasto-row';
@@ -3629,15 +3656,12 @@ function renderGastos() {
 
     // FIX V31.2: incluir nombres custom usados en otras filas para que
     // queden disponibles en el dropdown después de cualquier re-render.
-    // Antes el dropdown se armaba solo con PERSONAS_LIST, así que los
-    // valores ingresados via "Otro" quedaban sin match → visualmente
-    // aparecían como "sin asignar".
     const customPersonasUsadas = [...new Set(
       allGastos.map(x => x.persona).filter(p => p && !PERSONAS_LIST.includes(p))
     )];
-    const opcionesCompletas = PERSONAS_LIST.slice(0, -1)  // todo menos "Otro"
+    const opcionesCompletas = PERSONAS_LIST.slice(0, -1)
       .concat(customPersonasUsadas)
-      .concat([PERSONAS_LIST[PERSONAS_LIST.length - 1]]);  // "Otro" al final
+      .concat([PERSONAS_LIST[PERSONAS_LIST.length - 1]]);
     const options = opcionesCompletas.map(p =>
       `<option value="${p}" ${g.persona === p ? 'selected' : ''}>${p}</option>`
     ).join('');
@@ -3697,12 +3721,61 @@ function renderGastos() {
     row.style.padding = '8px 0';
     row.style.borderBottom = '1px solid var(--border)';
     if (g.ignorado) row.style.opacity = '0.3';
-    container.appendChild(row);
+    return row;
+  };
+
+  // V31.2: iterar los 3 grupos, inyectar header + filas para cada grupo no vacío
+  grupos.forEach(grupo => {
+    const items = filtered.filter(grupo.match);
+    if (items.length === 0) return;
+    const header = document.createElement('div');
+    header.style.cssText = `
+      margin: 18px 0 6px 0;
+      padding: 8px 12px;
+      background: ${grupo.bgColor};
+      border-left: 3px solid ${grupo.color};
+      border-radius: 6px;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: ${grupo.color};
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    `;
+    header.innerHTML = `<span>${grupo.label}</span><span style="color:var(--muted);font-size:10px;font-weight:600;">${items.length} mov.</span>`;
+    container.appendChild(header);
+    items.forEach(g => container.appendChild(buildRow(g)));
   });
 
   actualizarResumen();
   actualizarTotalesPeriodo();
 }
+
+// V31.2: limpia todas las transacciones del asignador TC en un click
+window.limpiarAsignadorCompleto = async function() {
+  const cuantas = (window.allGastos || []).length;
+  if (cuantas === 0) {
+    alert('El asignador ya está vacío.');
+    return;
+  }
+  if (!confirm(`¿Borrar las ${cuantas} transacciones del asignador?\n\nEsto incluye CMR, Banco Chile Nacional y Banco Chile Internacional. La acción no se puede deshacer.`)) return;
+  window.allGastos = [];
+  const rows = document.getElementById('gastos-rows');
+  if (rows) rows.innerHTML = '';
+  ['gastos-controls','gastos-tabla','g-totales','resumen-section'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  const ul = document.getElementById('v6-uploaded-list');
+  if (ul) ul.innerHTML = '';
+  if (typeof actualizarResumen === 'function') actualizarResumen();
+  if (typeof actualizarTotalesPeriodo === 'function') actualizarTotalesPeriodo();
+  if (typeof syncTarjetas === 'function') syncTarjetas();
+  if (typeof guardar === 'function') await guardar();
+};
 
 function asignar(idx, sel) {
   let persona = sel.value === '— sin asignar —' ? '' : sel.value;
