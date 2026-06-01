@@ -5194,10 +5194,17 @@ function v6LimpiarMesActualUI() {
   if (ul) ul.innerHTML = '';
 
   // Resetear checks de gastos fijos
-  document.querySelectorAll('.fijo-row .chk.done').forEach(chk => chk.classList.remove('done'));
+  // FIX V31.2: el markup real usa .fijo-check.pagado y .fijo-row.pagado-row,
+  // no .chk.done que era el selector incorrecto anterior.
+  document.querySelectorAll('.fijo-row.pagado-row').forEach(row => row.classList.remove('pagado-row'));
+  document.querySelectorAll('.fijo-check.pagado').forEach(chk => {
+    chk.classList.remove('pagado');
+    chk.textContent = '';
+  });
 
-  // Resetear checklist
+  // Resetear checklist inicio de mes (este sí usa .chk.done correctamente)
   document.querySelectorAll('.check-item .chk.done').forEach(chk => chk.classList.remove('done'));
+  document.querySelectorAll('.check-item .check-text.done').forEach(el => el.classList.remove('done'));
 
   // Recalcular y refrescar
   if (typeof recalcular === 'function') recalcular();
