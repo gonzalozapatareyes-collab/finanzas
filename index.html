@@ -5539,12 +5539,16 @@ function v6RenderAhorros() {
         const diff = prev ? (m.saldo - prev.saldo) : 0;
         const diffStr = prev ? (diff >= 0 ? '+$' + diff.toLocaleString('es-CL') : '-$' + Math.abs(diff).toLocaleString('es-CL')) : '—';
         const diffColor = diff >= 0 ? 'var(--green)' : 'var(--red)';
-        const totalPost = m.saldo + (m.deposito || 0);
+        // FIX V31.2: patrimonio final = m.saldo (ya consolidado). Antes sumaba
+        // saldo + deposito generando doble conteo.
+        const patrimonioFinal = m.saldo;
+        // Saldo inicial = patrimonio del mes anterior, o derivado si es el primero
+        const saldoInicial = prev ? prev.saldo : (m.saldo - (m.deposito || 0));
         return `<tr>
           <td><strong>${m.mes}</strong>${m._esActual ? ' <span style="font-size:9px;color:var(--mustard);">(actual)</span>' : ''}</td>
-          <td class="num num-sensitive">$${m.saldo.toLocaleString('es-CL')}</td>
+          <td class="num num-sensitive">$${saldoInicial.toLocaleString('es-CL')}</td>
           <td class="num num-sensitive" style="color:var(--green);">$${(m.deposito||0).toLocaleString('es-CL')}</td>
-          <td class="num num-sensitive" style="color:var(--terracotta);font-weight:700;">$${totalPost.toLocaleString('es-CL')}</td>
+          <td class="num num-sensitive" style="color:var(--terracotta);font-weight:700;">$${patrimonioFinal.toLocaleString('es-CL')}</td>
           <td class="num num-sensitive" style="color:${diffColor};">${diffStr}</td>
         </tr>`;
       }).join('');
