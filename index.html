@@ -1278,6 +1278,7 @@ body {
 
 <div class="v6-page" id="page-cuentas">
   <div id="v6-saldos-mount"></div>
+  <div id="cuentas-custom-mount"></div>
 </div>
 
 <div class="v6-page" id="page-ahorros">
@@ -1313,6 +1314,7 @@ body {
         Los saldos se actualizan automáticamente desde Cuentas. Aquí solo editas el monto meta y la fecha objetivo.
       </div>
       <div id="v6-metas-editor"></div>
+      <div id="metas-custom-mount"></div>
     </div>
 
     <div class="v6-tab-panel" data-tab="tabla">
@@ -1410,8 +1412,8 @@ body {
   <div class="card">
     <div class="v6-section-label" style="margin-top:0;">ℹ️ Acerca de</div>
     <p style="font-size:12px;color:var(--muted);line-height:1.6;">
-      <strong>Mis Finanzas v31</strong><br>
-      Modo seguro 🔒 · Asignador reordenado · Snapshot live del mes · Tip pineado · v6_snapshots en Drive · ⬇ Retiros con motivo + audit · Fix scope <code>driveAccessToken</code> · Inputs sin defaults hardcoded · Render completo post-Drive (no requiere navegar)<br><br>
+      <strong>Mis Finanzas v31.2</strong><br>
+      Modo seguro 🔒 · Asignador reordenado · Snapshot live · Tip pineado · v6_snapshots en Drive · ⬇ Retiros con motivo + audit · Fix scope <code>driveAccessToken</code> · Inputs sin defaults · Render completo post-Drive · ➕ Cuentas y metas unificadas (sin secciones aparte)<br><br>
       <em>Toda tu data del JSON original está 100% preservada.</em>
     </p>
   </div>
@@ -1737,7 +1739,7 @@ body {
     <input type="text"   id="d-nombre"  placeholder="Nombre">
     <input type="number" id="d-monto"   placeholder="Monto ($)">
     <input type="text"   id="d-titulo"  placeholder="Concepto (ej: cena, deuda auto...)">
-    <input type="text"   id="d-desde"   placeholder="Desde cuándo (ej: marzo 2026)">
+    <input type="date" id="d-desde"   title="Desde cuándo">
     <button class="deudor-add-btn" onclick="agregarDeudor()">+ Agregar deudor</button>
   </div>
 </div>
@@ -6042,7 +6044,7 @@ window.v6RenderDeudoresPropio = function() {
         <input id="v6-deu-nombre" placeholder="Nombre" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-family:'DM Mono',monospace;font-size:12px;">
         <input id="v6-deu-monto" type="number" placeholder="Monto ($)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-family:'DM Mono',monospace;font-size:12px;">
         <input id="v6-deu-titulo" placeholder="Concepto (ej: cena, deuda...)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-family:'DM Mono',monospace;font-size:12px;grid-column:span 2;">
-        <input id="v6-deu-desde" placeholder="Desde cuándo (ej: 16/05)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-family:'DM Mono',monospace;font-size:12px;grid-column:span 2;">
+        <input id="v6-deu-desde" type="date" title="Desde cuándo" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-family:'DM Mono',monospace;font-size:12px;grid-column:span 2;">
       </div>
       <button onclick="v6AgregarDeudorPropio()" style="margin-top:12px;width:100%;background:linear-gradient(135deg,var(--terracotta),#E07E4E);color:white;border:none;padding:12px;border-radius:8px;cursor:pointer;font-weight:700;font-size:13px;">+ Agregar deudor</button>
     </div>
@@ -8453,6 +8455,705 @@ function v6MoveBlocks() {
     renderRetiros();
     if (typeof guardar === 'function') await guardar();
   };
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  V31: CUENTAS CUSTOM + METAS CUSTOM
+  //  Permite agregar cuentas adicionales y metas vinculadas al pool
+  //  dinámico (5 hardcoded + N custom).
+  // ═══════════════════════════════════════════════════════════════════
+  window._cuentasCustom = window._cuentasCustom || [];
+  window._metasCustom = window._metasCustom || [];
+
+  const CUSTOM_COLORS = ['#9B72CF','#5DADE2','#48C9B0','#F39C12','#E74C3C','#16A085','#8E44AD','#2980B9','#D35400','#27AE60'];
+
+  function escHtml(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+
+  // CSS
+  (function(){
+    if (document.getElementById('v31-custom-style')) return;
+    const st = document.createElement('style');
+    st.id = 'v31-custom-style';
+    st.textContent = `
+      .custom-section { margin-top: 24px; padding-top: 18px; border-top: 1px dashed var(--border); }
+      .custom-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
+      .custom-section-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--text); }
+      .custom-add-btn { background: var(--terracotta, var(--accent)); color: white; border: none; border-radius: 8px; padding: 8px 14px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+      .custom-add-btn:hover { filter: brightness(1.07); }
+      .custom-empty { font-size: 12px; color: var(--muted); padding: 14px; border: 1px dashed var(--border); border-radius: 8px; text-align: center; line-height: 1.5; }
+      .custom-meta-card { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--terracotta, var(--accent)); padding: 14px 16px; border-radius: 10px; margin-bottom: 12px; }
+      .custom-meta-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+      .custom-meta-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; color: var(--text); }
+      .custom-meta-link { font-size: 11px; color: var(--muted); margin-top: 2px; }
+      .custom-meta-numbers { font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 8px; white-space: nowrap; }
+      .custom-meta-numbers .meta-target { color: var(--muted); font-weight: 500; }
+      .custom-meta-bar-track { background: var(--surface2); border-radius: 4px; overflow: hidden; height: 8px; margin-bottom: 6px; }
+      .custom-meta-bar-fill { height: 100%; background: linear-gradient(90deg, var(--terracotta, var(--accent)), var(--mustard)); transition: width .3s; }
+      .custom-meta-pct { font-size: 11px; color: var(--muted); }
+      .custom-meta-actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+      .custom-meta-actions button { font-size: 10px; padding: 4px 10px; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); cursor: pointer; font-family: inherit; }
+      .custom-meta-actions button:hover { color: var(--text); }
+      .custom-meta-actions .btn-delete:hover { color: var(--red); border-color: var(--red); }
+      .custom-meta-manual-saldo { margin-top: 10px; display: flex; align-items: center; gap: 8px; }
+      .custom-meta-manual-saldo label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-weight: 700; flex-shrink: 0; }
+      .custom-meta-manual-saldo input { flex: 1; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px; }
+      .custom-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 16px; }
+      .custom-modal-overlay.active { display: flex; }
+      .custom-modal { background: var(--surface); border-radius: 14px; padding: 24px; max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.3); font-family: 'Inter', sans-serif; }
+      .custom-modal h3 { font-family: 'Syne', sans-serif; font-size: 18px; color: var(--text); margin-bottom: 14px; }
+      .custom-modal label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); font-weight: 700; margin-bottom: 6px; margin-top: 14px; }
+      .custom-modal input, .custom-modal select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-family: inherit; font-size: 14px; box-sizing: border-box; }
+      .custom-modal-color-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+      .custom-color-swatch { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform .15s; }
+      .custom-color-swatch:hover { transform: scale(1.1); }
+      .custom-color-swatch.selected { border-color: var(--text); }
+      .custom-modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
+      .custom-modal-actions button { padding: 9px 16px; border-radius: 8px; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); }
+      .custom-btn-cancel { background: var(--surface2); color: var(--muted); }
+      .custom-btn-confirm { background: var(--terracotta, var(--accent)); color: white; border-color: var(--terracotta, var(--accent)); }
+    `;
+    document.head.appendChild(st);
+  })();
+
+  // Modal: agregar/editar cuenta
+  (function(){
+    if (document.getElementById('add-cuenta-modal')) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'add-cuenta-modal';
+    overlay.className = 'custom-modal-overlay';
+    overlay.innerHTML = `
+      <div class="custom-modal" onclick="event.stopPropagation()">
+        <h3 id="add-cuenta-title">➕ Agregar nueva cuenta</h3>
+        <input type="hidden" id="add-cuenta-edit-id" value="">
+        <label for="add-cuenta-nombre">Nombre de la cuenta</label>
+        <input type="text" id="add-cuenta-nombre" placeholder="Ej. Wedding fund Copec Pay">
+        <label for="add-cuenta-tag">Tag corto (con emoji opcional)</label>
+        <input type="text" id="add-cuenta-tag" placeholder="Ej. 💍 Wedding · 4.5% anual">
+        <label for="add-cuenta-saldo">Saldo inicial</label>
+        <input type="number" id="add-cuenta-saldo" placeholder="0" min="0">
+        <label>Color para el donut</label>
+        <div class="custom-modal-color-grid" id="add-cuenta-color-grid"></div>
+        <input type="hidden" id="add-cuenta-color" value="${CUSTOM_COLORS[0]}">
+        <div class="custom-modal-actions">
+          <button type="button" class="custom-btn-cancel" onclick="closeAddCuentaModal()">Cancelar</button>
+          <button type="button" class="custom-btn-confirm" onclick="confirmarAgregarCuenta()">Guardar</button>
+        </div>
+      </div>`;
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeAddCuentaModal(); });
+    document.body.appendChild(overlay);
+    const grid = overlay.querySelector('#add-cuenta-color-grid');
+    CUSTOM_COLORS.forEach((c, i) => {
+      const s = document.createElement('div');
+      s.className = 'custom-color-swatch' + (i === 0 ? ' selected' : '');
+      s.style.background = c;
+      s.dataset.color = c;
+      s.onclick = () => {
+        grid.querySelectorAll('.custom-color-swatch').forEach(x => x.classList.remove('selected'));
+        s.classList.add('selected');
+        document.getElementById('add-cuenta-color').value = c;
+      };
+      grid.appendChild(s);
+    });
+  })();
+
+  // Modal: agregar/editar meta
+  (function(){
+    if (document.getElementById('add-meta-modal')) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'add-meta-modal';
+    overlay.className = 'custom-modal-overlay';
+    overlay.innerHTML = `
+      <div class="custom-modal" onclick="event.stopPropagation()">
+        <h3 id="add-meta-title">🎯 Agregar nueva meta</h3>
+        <input type="hidden" id="add-meta-edit-id" value="">
+        <label for="add-meta-nombre">Nombre de la meta</label>
+        <input type="text" id="add-meta-nombre" placeholder="Ej. Vacaciones Europa 2027">
+        <label for="add-meta-target">Monto objetivo</label>
+        <input type="number" id="add-meta-target" placeholder="0" min="1">
+        <label for="add-meta-tracking">Cómo trackear el progreso</label>
+        <select id="add-meta-tracking" onchange="toggleMetaManualSaldo()"></select>
+        <div id="add-meta-manual-wrap" style="display:none;">
+          <label for="add-meta-saldo-manual">Saldo manual (lo que llevás ahorrado)</label>
+          <input type="number" id="add-meta-saldo-manual" placeholder="0" min="0">
+        </div>
+        <div class="custom-modal-actions">
+          <button type="button" class="custom-btn-cancel" onclick="closeAddMetaModal()">Cancelar</button>
+          <button type="button" class="custom-btn-confirm" onclick="confirmarAgregarMeta()">Guardar</button>
+        </div>
+      </div>`;
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeAddMetaModal(); });
+    document.body.appendChild(overlay);
+  })();
+
+  // Pool de cuentas (hardcoded + custom)
+  function getPoolCuentas() {
+    const hardcoded = [
+      { id: 'mp', nombre: 'MercadoPago', tag: '🚗 Auto', custom: false, color: '#F7DC4B' },
+      { id: 'be', nombre: 'BancoEstado Vivienda', tag: '🏠 Vivienda', custom: false, color: '#4548FF' },
+      { id: 'fr', nombre: 'Fintual Reserva', tag: '📦 Reserva/Importación', custom: false, color: '#A0826D' },
+      { id: 'fc', nombre: 'Fintual Capital Importar', tag: '📦 Importación', custom: false, color: '#D3B0AD' },
+      { id: 'cripto', nombre: 'ETH + BTC (MP)', tag: '₿ Cripto', custom: false, color: '#73B57F' }
+    ];
+    const custom = (window._cuentasCustom || []).map(c => ({
+      id: c.id, nombre: c.nombre, tag: c.tag || '', custom: true, color: c.color || CUSTOM_COLORS[0]
+    }));
+    return [...hardcoded, ...custom];
+  }
+
+  function getSaldoCuenta(id) {
+    if (['mp','be','fr','fc','cripto'].includes(id)) {
+      const el = document.getElementById('c-'+id);
+      return el ? (parseFloat(el.value) || 0) : 0;
+    }
+    const c = (window._cuentasCustom || []).find(x => x.id === id);
+    return c ? (c.saldo || 0) : 0;
+  }
+
+  // Render: cuentas custom (V31.2: unificadas dentro de la card "Ahorros Actuales")
+  window.renderCuentasCustom = function() {
+    // Localizar la card de Ahorros Actuales (la que contiene los 5 cuentas hardcoded)
+    const saldosMount = document.getElementById('v6-saldos-mount');
+    if (!saldosMount) return;
+    const ahorrosCard = saldosMount.querySelector('.card');
+    if (!ahorrosCard) return;
+
+    // Limpiar contenido custom previamente inyectado para evitar duplicados
+    ahorrosCard.querySelectorAll('.cta-custom-injected').forEach(el => el.remove());
+
+    // Eliminar el contenedor antiguo si quedó algo (compatibilidad con v31.1)
+    const oldMount = document.getElementById('cuentas-custom-mount');
+    if (oldMount) oldMount.innerHTML = '';
+
+    const arr = window._cuentasCustom || [];
+
+    // Inyectar una fila por cada cuenta custom (mismo formato que las hardcoded)
+    arr.forEach(c => {
+      const colorStr = c.color || CUSTOM_COLORS[0];
+      const row = document.createElement('div');
+      row.className = 'ahorro-row cta-custom-injected';
+      row.dataset.customId = c.id;
+      row.innerHTML = `
+        <div class="ahorro-info">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="width:10px;height:10px;border-radius:50%;background:${colorStr};display:inline-block;"></span>
+            <span style="font-family:'Syne',sans-serif;font-weight:700;color:var(--text);font-size:14px;">${escHtml(c.nombre)}</span>
+            ${c.tag ? `<span style="font-size:11px;color:var(--muted);">${escHtml(c.tag)}</span>` : ''}
+          </div>
+        </div>
+        <div class="ahorro-controls">
+          <div class="ahorro-field">
+            <span class="ahorro-field-label">Saldo actual</span>
+            <input class="editable" type="number" id="cc-saldo-${c.id}" value="${c.saldo || 0}" onchange="onCuentaCustomSaldoChange('${c.id}', this.value)" style="color:${colorStr};width:140px;">
+          </div>
+          <div class="ahorro-field">
+            <span class="ahorro-field-label">Deposité este mes</span>
+            <input class="editable" type="number" id="cc-dep-${c.id}" value="0" placeholder="0" style="color:var(--green);width:140px;">
+          </div>
+          <button class="ahorro-confirm pendiente" id="cc-btn-${c.id}" onclick="confirmarDepositoCustom('${c.id}')">✓ Listo</button>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button class="retiro-link" onclick="openRetiroModal('${c.id}')">⬇ Retirar</button>
+          <button class="retiro-link" onclick="openEditCuentaModal('${c.id}')" style="border-style:solid;">✏ Editar</button>
+          <button class="retiro-link" onclick="eliminarCuentaCustom('${c.id}')" style="border-style:solid;">🗑 Eliminar</button>
+        </div>
+      `;
+      ahorrosCard.appendChild(row);
+    });
+
+    // Botón "+ Agregar cuenta" al final de la misma card
+    const btnWrap = document.createElement('div');
+    btnWrap.className = 'cta-custom-injected';
+    btnWrap.style.cssText = 'margin-top:18px;padding-top:14px;border-top:1px dashed var(--border);text-align:center;';
+    btnWrap.innerHTML = `<button class="custom-add-btn" onclick="openAddCuentaModal()">+ Agregar cuenta</button>`;
+    ahorrosCard.appendChild(btnWrap);
+
+    if (typeof v6HideAmounts !== 'undefined' && v6HideAmounts && typeof v6ApplyHideAmounts === 'function') {
+      setTimeout(v6ApplyHideAmounts, 50);
+    }
+  };
+
+  window.onCuentaCustomSaldoChange = function(id, val) {
+    const c = (window._cuentasCustom || []).find(x => x.id === id);
+    if (!c) return;
+    c.saldo = parseFloat(val) || 0;
+    if (typeof v6RenderDashboard === 'function') v6RenderDashboard();
+    if (typeof recalcular === 'function') recalcular();
+    if (typeof renderMetasCustom === 'function') renderMetasCustom();
+    if (driveAccessToken && typeof guardar === 'function') setTimeout(guardar, 200);
+  };
+
+  window.confirmarDepositoCustom = function(id) {
+    const c = (window._cuentasCustom || []).find(x => x.id === id);
+    if (!c) return;
+    const depEl = document.getElementById('cc-dep-'+id);
+    const dep = parseFloat(depEl.value) || 0;
+    if (dep <= 0) { alert('Ingresa un monto positivo'); return; }
+    c.saldo = (c.saldo || 0) + dep;
+    renderCuentasCustom();
+    if (typeof v6RenderDashboard === 'function') v6RenderDashboard();
+    if (typeof recalcular === 'function') recalcular();
+    if (typeof renderMetasCustom === 'function') renderMetasCustom();
+    if (typeof v6ShowToast === 'function') v6ShowToast(`✅ +$${dep.toLocaleString('es-CL')} a ${c.nombre}`, 'success');
+    if (driveAccessToken && typeof guardar === 'function') setTimeout(guardar, 200);
+  };
+
+  window.openAddCuentaModal = function() {
+    document.getElementById('add-cuenta-title').textContent = '➕ Agregar nueva cuenta';
+    document.getElementById('add-cuenta-edit-id').value = '';
+    document.getElementById('add-cuenta-nombre').value = '';
+    document.getElementById('add-cuenta-tag').value = '';
+    document.getElementById('add-cuenta-saldo').value = '';
+    document.getElementById('add-cuenta-color').value = CUSTOM_COLORS[0];
+    const grid = document.getElementById('add-cuenta-color-grid');
+    grid.querySelectorAll('.custom-color-swatch').forEach((s, i) => s.classList.toggle('selected', i === 0));
+    document.getElementById('add-cuenta-modal').classList.add('active');
+    setTimeout(() => document.getElementById('add-cuenta-nombre').focus(), 100);
+  };
+
+  window.openEditCuentaModal = function(id) {
+    const c = (window._cuentasCustom || []).find(x => x.id === id);
+    if (!c) return;
+    document.getElementById('add-cuenta-title').textContent = '✏ Editar cuenta';
+    document.getElementById('add-cuenta-edit-id').value = id;
+    document.getElementById('add-cuenta-nombre').value = c.nombre || '';
+    document.getElementById('add-cuenta-tag').value = c.tag || '';
+    document.getElementById('add-cuenta-saldo').value = c.saldo || 0;
+    document.getElementById('add-cuenta-color').value = c.color || CUSTOM_COLORS[0];
+    const grid = document.getElementById('add-cuenta-color-grid');
+    grid.querySelectorAll('.custom-color-swatch').forEach(s => s.classList.toggle('selected', s.dataset.color === c.color));
+    document.getElementById('add-cuenta-modal').classList.add('active');
+  };
+
+  window.closeAddCuentaModal = function() { document.getElementById('add-cuenta-modal').classList.remove('active'); };
+
+  window.confirmarAgregarCuenta = async function() {
+    const editId = document.getElementById('add-cuenta-edit-id').value;
+    const nombre = document.getElementById('add-cuenta-nombre').value.trim();
+    const tag    = document.getElementById('add-cuenta-tag').value.trim();
+    const saldo  = parseFloat(document.getElementById('add-cuenta-saldo').value) || 0;
+    const color  = document.getElementById('add-cuenta-color').value;
+    if (!nombre) { alert('Ingresa un nombre'); return; }
+    if (editId) {
+      const c = (window._cuentasCustom || []).find(x => x.id === editId);
+      if (c) { c.nombre = nombre; c.tag = tag; c.saldo = saldo; c.color = color; }
+    } else {
+      window._cuentasCustom = window._cuentasCustom || [];
+      window._cuentasCustom.push({
+        id: 'cta_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        nombre, tag, saldo, color
+      });
+    }
+    closeAddCuentaModal();
+    renderCuentasCustom();
+    if (typeof v6RenderDashboard === 'function') v6RenderDashboard();
+    if (typeof recalcular === 'function') recalcular();
+    if (typeof renderMetasCustom === 'function') renderMetasCustom();
+    if (typeof guardar === 'function') await guardar();
+  };
+
+  window.eliminarCuentaCustom = async function(id) {
+    const c = (window._cuentasCustom || []).find(x => x.id === id);
+    if (!c) return;
+    const metasLink = (window._metasCustom || []).filter(m => m.tracking === id);
+    let warn = `¿Eliminar la cuenta "${c.nombre}"?\n\nEsto borra la cuenta y su saldo de $${(c.saldo||0).toLocaleString('es-CL')}.\nLos retiros del log NO se eliminan.`;
+    if (metasLink.length > 0) {
+      warn += `\n\n⚠️ Hay ${metasLink.length} meta(s) vinculada(s): ${metasLink.map(m => m.nombre).join(', ')}. Quedarán huérfanas.`;
+    }
+    if (!confirm(warn)) return;
+    window._cuentasCustom = (window._cuentasCustom || []).filter(x => x.id !== id);
+    renderCuentasCustom();
+    if (typeof v6RenderDashboard === 'function') v6RenderDashboard();
+    if (typeof recalcular === 'function') recalcular();
+    if (typeof renderMetasCustom === 'function') renderMetasCustom();
+    if (typeof guardar === 'function') await guardar();
+  };
+
+  // Render: metas custom (V31.2: unificadas con Auto y Vivienda en el mismo contenedor)
+  window.renderMetasCustom = function() {
+    const cont = document.getElementById('v6-metas-editor');
+    if (!cont) return;
+
+    // Limpiar metas custom inyectadas previamente para evitar duplicados
+    cont.querySelectorAll('.meta-custom-injected').forEach(el => el.remove());
+
+    // Limpiar contenedor antiguo si existía (compatibilidad v31.1)
+    const oldMount = document.getElementById('metas-custom-mount');
+    if (oldMount) oldMount.innerHTML = '';
+
+    const arr = window._metasCustom || [];
+
+    // Inyectar una card por cada meta custom, usando el mismo formato que Auto/Vivienda
+    arr.forEach(m => {
+      const target = m.target || 0;
+      let saldo = 0;
+      let fuenteLabel = '';
+      if (m.tracking === 'manual') {
+        saldo = m.saldoManual || 0;
+        fuenteLabel = 'Saldo manual';
+      } else {
+        saldo = getSaldoCuenta(m.tracking);
+        const cuenta = getPoolCuentas().find(c => c.id === m.tracking);
+        fuenteLabel = cuenta ? cuenta.nombre : '⚠️ Cuenta vinculada eliminada';
+      }
+      const pct = target > 0 ? Math.min(100, (saldo / target) * 100) : 0;
+      const falta = Math.max(0, target - saldo);
+      const color = m.color || '#d16d3e';
+
+      const manualRowHtml = m.tracking === 'manual' ?
+        `<div class="meta-editor-row">
+           <span class="lbl">Saldo manual</span>
+           <input type="number" value="${saldo}" onchange="onMetaManualSaldoChange('${m.id}', this.value)" style="color:${color};">
+         </div>` :
+        `<div class="meta-editor-row">
+           <span class="lbl">Saldo actual (de ${escHtml(fuenteLabel)})</span>
+           <span class="val num-sensitive">$${saldo.toLocaleString('es-CL')}</span>
+         </div>`;
+
+      const card = document.createElement('div');
+      card.className = 'meta-editor-card meta-custom-injected';
+      card.style.borderLeftColor = color;
+      card.innerHTML = `
+        <div class="meta-editor-header">
+          <div>
+            <div class="meta-editor-title">${escHtml(m.nombre)}</div>
+            <div style="font-size:11px;color:var(--muted);">${escHtml(fuenteLabel)}</div>
+          </div>
+          <div class="meta-editor-pct" style="color:${color};">${pct.toFixed(1)}%</div>
+        </div>
+        <div class="meta-editor-bar"><div class="meta-editor-bar-fill" style="width:${pct}%;background:${color};"></div></div>
+        ${manualRowHtml}
+        <div class="meta-editor-row">
+          <span class="lbl">Meta</span>
+          <span class="val num-sensitive">$${target.toLocaleString('es-CL')}</span>
+        </div>
+        <div class="meta-editor-row">
+          <span class="lbl">Faltan</span>
+          <span class="val num-sensitive" style="color:var(--mustard);">$${falta.toLocaleString('es-CL')}</span>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
+          <button class="custom-edit-btn" onclick="openEditMetaModal('${m.id}')">✏ Editar</button>
+          <button class="custom-edit-btn danger" onclick="eliminarMetaCustom('${m.id}')">🗑 Eliminar</button>
+        </div>
+      `;
+      cont.appendChild(card);
+    });
+
+    // Botón "+ Agregar meta" al final del mismo contenedor
+    const btnWrap = document.createElement('div');
+    btnWrap.className = 'meta-custom-injected';
+    btnWrap.style.cssText = 'margin-top:18px;padding-top:14px;border-top:1px dashed var(--border);text-align:center;';
+    btnWrap.innerHTML = `<button class="custom-add-btn" onclick="openAddMetaModal()">+ Agregar meta</button>`;
+    cont.appendChild(btnWrap);
+
+    if (typeof v6HideAmounts !== 'undefined' && v6HideAmounts && typeof v6ApplyHideAmounts === 'function') {
+      setTimeout(v6ApplyHideAmounts, 50);
+    }
+  };
+
+  window.onMetaManualSaldoChange = async function(metaId, val) {
+    const m = (window._metasCustom || []).find(x => x.id === metaId);
+    if (!m) return;
+    m.saldoManual = parseFloat(val) || 0;
+    renderMetasCustom();
+    if (typeof guardar === 'function') await guardar();
+  };
+
+  function rebuildMetaTrackingOptions() {
+    const sel = document.getElementById('add-meta-tracking');
+    if (!sel) return;
+    const pool = getPoolCuentas();
+    const hardcoded = pool.filter(c => !c.custom);
+    const custom = pool.filter(c => c.custom);
+    let html = '<option value="">— elegir —</option>';
+    html += '<option value="manual">📝 Saldo manual (yo lo actualizo)</option>';
+    html += '<optgroup label="Cuentas existentes">';
+    hardcoded.forEach(c => { html += `<option value="${c.id}">${escHtml(c.nombre)}</option>`; });
+    html += '</optgroup>';
+    if (custom.length > 0) {
+      html += '<optgroup label="Tus cuentas adicionales">';
+      custom.forEach(c => { html += `<option value="${c.id}">${escHtml(c.nombre)}</option>`; });
+      html += '</optgroup>';
+    }
+    sel.innerHTML = html;
+  }
+
+  window.openAddMetaModal = function() {
+    rebuildMetaTrackingOptions();
+    document.getElementById('add-meta-title').textContent = '🎯 Agregar nueva meta';
+    document.getElementById('add-meta-edit-id').value = '';
+    document.getElementById('add-meta-nombre').value = '';
+    document.getElementById('add-meta-target').value = '';
+    document.getElementById('add-meta-tracking').value = '';
+    document.getElementById('add-meta-saldo-manual').value = '';
+    document.getElementById('add-meta-manual-wrap').style.display = 'none';
+    document.getElementById('add-meta-modal').classList.add('active');
+    setTimeout(() => document.getElementById('add-meta-nombre').focus(), 100);
+  };
+
+  window.openEditMetaModal = function(id) {
+    const m = (window._metasCustom || []).find(x => x.id === id);
+    if (!m) return;
+    rebuildMetaTrackingOptions();
+    document.getElementById('add-meta-title').textContent = '✏ Editar meta';
+    document.getElementById('add-meta-edit-id').value = id;
+    document.getElementById('add-meta-nombre').value = m.nombre || '';
+    document.getElementById('add-meta-target').value = m.target || 0;
+    document.getElementById('add-meta-tracking').value = m.tracking || '';
+    document.getElementById('add-meta-saldo-manual').value = m.saldoManual || 0;
+    document.getElementById('add-meta-manual-wrap').style.display = m.tracking === 'manual' ? 'block' : 'none';
+    document.getElementById('add-meta-modal').classList.add('active');
+  };
+
+  window.closeAddMetaModal = function() { document.getElementById('add-meta-modal').classList.remove('active'); };
+
+  window.toggleMetaManualSaldo = function() {
+    const sel = document.getElementById('add-meta-tracking');
+    document.getElementById('add-meta-manual-wrap').style.display = sel.value === 'manual' ? 'block' : 'none';
+  };
+
+  window.confirmarAgregarMeta = async function() {
+    const editId = document.getElementById('add-meta-edit-id').value;
+    const nombre = document.getElementById('add-meta-nombre').value.trim();
+    const target = parseFloat(document.getElementById('add-meta-target').value) || 0;
+    const tracking = document.getElementById('add-meta-tracking').value;
+    const saldoManual = parseFloat(document.getElementById('add-meta-saldo-manual').value) || 0;
+    if (!nombre) { alert('Ingresa un nombre'); return; }
+    if (target <= 0) { alert('Ingresa un target válido (> 0)'); return; }
+    if (!tracking) { alert('Elige cómo trackear el progreso'); return; }
+    if (editId) {
+      const m = (window._metasCustom || []).find(x => x.id === editId);
+      if (m) {
+        m.nombre = nombre; m.target = target; m.tracking = tracking;
+        if (tracking === 'manual') m.saldoManual = saldoManual;
+      }
+    } else {
+      window._metasCustom = window._metasCustom || [];
+      const newMeta = { id: 'meta_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), nombre, target, tracking };
+      if (tracking === 'manual') newMeta.saldoManual = saldoManual;
+      window._metasCustom.push(newMeta);
+    }
+    closeAddMetaModal();
+    renderMetasCustom();
+    if (typeof v6RenderDashboard === 'function') v6RenderDashboard();
+    if (typeof guardar === 'function') await guardar();
+  };
+
+  window.eliminarMetaCustom = async function(id) {
+    const m = (window._metasCustom || []).find(x => x.id === id);
+    if (!m) return;
+    if (!confirm(`¿Eliminar la meta "${m.nombre}"?\n\nNo afecta saldos de las cuentas, solo borra la meta del seguimiento.`)) return;
+    window._metasCustom = (window._metasCustom || []).filter(x => x.id !== id);
+    renderMetasCustom();
+    if (typeof v6RenderDashboard === 'function') v6RenderDashboard();
+    if (typeof guardar === 'function') await guardar();
+  };
+
+  // Hook _buildData (incluir arrays en payload de Drive)
+  const _v31c_origBuildData = window._buildData;
+  if (typeof _v31c_origBuildData === 'function') {
+    window._buildData = function() {
+      const data = _v31c_origBuildData.apply(this, arguments);
+      if (data && typeof data === 'object') {
+        data.cuentasCustom = window._cuentasCustom || [];
+        data.metasCustom = window._metasCustom || [];
+      }
+      return data;
+    };
+  }
+
+  // Hook _aplicarDatos (restaurar desde Drive)
+  const _v31c_origAplicarDatos = window._aplicarDatos;
+  if (typeof _v31c_origAplicarDatos === 'function') {
+    window._aplicarDatos = function(d) {
+      const result = _v31c_origAplicarDatos.apply(this, arguments);
+      if (d && Array.isArray(d.cuentasCustom)) window._cuentasCustom = d.cuentasCustom;
+      if (d && Array.isArray(d.metasCustom)) window._metasCustom = d.metasCustom;
+      setTimeout(() => {
+        if (typeof renderCuentasCustom === 'function') renderCuentasCustom();
+        if (typeof renderMetasCustom === 'function') renderMetasCustom();
+      }, 130);
+      return result;
+    };
+  }
+
+  // Hook v6TomarSnapshot (incluir customs en snapshots de Histórico)
+  const _v31c_origTomarSnap = window.v6TomarSnapshot;
+  if (typeof _v31c_origTomarSnap === 'function') {
+    window.v6TomarSnapshot = function(mes) {
+      const snap = _v31c_origTomarSnap.apply(this, arguments);
+      if (snap) {
+        snap.cuentasCustom = JSON.parse(JSON.stringify(window._cuentasCustom || []));
+        snap.metasCustom = JSON.parse(JSON.stringify(window._metasCustom || []));
+      }
+      return snap;
+    };
+  }
+
+  // Hook v6RenderDashboard: incluir custom cuentas en patrimonio Y en el donut principal
+  const _v31c_origRenderDash = window.v6RenderDashboard;
+  if (typeof _v31c_origRenderDash === 'function') {
+    window.v6RenderDashboard = function() {
+      const result = _v31c_origRenderDash.apply(this, arguments);
+      const customArr = window._cuentasCustom || [];
+      const customSum = customArr.reduce((s, c) => s + (c.saldo || 0), 0);
+
+      // Sumar custom al patrimonio total del hero
+      if (customSum > 0) {
+        const heroEl = document.getElementById('v6-dash-hero');
+        if (heroEl) {
+          const cur = parseInt((heroEl.textContent || '0').replace(/[^\d]/g, '') || '0', 10);
+          heroEl.textContent = '$' + (cur + customSum).toLocaleString('es-CL');
+        }
+        const subs = document.querySelectorAll('.dashboard-hero-sub');
+        const totalCuentas = 5 + customArr.length;
+        subs.forEach(s => {
+          if (s.innerHTML) s.innerHTML = s.innerHTML.replace(/Tus \d+ cuentas/, `Tus ${totalCuentas} cuentas`);
+        });
+      }
+
+      // Eliminar la sección antigua "➕ Cuentas adicionales" si existía (v31.1)
+      document.querySelectorAll('.v31-donut-extra').forEach(el => el.remove());
+
+      // V31.2: re-renderizar el donut del dashboard INCLUYENDO las cuentas custom
+      // como items del legend principal (no en sección aparte)
+      if (typeof v6RenderDonut === 'function' && document.getElementById('v6-dash-donut')) {
+        const _ge = (id) => { const e = document.getElementById(id); return e ? (parseFloat(e.value)||0) : 0; };
+        const _acumK = (k) => (window._acumuladoMes && window._acumuladoMes[k]) || 0;
+        const items = [
+          { name: 'MercadoPago',     value: (val('c-mp')||0)     + _ge('dep-mp')     + _acumK('mp'),     color: '#D09A27' },
+          { name: 'BancoEstado',     value: (val('c-be')||0)     + _ge('dep-be')     + _acumK('be'),     color: '#D16D3E' },
+          { name: 'Fintual Reserva', value: (val('c-fr')||0)     + _ge('dep-fr')     + _acumK('fr'),     color: '#B5856B' },
+          { name: 'Fintual Capital', value: (val('c-fc')||0)     + _ge('dep-fc')     + _acumK('fc'),     color: '#D9B1A7' },
+          { name: 'Cripto',          value: (val('c-cripto')||0) + _ge('dep-cripto') + _acumK('cripto'), color: '#6B9B3F' }
+        ];
+        customArr.forEach(c => {
+          items.push({
+            name: c.nombre,
+            value: c.saldo || 0,
+            color: c.color || CUSTOM_COLORS[0]
+          });
+        });
+        v6RenderDonut('v6-dash-donut', items, 'Total');
+      }
+
+      return result;
+    };
+  }
+
+  // Placeholder mantenido por compatibilidad: ya no se usa
+  function addCustomCuentasToDonuts() {}
+
+  // Hook v6RenderAhorros: incluir cuentas custom en el donut "Desglose de tus ahorros"
+  const _v31c_origRenderAhorros = window.v6RenderAhorros;
+  if (typeof _v31c_origRenderAhorros === 'function') {
+    window.v6RenderAhorros = function() {
+      const result = _v31c_origRenderAhorros.apply(this, arguments);
+      const customArr = window._cuentasCustom || [];
+      const distEl = document.getElementById('v6-distribucion');
+      if (distEl && typeof v6RenderDonut === 'function') {
+        const _ge = (id) => { const e = document.getElementById(id); return e ? (parseFloat(e.value)||0) : 0; };
+        const _acumK = (k) => (window._acumuladoMes && window._acumuladoMes[k]) || 0;
+        const items = [
+          { name: 'MercadoPago',     value: (val('c-mp')||0)     + _ge('dep-mp')     + _acumK('mp'),     color: '#D09A27' },
+          { name: 'BancoEstado',     value: (val('c-be')||0)     + _ge('dep-be')     + _acumK('be'),     color: '#D16D3E' },
+          { name: 'Fintual Reserva', value: (val('c-fr')||0)     + _ge('dep-fr')     + _acumK('fr'),     color: '#B5856B' },
+          { name: 'Fintual Capital', value: (val('c-fc')||0)     + _ge('dep-fc')     + _acumK('fc'),     color: '#D9B1A7' },
+          { name: 'Cripto',          value: (val('c-cripto')||0) + _ge('dep-cripto') + _acumK('cripto'), color: '#6B9B3F' }
+        ];
+        customArr.forEach(c => {
+          items.push({
+            name: c.nombre,
+            value: c.saldo || 0,
+            color: c.color || CUSTOM_COLORS[0]
+          });
+        });
+        v6RenderDonut('v6-distribucion', items, 'Total');
+      }
+      return result;
+    };
+  }
+
+  // Hook recalcular: incluir custom en totalCuentas
+  const _v31c_origRecalcular = window.recalcular;
+  if (typeof _v31c_origRecalcular === 'function') {
+    window.recalcular = function() {
+      const result = _v31c_origRecalcular.apply(this, arguments);
+      const customSum = (window._cuentasCustom || []).reduce((s, c) => s + (c.saldo || 0), 0);
+      if (customSum > 0) {
+        const totalEl = document.getElementById('totalCuentas');
+        if (totalEl) {
+          const cur = parseFloat((totalEl.textContent || '0').replace(/[^\d.-]/g, '')) || 0;
+          totalEl.textContent = (cur + customSum).toLocaleString('es-CL');
+        }
+      }
+      return result;
+    };
+  }
+
+  // Hook openRetiroModal para soportar custom cuentas
+  const _v31c_origOpenRetiro = window.openRetiroModal;
+  if (typeof _v31c_origOpenRetiro === 'function') {
+    window.openRetiroModal = function(cuentaKey) {
+      const c = (window._cuentasCustom || []).find(x => x.id === cuentaKey);
+      if (c) {
+        window._retiroCuentaActual = cuentaKey;
+        document.getElementById('retiro-cuenta-label').textContent = c.nombre;
+        document.getElementById('retiro-cuenta-tag').textContent = c.tag || '—';
+        document.getElementById('retiro-monto-input').value = '';
+        document.getElementById('retiro-motivo-select').value = '';
+        document.getElementById('retiro-nota-input').value = '';
+        document.getElementById('retiro-modal').classList.add('active');
+        setTimeout(() => document.getElementById('retiro-monto-input').focus(), 100);
+        return;
+      }
+      return _v31c_origOpenRetiro.apply(this, arguments);
+    };
+  }
+
+  // Hook confirmarRetiro para custom cuentas
+  const _v31c_origConfirmRet = window.confirmarRetiro;
+  if (typeof _v31c_origConfirmRet === 'function') {
+    window.confirmarRetiro = async function() {
+      const k = window._retiroCuentaActual;
+      const c = (window._cuentasCustom || []).find(x => x.id === k);
+      if (!c) return _v31c_origConfirmRet.apply(this, arguments);
+      const montoEl  = document.getElementById('retiro-monto-input');
+      const motivoEl = document.getElementById('retiro-motivo-select');
+      const notaEl   = document.getElementById('retiro-nota-input');
+      const monto  = Math.abs(parseFloat(montoEl.value) || 0);
+      const motivo = (motivoEl.value || '').trim();
+      const nota   = (notaEl.value || '').trim();
+      if (!monto) { alert('Ingresa un monto válido'); return; }
+      if (!motivo) { alert('Selecciona un motivo'); return; }
+      if (motivo === 'Otro motivo' && nota.length < 5) {
+        alert('Si eliges "Otro motivo", agrega una nota con al menos 5 caracteres');
+        return;
+      }
+      if (monto > (c.saldo || 0)) {
+        if (!confirm(`Monto ($${monto.toLocaleString('es-CL')}) supera saldo ($${(c.saldo||0).toLocaleString('es-CL')}). ¿Continuar?`)) return;
+      }
+      c.saldo = (c.saldo || 0) - monto;
+      const ahora = new Date();
+      const yyyy = ahora.getFullYear(); const mm = String(ahora.getMonth()+1).padStart(2,'0'); const dd = String(ahora.getDate()).padStart(2,'0');
+      window._retiros = window._retiros || [];
+      window._retiros.push({
+        id: 'retiro_'+ahora.getTime(), cuenta: c.id, cuentaNombre: c.nombre,
+        monto, motivo, nota, fecha: `${yyyy}-${mm}-${dd}`, ts: ahora.getTime()
+      });
+      closeRetiroModal();
+      renderCuentasCustom();
+      if (typeof v6RenderDashboard === 'function') v6RenderDashboard();
+      if (typeof recalcular === 'function') recalcular();
+      if (typeof renderRetiros === 'function') renderRetiros();
+      if (typeof renderMetasCustom === 'function') renderMetasCustom();
+      if (typeof v6ShowToast === 'function') v6ShowToast(`⬇ Retiro de $${monto.toLocaleString('es-CL')} en ${c.nombre}`, 'info');
+      if (typeof guardar === 'function') await guardar();
+    };
+  }
+
+  // Init: renders al cargar
+  setTimeout(() => { renderCuentasCustom(); renderMetasCustom(); }, 900);
+  setTimeout(() => { renderCuentasCustom(); renderMetasCustom(); }, 2600);
+
 </script>
 
 </body>
