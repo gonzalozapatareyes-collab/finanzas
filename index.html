@@ -9072,19 +9072,58 @@ function v6MoveBlocks() {
     };
   }
 
-  // Hook recalcular: incluir custom en totalCuentas
+  // Hook recalcular: recompone los totales desde cero incluyendo cuentas custom
+  // FIX V31.2: antes parseaba el texto formateado ("8.670.886") con parseFloat,
+  // que en JS interpreta solo "8.670" (corta en el segundo punto), produciendo
+  // sumas incorrectas como 100.008,67.
   const _v31c_origRecalcular = window.recalcular;
   if (typeof _v31c_origRecalcular === 'function') {
     window.recalcular = function() {
       const result = _v31c_origRecalcular.apply(this, arguments);
-      const customSum = (window._cuentasCustom || []).reduce((s, c) => s + (c.saldo || 0), 0);
-      if (customSum > 0) {
-        const totalEl = document.getElementById('totalCuentas');
-        if (totalEl) {
-          const cur = parseFloat((totalEl.textContent || '0').replace(/[^\d.-]/g, '')) || 0;
-          totalEl.textContent = (cur + customSum).toLocaleString('es-CL');
+      const customArr = window._cuentasCustom || [];
+      if (customArr.length === 0) return result;
+
+      // Saldos: leer directo desde inputs base + arrays custom
+      const baseSaldo = ['c-mp','c-be','c-fr','c-fc','c-cripto'].reduce((s,id) => {
+        const el = document.getElementById(id);
+        return s + (el ? (parseFloat(el.value)||0) : 0);
+      }, 0);
+      const customSaldo = customArr.reduce((s,c) => s + (c.saldo||0), 0);
+      const totalSaldos = baseSaldo + customSaldo;
+
+      // Depósitos del mes: inputs dep-* + acumulado + inputs cc-dep-*
+      const baseDep = ['mp','be','fr','fc','cripto'].reduce((s,k) => {
+        const el = document.getElementById('dep-'+k);
+        const v = el ? (parseFloat(el.value)||0) : 0;
+        const acum = (window._acumuladoMes && window._acumuladoMes[k]) || 0;
+        return s + v + acum;
+      }, 0);
+      const customDep = customArr.reduce((s,c) => {
+        const el = document.getElementById('cc-dep-'+c.id);
+        return s + (el ? (parseFloat(el.value)||0) : 0);
+      }, 0);
+      const totalDep = baseDep + customDep;
+
+      // Aplicar a todos los elementos en una sola pasada
+      const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+
+      setText('totalCuentas', totalSaldos.toLocaleString('es-CL'));
+      setText('totalDepositos', totalDep > 0 ? '+' + totalDep.toLocaleString('es-CL') : '—');
+
+      const proyEl = document.getElementById('totalProyectado');
+      if (proyEl) {
+        if (totalDep > 0) {
+          proyEl.textContent = (totalSaldos + totalDep).toLocaleString('es-CL');
+          proyEl.style.color = 'var(--text)';
+        } else {
+          proyEl.textContent = '—';
+          proyEl.style.color = 'var(--muted)';
         }
       }
+
+      const heroEl = document.getElementById('heroTotal');
+      if (heroEl) heroEl.textContent = (totalSaldos + totalDep).toLocaleString('es-CL');
+
       return result;
     };
   }
