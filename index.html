@@ -8988,6 +8988,18 @@ function v6MoveBlocks() {
     };
   }
 
+  // FIX V31.2: hook v6RenderMetas para que SIEMPRE reinyecte las metas
+  // custom y el botón "+ Agregar meta" después de que el render original
+  // sobrescriba el contenedor.
+  const _v31c_origRenderMetas = window.v6RenderMetas;
+  if (typeof _v31c_origRenderMetas === 'function') {
+    window.v6RenderMetas = function() {
+      const r = _v31c_origRenderMetas.apply(this, arguments);
+      if (typeof renderMetasCustom === 'function') renderMetasCustom();
+      return r;
+    };
+  }
+
   // Hook v6RenderDashboard: incluir custom cuentas en patrimonio Y en el donut principal
   const _v31c_origRenderDash = window.v6RenderDashboard;
   if (typeof _v31c_origRenderDash === 'function') {
