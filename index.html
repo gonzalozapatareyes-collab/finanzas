@@ -3627,7 +3627,18 @@ function renderGastos() {
       ? `<span style="background:var(--red-dim);color:var(--red);padding:2px 6px;border-radius:4px;font-size:9px;">CMR</span>`
       : `<span style="background:var(--blue-dim);color:var(--blue);padding:2px 6px;border-radius:4px;font-size:9px;">Chile</span>`;
 
-    const options = PERSONAS_LIST.map(p =>
+    // FIX V31.2: incluir nombres custom usados en otras filas para que
+    // queden disponibles en el dropdown después de cualquier re-render.
+    // Antes el dropdown se armaba solo con PERSONAS_LIST, así que los
+    // valores ingresados via "Otro" quedaban sin match → visualmente
+    // aparecían como "sin asignar".
+    const customPersonasUsadas = [...new Set(
+      allGastos.map(x => x.persona).filter(p => p && !PERSONAS_LIST.includes(p))
+    )];
+    const opcionesCompletas = PERSONAS_LIST.slice(0, -1)  // todo menos "Otro"
+      .concat(customPersonasUsadas)
+      .concat([PERSONAS_LIST[PERSONAS_LIST.length - 1]]);  // "Otro" al final
+    const options = opcionesCompletas.map(p =>
       `<option value="${p}" ${g.persona === p ? 'selected' : ''}>${p}</option>`
     ).join('');
 
