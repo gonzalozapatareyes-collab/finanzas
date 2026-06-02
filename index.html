@@ -2493,6 +2493,10 @@ function driveHandleToken(resp) {
       if (typeof v17RenderInsights === 'function') v17RenderInsights();
       if (typeof renderRetiros === 'function') renderRetiros();
       if (typeof v19UpdateAcumuladoUI === 'function') v19UpdateAcumuladoUI();
+      // FIX V31.2: poblar la matriz personas con los totales del asignador
+      if (typeof syncTarjetas === 'function') syncTarjetas();
+      if (typeof actualizarResumen === 'function') actualizarResumen();
+      if (typeof actualizarTotalesPeriodo === 'function') actualizarTotalesPeriodo();
       driveSetStatus('conectado', '☁️ Drive ✓');
     } catch(e) {
       console.error('V31: error en flujo post-conexión Drive:', e);
@@ -5021,6 +5025,11 @@ function v6SwitchTab(groupId, tabName, btn) {
   btn.classList.add('active');
   const panel = group.querySelector('.v6-tab-panel[data-tab="' + tabName + '"]');
   if (panel) panel.classList.add('active');
+  // FIX V31.2: al entrar a "Matriz personas", repoblar los inputs predefinidos
+  // desde el asignador (los custom se manejan en el mismo paso).
+  if (tabName === 'matriz' && typeof syncTarjetas === 'function') {
+    syncTarjetas();
+  }
 }
 
 function v6UpdateClock() {
