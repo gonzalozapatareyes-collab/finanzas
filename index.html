@@ -4208,7 +4208,14 @@ function generarPdfConJsPDF(entries, personaFiltro, mes, modo) {
     const info = `${fmtFechaPdf(c.fecha)}  ·  parte de ${fmtNum(c.total)}`;
     doc.text(info, ML + 4, y);
     let bx = ML + 4 + doc.getTextWidth(info) + 3;
-    miniTag('compartido', bx, y, [245, 238, 255], C.purple);
+    bx += miniTag('compartido', bx, y, [245, 238, 255], C.purple);
+    // FIX V31.2: incluir tag de cuota si el gasto compartido tiene cuotas
+    if (c._cuotaActual && c._cuotaTotal) {
+      const faltan = c._cuotaTotal - c._cuotaActual;
+      const cuotaColor = faltan <= 1 ? C.green : C.purple;
+      const cuotaTxt = `cuota ${c._cuotaActual}/${c._cuotaTotal} · faltan ${faltan}`;
+      miniTag(cuotaTxt, bx, y, C.surface2, cuotaColor);
+    }
 
     y += 5;
     hLine(ML, y, ML + CW, C.border);
@@ -4529,7 +4536,15 @@ function buildGruposExport() {
       g._compartidoParts.forEach(part => {
         ensureG(part.nombre);
         grupos[part.nombre].pesos += part.monto;
-        grupos[part.nombre].compartidos.push({desc:g._label||g.desc, fecha:g.fecha, monto:part.monto, total:g.monto});
+        grupos[part.nombre].compartidos.push({
+          desc: g._label || g.desc,
+          fecha: g.fecha,
+          monto: part.monto,
+          total: g.monto,
+          banco: g.banco,
+          _cuotaActual: g._cuotaActual || null,
+          _cuotaTotal: g._cuotaTotal || null
+        });
       });
     } else if (g.persona !== 'Compartido') {
       ensureG(g.persona);
@@ -5474,7 +5489,28 @@ function v6RenderDashboard() {
     paula: 'Paula', aldo: 'Aldo', mama: 'Mamá',
     rorro: 'Rorro', luis: 'Luis'
   };
-  const totTC = PERSONAS.reduce((s,p) => s + (val('bc-'+p)||0) + (val('cmr-'+p)||0), 0);
+  const totTCPredef = PERSONAS.reduce((s,p) => s + (val('bc-'+p)||0) + (val('cmr-'+p)||0), 0);
+  // FIX V31.2: incluir personas custom (las que se asignaron via "Otro" en el asignador)
+  // leyendo directamente desde allGastos, ya que no tienen inputs bc-/cmr- en la matriz.
+  const PRED_NOMBRES = ['Yo','Papa/Paola','Vania','Paula','Aldo','Mamá','Rorro Bulla','Luis'];
+  const totalesCustom = {};
+  (window.allGastos || []).filter(g => g.persona && !g.ignorado && g.moneda === '$').forEach(g => {
+    if (g.persona === 'Compartido' && g._compartidoParts && g._compartidoParts.length > 0) {
+      g._compartidoParts.forEach(part => {
+        if (PRED_NOMBRES.includes(part.nombre)) return;
+        if (!totalesCustom[part.nombre]) totalesCustom[part.nombre] = { bc: 0, cmr: 0 };
+        if (g.banco === 'CMR') totalesCustom[part.nombre].cmr += part.monto;
+        else totalesCustom[part.nombre].bc += part.monto;
+      });
+      return;
+    }
+    if (PRED_NOMBRES.includes(g.persona)) return;
+    if (!totalesCustom[g.persona]) totalesCustom[g.persona] = { bc: 0, cmr: 0 };
+    if (g.banco === 'CMR') totalesCustom[g.persona].cmr += g.monto;
+    else totalesCustom[g.persona].bc += g.monto;
+  });
+  const totTCCustom = Object.values(totalesCustom).reduce((s,t) => s + t.bc + t.cmr, 0);
+  const totTC = totTCPredef + totTCCustom;
   const deudoresTotal = (window._deudores || []).filter(d => !d.cobrado).reduce((s,d) => s + (d.monto||0), 0);
 
   const setEl = (id, txt) => { const e = document.getElementById(id); if (e) e.textContent = txt; };
@@ -5522,12 +5558,12 @@ function v6RenderDashboard() {
     value: (val('bc-'+p)||0) + (val('cmr-'+p)||0),
     color: colorsPalette[i % colorsPalette.length]
   }));
-  // Agregar custom
-  const customPersonas = window._customPersonas || {};
-  Object.entries(customPersonas).forEach(([k,v], i) => {
+  // FIX V31.2: agregar personas custom usando los totales ya calculados arriba
+  // (totalesCustom viene del cálculo de totTC justo más arriba en esta misma función)
+  Object.entries(totalesCustom).forEach(([nombre, t], i) => {
     tcItems.push({
-      name: v.nombre || k,
-      value: (val('bc-'+k)||0) + (val('cmr-'+k)||0),
+      name: nombre,
+      value: t.bc + t.cmr,
       color: colorsPalette[(PERSONAS.length + i) % colorsPalette.length]
     });
   });
