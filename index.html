@@ -1159,6 +1159,10 @@ body {
     <div class="nav-item" data-page="deudores" onclick="v6Go('deudores', this)">
       <span class="nav-icon">💳</span> Deudores
     </div>
+    <div class="nav-item" data-page="notas" onclick="v6Go('notas', this)">
+      <span class="nav-icon">📝</span> Notas
+      <span class="nav-badge" id="notas-badge" style="display:none;background:var(--red);color:white;"></span>
+    </div>
 
     <div class="nav-section-title">Análisis</div>
     <div class="nav-item" data-page="insights" onclick="v6Go('insights', this)">
@@ -1346,6 +1350,28 @@ body {
   <div id="v6-deudores-mount"></div>
 </div>
 
+<div class="v6-page" id="page-notas">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px;color:var(--text);">📝 Bitácora financiera</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px;">Notas rápidas, recordatorios y apuntes. La 💬 burbuja abajo a la izquierda te deja escribir desde cualquier pantalla.</div>
+      </div>
+      <button class="custom-add-btn" onclick="openChatBurbuja()" style="white-space:nowrap;">➕ Nueva nota</button>
+    </div>
+    <div style="margin-bottom:14px;">
+      <input type="text" id="notas-search" placeholder="🔎 Buscar en tus notas..." oninput="renderNotasPagina()" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px;box-sizing:border-box;">
+    </div>
+    <div id="notas-filtros" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+      <button class="notas-filtro-btn active" data-filtro="todas" onclick="setNotasFiltro('todas', this)">Todas</button>
+      <button class="notas-filtro-btn" data-filtro="pin" onclick="setNotasFiltro('pin', this)">📌 Pinneadas</button>
+      <button class="notas-filtro-btn" data-filtro="recordatorio" onclick="setNotasFiltro('recordatorio', this)">⏰ Con recordatorio</button>
+      <button class="notas-filtro-btn" data-filtro="hechas" onclick="setNotasFiltro('hechas', this)">✅ Hechas</button>
+    </div>
+    <div id="notas-lista-completa"></div>
+  </div>
+</div>
+
 <div class="v6-page" id="page-insights">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
     <div style="font-size:13px;color:var(--muted);">Análisis automático basado en tu data. Se actualiza cada vez que abres esta sección.</div>
@@ -1412,8 +1438,8 @@ body {
   <div class="card">
     <div class="v6-section-label" style="margin-top:0;">ℹ️ Acerca de</div>
     <p style="font-size:12px;color:var(--muted);line-height:1.6;">
-      <strong>Mis Finanzas v31.2</strong><br>
-      Modo seguro 🔒 · Asignador reordenado · Snapshot live · Tip pineado · v6_snapshots en Drive · ⬇ Retiros con motivo + audit · Fix scope <code>driveAccessToken</code> · Inputs sin defaults · Render completo post-Drive · ➕ Cuentas y metas unificadas (sin secciones aparte)<br><br>
+      <strong>Mis Finanzas v31.3</strong><br>
+      Modo seguro 🔒 · Asignador agrupado · Snapshot live · ⬇ Retiros · ➕ Cuentas/metas custom unificadas · Fix doble conteo MP · Delay 120ms post-Drive · 📝 Bitácora con detección de fechas + burbuja flotante<br><br>
       <em>Toda tu data del JSON original está 100% preservada.</em>
     </p>
   </div>
@@ -1996,9 +2022,11 @@ function recalcularTotalDepositos() {
   ['mp','be','fr','fc','cripto'].forEach(k => {
     const el = document.getElementById('dep-'+k);
     const valInput = parseFloat(el ? el.value : 0) || 0;
-    // V29: incluir acumulado mensual consolidado
-    const acumMes = (window._acumuladoMes && window._acumuladoMes[k]) || 0;
-    totalDep += valInput + acumMes;
+    // FIX V31.2: NO sumar _acumuladoMes acá porque ya está consolidado en el saldo.
+    // Sumarlo causaba doble conteo (el saldo crece al hacer Listo, y _acumuladoMes
+    // también guardaba el mismo monto). _acumuladoMes ahora es solo un tracker
+    // informativo que se muestra en el badge "Acumulado este mes".
+    totalDep += valInput;
   });
 
   // Total saldos actuales (sin depósitos)
@@ -2482,7 +2510,15 @@ function driveHandleToken(resp) {
     try {
       await driveFindFile();    // localiza el archivo primero
       await cargar();           // lee Drive y aplica datos a los inputs
-      // Re-render completo de las vistas dinámicas
+      // FIX V31.2: _aplicarDatos hace algunos pasos clave (renderGastos,
+      // syncTarjetas, labels) dentro de un setTimeout interno. Si llamamos a
+      // los renders inmediatamente, corren ANTES de ese setTimeout y muchos
+      // widgets muestran "—" hasta que el usuario navega entre menús.
+      // Solución: esperar dos ticks (≈100ms) para que el setTimeout interno
+      // de _aplicarDatos haya disparado, y recién ahí refrescar todas las
+      // vistas. Como ya estamos dentro de un async, usar await + setTimeout.
+      await new Promise(resolve => setTimeout(resolve, 120));
+
       if (typeof recalcular === 'function') recalcular();
       if (typeof calcGrandTotal === 'function') calcGrandTotal();
       if (typeof renderHistorial === 'function') renderHistorial();
@@ -2497,6 +2533,11 @@ function driveHandleToken(resp) {
       if (typeof syncTarjetas === 'function') syncTarjetas();
       if (typeof actualizarResumen === 'function') actualizarResumen();
       if (typeof actualizarTotalesPeriodo === 'function') actualizarTotalesPeriodo();
+      // FIX V31.2: render adicional de las cuentas y metas custom (que se
+      // restauran desde Drive pero a veces no quedan inyectadas en la UI
+      // hasta navegar). Lo forzamos acá.
+      if (typeof renderCuentasCustom === 'function') renderCuentasCustom();
+      if (typeof renderMetasCustom === 'function') renderMetasCustom();
       driveSetStatus('conectado', '☁️ Drive ✓');
     } catch(e) {
       console.error('V31: error en flujo post-conexión Drive:', e);
@@ -5468,20 +5509,25 @@ function v6RenderHBars(containerId, items) {
 // ═══ Render Dashboard ═════════════════════════════════════════
 function v6RenderDashboard() {
   if (typeof val !== 'function') return;
-  // V30: Patrimonio total = saldo + input dep + acumulado mensual (= total real en banco)
+  // FIX V31.2: Patrimonio = saldo + dep pendiente. NO sumar _acumuladoMes
+  // porque ya está consolidado en el saldo input (evita doble conteo).
   const total = ['mp','be','fr','fc','cripto'].reduce((s,k) => {
     const saldo = val('c-'+k) || 0;
     const depEl = document.getElementById('dep-'+k);
     const dep = depEl ? (parseFloat(depEl.value)||0) : 0;
-    const acumMes = (window._acumuladoMes && window._acumuladoMes[k]) || 0;
-    return s + saldo + dep + acumMes;
+    return s + saldo + dep;
   }, 0);
+  // totDep = solo el input dep pendiente. El widget "depositado este mes"
+  // del dashboard que usa _acumuladoMes para mostrar el progreso del mes
+  // se calcula aparte (es solo informativo, no se suma al patrimonio).
   const totDep = ['mp','be','fr','fc','cripto'].reduce((s,k) => {
     const elActual = document.getElementById('dep-'+k);
-    const valActual = elActual ? (parseFloat(elActual.value)||0) : 0;
-    // V19: sumar input actual + acumulado consolidado del mes
-    const acumMes = (window._acumuladoMes && window._acumuladoMes[k]) || 0;
-    return s + valActual + acumMes;
+    return s + (elActual ? (parseFloat(elActual.value)||0) : 0);
+  }, 0);
+  // El widget "Depositado este mes" del dashboard sigue mostrando _acumuladoMes
+  // como referencia informativa (cuánto se ha depositado en el mes en curso).
+  const depMesAcumulado = ['mp','be','fr','fc','cripto'].reduce((s,k) => {
+    return s + ((window._acumuladoMes && window._acumuladoMes[k]) || 0);
   }, 0);
   const PERSONAS = ['pappaola','yo','vania','paula','aldo','mama','rorro','luis'];
   const PERSONAS_LABELS = {
@@ -5515,7 +5561,10 @@ function v6RenderDashboard() {
 
   const setEl = (id, txt) => { const e = document.getElementById(id); if (e) e.textContent = txt; };
   setEl('v6-dash-hero', '$' + total.toLocaleString('es-CL'));
-  setEl('v6-dash-dep', '$' + totDep.toLocaleString('es-CL'));
+  // FIX V31.2: el widget "Depositado este mes" del dashboard ahora usa
+  // _acumuladoMes (lo realmente depositado/consolidado este mes), no totDep
+  // (que ahora es solo el input pendiente sin consolidar).
+  setEl('v6-dash-dep', '$' + depMesAcumulado.toLocaleString('es-CL'));
   setEl('v6-dash-tc', '$' + totTC.toLocaleString('es-CL'));
   setEl('v6-dash-deudores', '$' + deudoresTotal.toLocaleString('es-CL'));
 
@@ -5540,15 +5589,15 @@ function v6RenderDashboard() {
   }
 
   // Donut de ahorros
-  // V30: sumar saldo + input dep + acumulado mensual para mostrar total REAL en el banco
+  // FIX V31.2: cada slice = saldo + dep pendiente, SIN acumulado (que ya está
+  // en el saldo si fue consolidado por confirmarDeposito).
   const _ge = (id) => { const e = document.getElementById(id); return e ? (parseFloat(e.value)||0) : 0; };
-  const _acumK = (k) => (window._acumuladoMes && window._acumuladoMes[k]) || 0;
   v6RenderDonut('v6-dash-donut', [
-    { name: 'MercadoPago', value: (val('c-mp')||0) + _ge('dep-mp') + _acumK('mp'), color: '#D09A27' },
-    { name: 'BancoEstado', value: (val('c-be')||0) + _ge('dep-be') + _acumK('be'), color: '#D16D3E' },
-    { name: 'Fintual Reserva', value: (val('c-fr')||0) + _ge('dep-fr') + _acumK('fr'), color: '#B5856B' },
-    { name: 'Fintual Capital', value: (val('c-fc')||0) + _ge('dep-fc') + _acumK('fc'), color: '#D9B1A7' },
-    { name: 'Cripto', value: (val('c-cripto')||0) + _ge('dep-cripto') + _acumK('cripto'), color: '#6B9B3F' }
+    { name: 'MercadoPago', value: (val('c-mp')||0) + _ge('dep-mp'), color: '#D09A27' },
+    { name: 'BancoEstado', value: (val('c-be')||0) + _ge('dep-be'), color: '#D16D3E' },
+    { name: 'Fintual Reserva', value: (val('c-fr')||0) + _ge('dep-fr'), color: '#B5856B' },
+    { name: 'Fintual Capital', value: (val('c-fc')||0) + _ge('dep-fc'), color: '#D9B1A7' },
+    { name: 'Cripto', value: (val('c-cripto')||0) + _ge('dep-cripto'), color: '#6B9B3F' }
   ], 'Total');
 
   // Barras horizontales TC por persona
@@ -5647,13 +5696,12 @@ function v6RenderAhorros() {
     if (allMonths.length === 0) {
       insightsEl.innerHTML = '';
     } else {
-      // V30: incluir acumulado mensual
+      // FIX V31.2: NO sumar _acumuladoMes (ya está consolidado en el saldo).
       const totActual = ['mp','be','fr','fc','cripto'].reduce((s,k) => {
         const saldo = val('c-'+k) || 0;
         const depEl = document.getElementById('dep-'+k);
         const dep = depEl ? (parseFloat(depEl.value)||0) : 0;
-        const acumMes = (window._acumuladoMes && window._acumuladoMes[k]) || 0;
-        return s + saldo + dep + acumMes;
+        return s + saldo + dep;
       }, 0);
       const totAportes = allMonths.reduce((s,m) => s + (m.deposito||0), 0);
       const numMeses = allMonths.length;
@@ -5700,14 +5748,13 @@ function v6RenderAhorros() {
   // Distribución (donut también aquí)
   if (typeof val === 'function') {
     const _ge2 = (id) => { const e = document.getElementById(id); return e ? (parseFloat(e.value)||0) : 0; };
-    // V30: incluir acumulado mensual
-    const _acK2 = (k) => (window._acumuladoMes && window._acumuladoMes[k]) || 0;
+    // FIX V31.2: NO sumar _acumuladoMes (ya está en el saldo, evita doble conteo).
     v6RenderDonut('v6-distribucion', [
-      { name: 'MercadoPago', value: (val('c-mp')||0) + _ge2('dep-mp') + _acK2('mp'), color: '#D09A27' },
-      { name: 'BancoEstado', value: (val('c-be')||0) + _ge2('dep-be') + _acK2('be'), color: '#D16D3E' },
-      { name: 'Fintual Reserva', value: (val('c-fr')||0) + _ge2('dep-fr') + _acK2('fr'), color: '#B5856B' },
-      { name: 'Fintual Capital', value: (val('c-fc')||0) + _ge2('dep-fc') + _acK2('fc'), color: '#D9B1A7' },
-      { name: 'Cripto', value: (val('c-cripto')||0) + _ge2('dep-cripto') + _acK2('cripto'), color: '#6B9B3F' }
+      { name: 'MercadoPago', value: (val('c-mp')||0) + _ge2('dep-mp'), color: '#D09A27' },
+      { name: 'BancoEstado', value: (val('c-be')||0) + _ge2('dep-be'), color: '#D16D3E' },
+      { name: 'Fintual Reserva', value: (val('c-fr')||0) + _ge2('dep-fr'), color: '#B5856B' },
+      { name: 'Fintual Capital', value: (val('c-fc')||0) + _ge2('dep-fc'), color: '#D9B1A7' },
+      { name: 'Cripto', value: (val('c-cripto')||0) + _ge2('dep-cripto'), color: '#6B9B3F' }
     ], 'Total');
   }
 
@@ -9196,15 +9243,15 @@ function v6MoveBlocks() {
 
       // V31.2: re-renderizar el donut del dashboard INCLUYENDO las cuentas custom
       // como items del legend principal (no en sección aparte)
+      // FIX V31.2: NO sumar _acumuladoMes en el value (ya está en saldo).
       if (typeof v6RenderDonut === 'function' && document.getElementById('v6-dash-donut')) {
         const _ge = (id) => { const e = document.getElementById(id); return e ? (parseFloat(e.value)||0) : 0; };
-        const _acumK = (k) => (window._acumuladoMes && window._acumuladoMes[k]) || 0;
         const items = [
-          { name: 'MercadoPago',     value: (val('c-mp')||0)     + _ge('dep-mp')     + _acumK('mp'),     color: '#D09A27' },
-          { name: 'BancoEstado',     value: (val('c-be')||0)     + _ge('dep-be')     + _acumK('be'),     color: '#D16D3E' },
-          { name: 'Fintual Reserva', value: (val('c-fr')||0)     + _ge('dep-fr')     + _acumK('fr'),     color: '#B5856B' },
-          { name: 'Fintual Capital', value: (val('c-fc')||0)     + _ge('dep-fc')     + _acumK('fc'),     color: '#D9B1A7' },
-          { name: 'Cripto',          value: (val('c-cripto')||0) + _ge('dep-cripto') + _acumK('cripto'), color: '#6B9B3F' }
+          { name: 'MercadoPago',     value: (val('c-mp')||0)     + _ge('dep-mp'),     color: '#D09A27' },
+          { name: 'BancoEstado',     value: (val('c-be')||0)     + _ge('dep-be'),     color: '#D16D3E' },
+          { name: 'Fintual Reserva', value: (val('c-fr')||0)     + _ge('dep-fr'),     color: '#B5856B' },
+          { name: 'Fintual Capital', value: (val('c-fc')||0)     + _ge('dep-fc'),     color: '#D9B1A7' },
+          { name: 'Cripto',          value: (val('c-cripto')||0) + _ge('dep-cripto'), color: '#6B9B3F' }
         ];
         customArr.forEach(c => {
           items.push({
@@ -9232,13 +9279,13 @@ function v6MoveBlocks() {
       const distEl = document.getElementById('v6-distribucion');
       if (distEl && typeof v6RenderDonut === 'function') {
         const _ge = (id) => { const e = document.getElementById(id); return e ? (parseFloat(e.value)||0) : 0; };
-        const _acumK = (k) => (window._acumuladoMes && window._acumuladoMes[k]) || 0;
+        // FIX V31.2: NO sumar _acumuladoMes (ya está en saldo).
         const items = [
-          { name: 'MercadoPago',     value: (val('c-mp')||0)     + _ge('dep-mp')     + _acumK('mp'),     color: '#D09A27' },
-          { name: 'BancoEstado',     value: (val('c-be')||0)     + _ge('dep-be')     + _acumK('be'),     color: '#D16D3E' },
-          { name: 'Fintual Reserva', value: (val('c-fr')||0)     + _ge('dep-fr')     + _acumK('fr'),     color: '#B5856B' },
-          { name: 'Fintual Capital', value: (val('c-fc')||0)     + _ge('dep-fc')     + _acumK('fc'),     color: '#D9B1A7' },
-          { name: 'Cripto',          value: (val('c-cripto')||0) + _ge('dep-cripto') + _acumK('cripto'), color: '#6B9B3F' }
+          { name: 'MercadoPago',     value: (val('c-mp')||0)     + _ge('dep-mp'),     color: '#D09A27' },
+          { name: 'BancoEstado',     value: (val('c-be')||0)     + _ge('dep-be'),     color: '#D16D3E' },
+          { name: 'Fintual Reserva', value: (val('c-fr')||0)     + _ge('dep-fr'),     color: '#B5856B' },
+          { name: 'Fintual Capital', value: (val('c-fc')||0)     + _ge('dep-fc'),     color: '#D9B1A7' },
+          { name: 'Cripto',          value: (val('c-cripto')||0) + _ge('dep-cripto'), color: '#6B9B3F' }
         ];
         customArr.forEach(c => {
           items.push({
@@ -9272,12 +9319,11 @@ function v6MoveBlocks() {
       const customSaldo = customArr.reduce((s,c) => s + (c.saldo||0), 0);
       const totalSaldos = baseSaldo + customSaldo;
 
-      // Depósitos del mes: inputs dep-* + acumulado + inputs cc-dep-*
+      // Depósitos del mes: solo los inputs dep-* / cc-dep-* (pendientes de Listo).
+      // FIX V31.2: NO sumar _acumuladoMes acá (ya consolidado en el saldo).
       const baseDep = ['mp','be','fr','fc','cripto'].reduce((s,k) => {
         const el = document.getElementById('dep-'+k);
-        const v = el ? (parseFloat(el.value)||0) : 0;
-        const acum = (window._acumuladoMes && window._acumuladoMes[k]) || 0;
-        return s + v + acum;
+        return s + (el ? (parseFloat(el.value)||0) : 0);
       }, 0);
       const customDep = customArr.reduce((s,c) => {
         const el = document.getElementById('cc-dep-'+c.id);
@@ -9373,6 +9419,877 @@ function v6MoveBlocks() {
   // Init: renders al cargar
   setTimeout(() => { renderCuentasCustom(); renderMetasCustom(); }, 900);
   setTimeout(() => { renderCuentasCustom(); renderMetasCustom(); }, 2600);
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  V31.3: BITÁCORA DE NOTAS (con detección automática de fechas)
+  //  - Burbuja flotante en todas las páginas
+  //  - Panel chat para escritura rápida
+  //  - Página Notas dedicada para gestión
+  //  - Popup la primera vez del día con recordatorios para hoy
+  // ═══════════════════════════════════════════════════════════════════
+  window._notas = window._notas || [];
+  window._notasFiltroActivo = 'todas';
+
+  // ─── CSS ──────────────────────────────────────────────────────
+  (function injectNotasCSS(){
+    if (document.getElementById('v31-notas-style')) return;
+    const st = document.createElement('style');
+    st.id = 'v31-notas-style';
+    st.textContent = `
+      /* Burbuja flotante */
+      .notas-fab {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: var(--terracotta, #d16d3e);
+        color: white;
+        border: none;
+        font-size: 24px;
+        box-shadow: 0 6px 16px rgba(0,0,0,.35);
+        cursor: pointer;
+        z-index: 1500;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform .15s, box-shadow .15s;
+      }
+      .notas-fab:hover { transform: scale(1.06); box-shadow: 0 8px 22px rgba(0,0,0,.45); }
+      .notas-fab:active { transform: scale(.98); }
+      .notas-fab .badge-count {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        background: var(--red);
+        color: white;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 10px;
+        font-family: 'DM Mono', monospace;
+        min-width: 18px;
+        text-align: center;
+        box-shadow: 0 2px 6px rgba(0,0,0,.3);
+      }
+
+      /* Panel chat */
+      .chat-burbuja-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.45);
+        z-index: 1600;
+        display: none;
+        align-items: flex-end;
+        justify-content: center;
+      }
+      .chat-burbuja-overlay.active { display: flex; }
+      .chat-burbuja-panel {
+        background: var(--surface);
+        width: 100%;
+        max-width: 560px;
+        max-height: 85vh;
+        border-radius: 14px 14px 0 0;
+        padding: 16px 16px 20px;
+        box-shadow: 0 -8px 28px rgba(0,0,0,.5);
+        animation: slideUpChat .25s ease-out;
+        display: flex;
+        flex-direction: column;
+      }
+      @media (min-width: 768px) {
+        .chat-burbuja-overlay { align-items: center; }
+        .chat-burbuja-panel { border-radius: 14px; max-width: 480px; }
+      }
+      @keyframes slideUpChat {
+        from { transform: translateY(100%); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      .chat-burbuja-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--border);
+      }
+      .chat-burbuja-titulo {
+        font-family: 'Syne', sans-serif;
+        font-weight: 700;
+        font-size: 15px;
+        color: var(--text);
+      }
+      .chat-burbuja-cerrar {
+        background: transparent;
+        border: none;
+        color: var(--muted);
+        font-size: 20px;
+        cursor: pointer;
+        padding: 4px 8px;
+      }
+      .chat-burbuja-recientes {
+        flex: 1;
+        overflow-y: auto;
+        max-height: 280px;
+        margin-bottom: 12px;
+      }
+      .chat-burbuja-recientes-titulo {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        color: var(--muted);
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+      .nota-mini {
+        background: var(--surface2);
+        border-radius: 10px;
+        padding: 10px 12px;
+        margin-bottom: 8px;
+        font-size: 13px;
+        color: var(--text);
+        line-height: 1.4;
+        position: relative;
+      }
+      .nota-mini-time {
+        font-size: 10px;
+        color: var(--muted);
+        margin-top: 4px;
+        font-family: 'DM Mono', monospace;
+      }
+      .nota-mini-chip {
+        display: inline-block;
+        margin-top: 6px;
+        padding: 3px 8px;
+        background: rgba(155, 114, 207, 0.18);
+        color: #b394d8;
+        border-radius: 10px;
+        font-size: 10px;
+        font-weight: 700;
+        font-family: 'DM Mono', monospace;
+      }
+      .nota-mini-chip.vencido,
+      .nota-mini-chip.hoy {
+        background: rgba(196, 69, 54, 0.22);
+        color: #e88575;
+      }
+      .nota-mini.hecho { opacity: 0.55; }
+      .nota-mini.hecho .nota-texto { text-decoration: line-through; }
+      .chat-burbuja-input-row {
+        display: flex;
+        gap: 8px;
+        align-items: stretch;
+      }
+      .chat-burbuja-textarea {
+        flex: 1;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        color: var(--text);
+        padding: 10px 12px;
+        border-radius: 10px;
+        font-family: inherit;
+        font-size: 14px;
+        resize: none;
+        min-height: 44px;
+        max-height: 140px;
+        line-height: 1.4;
+      }
+      .chat-burbuja-textarea:focus {
+        outline: none;
+        border-color: var(--terracotta, #d16d3e);
+      }
+      .chat-burbuja-enviar {
+        background: var(--terracotta, #d16d3e);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 0 16px;
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .chat-burbuja-ver-todas {
+        display: block;
+        text-align: center;
+        color: var(--terracotta, #d16d3e);
+        font-size: 12px;
+        text-decoration: none;
+        margin-top: 10px;
+        padding: 8px;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        font-family: inherit;
+        font-weight: 600;
+      }
+
+      /* Página Notas */
+      .notas-filtro-btn {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        color: var(--muted);
+        padding: 6px 12px;
+        border-radius: 16px;
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
+        cursor: pointer;
+        transition: all .15s;
+      }
+      .notas-filtro-btn:hover { color: var(--text); border-color: var(--text); }
+      .notas-filtro-btn.active {
+        background: var(--terracotta, #d16d3e);
+        color: white;
+        border-color: var(--terracotta, #d16d3e);
+      }
+      .nota-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--terracotta, #d16d3e);
+        padding: 14px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        position: relative;
+      }
+      .nota-card.pinneada { border-left-color: var(--mustard, #d09a27); background: rgba(208, 154, 39, 0.04); }
+      .nota-card.hecha { opacity: 0.55; }
+      .nota-card.hecha .nota-texto { text-decoration: line-through; color: var(--muted); }
+      .nota-card.vencida { border-left-color: var(--red); }
+      .nota-card-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 6px;
+      }
+      .nota-texto {
+        font-size: 14px;
+        color: var(--text);
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+      .nota-meta {
+        font-size: 11px;
+        color: var(--muted);
+        font-family: 'DM Mono', monospace;
+        margin-top: 8px;
+      }
+      .nota-chip {
+        display: inline-block;
+        padding: 3px 8px;
+        background: rgba(155, 114, 207, 0.18);
+        color: #b394d8;
+        border-radius: 10px;
+        font-size: 10px;
+        font-weight: 700;
+        font-family: 'DM Mono', monospace;
+        margin-right: 6px;
+      }
+      .nota-chip.hoy,
+      .nota-chip.vencido {
+        background: rgba(196, 69, 54, 0.22);
+        color: #e88575;
+      }
+      .nota-chip.pin {
+        background: rgba(208, 154, 39, 0.18);
+        color: var(--mustard, #d09a27);
+      }
+      .nota-actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+      }
+      .nota-action-btn {
+        background: transparent;
+        border: 0.5px solid var(--border);
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 11px;
+        cursor: pointer;
+        color: var(--muted);
+        font-family: 'DM Mono', monospace;
+      }
+      .nota-action-btn:hover { color: var(--text); border-color: var(--text); }
+      .nota-action-btn.activa { color: var(--mustard); border-color: var(--mustard); }
+      .nota-action-btn.danger:hover { color: var(--red); border-color: var(--red); }
+
+      /* Popup recordatorios del día */
+      .recordatorios-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.55);
+        z-index: 2200;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+      }
+      .recordatorios-modal.active { display: flex; }
+      .recordatorios-panel {
+        background: var(--surface);
+        border-radius: 14px;
+        padding: 24px;
+        max-width: 480px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0,0,0,.4);
+      }
+      .recordatorios-panel h3 {
+        font-family: 'Syne', sans-serif;
+        font-size: 18px;
+        margin-bottom: 4px;
+        color: var(--text);
+      }
+      .recordatorios-panel .subtitle {
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 18px;
+      }
+      .recordatorios-item {
+        background: var(--surface2);
+        border-left: 3px solid var(--red);
+        padding: 12px 14px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        font-size: 13px;
+        color: var(--text);
+        line-height: 1.4;
+      }
+      .recordatorios-item-meta {
+        font-size: 10px;
+        color: var(--muted);
+        margin-top: 6px;
+        font-family: 'DM Mono', monospace;
+      }
+    `;
+    document.head.appendChild(st);
+  })();
+
+  // ─── HTML: burbuja y modales ─────────────────────────────────
+  (function injectNotasHTML(){
+    if (document.getElementById('notas-fab')) return;
+    const fab = document.createElement('button');
+    fab.id = 'notas-fab';
+    fab.className = 'notas-fab';
+    fab.title = 'Bitácora financiera';
+    fab.onclick = openChatBurbuja;
+    fab.innerHTML = '💬 <span class="badge-count" id="notas-fab-badge" style="display:none;"></span>';
+    document.body.appendChild(fab);
+
+    const chat = document.createElement('div');
+    chat.id = 'chat-burbuja-overlay';
+    chat.className = 'chat-burbuja-overlay';
+    chat.innerHTML = `
+      <div class="chat-burbuja-panel" onclick="event.stopPropagation()">
+        <div class="chat-burbuja-header">
+          <div class="chat-burbuja-titulo">💬 Bitácora financiera</div>
+          <button class="chat-burbuja-cerrar" onclick="closeChatBurbuja()">×</button>
+        </div>
+        <div class="chat-burbuja-recientes" id="chat-recientes-lista"></div>
+        <div class="chat-burbuja-input-row">
+          <textarea class="chat-burbuja-textarea" id="chat-input-texto" placeholder="Escribe una nota o recordatorio... (ej. 'Renovar seguro el 15 de octubre')" rows="1"></textarea>
+          <button class="chat-burbuja-enviar" id="chat-enviar-btn" onclick="enviarNotaDesdeChat()">Guardar</button>
+        </div>
+        <button class="chat-burbuja-ver-todas" onclick="closeChatBurbuja(); setTimeout(() => v6Go('notas', document.querySelector('[data-page=notas]')), 100);">Ver todas las notas →</button>
+      </div>
+    `;
+    chat.addEventListener('click', e => { if (e.target === chat) closeChatBurbuja(); });
+    document.body.appendChild(chat);
+
+    const popup = document.createElement('div');
+    popup.id = 'recordatorios-hoy-modal';
+    popup.className = 'recordatorios-modal';
+    popup.innerHTML = `
+      <div class="recordatorios-panel">
+        <h3>⏰ Recordatorios para hoy</h3>
+        <div class="subtitle" id="recordatorios-hoy-subtitle"></div>
+        <div id="recordatorios-hoy-lista"></div>
+        <div class="custom-modal-actions">
+          <button class="custom-btn-cancel" onclick="cerrarPopupRecordatorios()">Más tarde</button>
+          <button class="custom-btn-confirm" onclick="cerrarPopupRecordatorios(); setTimeout(() => v6Go('notas', document.querySelector('[data-page=notas]')), 100);">Ver detalle</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(popup);
+  })();
+
+  // ─── Helpers de fecha ────────────────────────────────────────
+  const MESES_NOMBRE = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const MESES_ABBR = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const DIAS_NOMBRE = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+
+  function fechaISO(d) {
+    if (!(d instanceof Date)) d = new Date(d);
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const dia = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${dia}`;
+  }
+
+  function hoyISO() { return fechaISO(new Date()); }
+
+  // ─── Detección automática de fechas en español ───────────────
+  window.detectarFecha = function(texto) {
+    if (!texto) return null;
+    const t = texto.toLowerCase();
+    const hoy = new Date();
+    hoy.setHours(0,0,0,0);
+
+    // 1. Fecha absoluta dd/mm/yyyy o dd-mm-yyyy
+    let m = t.match(/\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})\b/);
+    if (m) {
+      const d = parseInt(m[1]), mes = parseInt(m[2]) - 1;
+      let y = parseInt(m[3]);
+      if (y < 100) y += 2000;
+      if (d >= 1 && d <= 31 && mes >= 0 && mes <= 11) {
+        const f = new Date(y, mes, d);
+        return { fecha: fechaISO(f), frase: m[0] };
+      }
+    }
+    // 2. dd/mm (sin año) → asume año actual o próximo
+    m = t.match(/\b(\d{1,2})[\/\-](\d{1,2})\b/);
+    if (m) {
+      const d = parseInt(m[1]), mes = parseInt(m[2]) - 1;
+      if (d >= 1 && d <= 31 && mes >= 0 && mes <= 11) {
+        let y = hoy.getFullYear();
+        const f = new Date(y, mes, d);
+        if (f < hoy) f.setFullYear(y + 1);
+        return { fecha: fechaISO(f), frase: m[0] };
+      }
+    }
+    // 3. "dd de mes" o "dd mes"
+    const mesesPattern = MESES_NOMBRE.concat(MESES_ABBR).join('|');
+    m = t.match(new RegExp(`\\b(\\d{1,2})\\s+(?:de\\s+)?(${mesesPattern})\\b`));
+    if (m) {
+      const d = parseInt(m[1]);
+      let mesIdx = MESES_NOMBRE.indexOf(m[2]);
+      if (mesIdx < 0) mesIdx = MESES_ABBR.indexOf(m[2]);
+      if (mesIdx >= 0 && d >= 1 && d <= 31) {
+        let y = hoy.getFullYear();
+        const f = new Date(y, mesIdx, d);
+        if (f < hoy) f.setFullYear(y + 1);
+        return { fecha: fechaISO(f), frase: m[0] };
+      }
+    }
+    // 4. "hoy", "mañana", "pasado mañana", "anteayer"
+    if (/\bhoy\b/.test(t)) return { fecha: fechaISO(hoy), frase: 'hoy' };
+    if (/\bpasado\s+mañana\b/.test(t)) {
+      const f = new Date(hoy); f.setDate(f.getDate() + 2);
+      return { fecha: fechaISO(f), frase: 'pasado mañana' };
+    }
+    if (/\bma[ñn]ana\b/.test(t)) {
+      const f = new Date(hoy); f.setDate(f.getDate() + 1);
+      return { fecha: fechaISO(f), frase: 'mañana' };
+    }
+    if (/\banteayer\b/.test(t)) {
+      const f = new Date(hoy); f.setDate(f.getDate() - 2);
+      return { fecha: fechaISO(f), frase: 'anteayer' };
+    }
+    // 5. "en N días/semanas/meses"
+    m = t.match(/\ben\s+(\d+)\s+(d[íi]as?|semanas?|meses?)\b/);
+    if (m) {
+      const n = parseInt(m[1]);
+      const unidad = m[2];
+      const f = new Date(hoy);
+      if (/d[íi]a/.test(unidad)) f.setDate(f.getDate() + n);
+      else if (/semana/.test(unidad)) f.setDate(f.getDate() + n * 7);
+      else if (/mes/.test(unidad)) f.setMonth(f.getMonth() + n);
+      return { fecha: fechaISO(f), frase: m[0] };
+    }
+    // 6. Días de la semana ("el lunes", "este viernes", "el próximo martes")
+    const diaPattern = /\b(?:el|este|pr[óo]ximo|la\s+pr[óo]xima)?\s*(lunes|martes|mi[ée]rcoles|jueves|viernes|s[áa]bado|domingo)\b/;
+    m = t.match(diaPattern);
+    if (m) {
+      const dia = m[1].normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      const diasNormalized = DIAS_NOMBRE.map(d => d.normalize('NFD').replace(/[\u0300-\u036f]/g,''));
+      const diaIdx = diasNormalized.indexOf(dia);
+      if (diaIdx >= 0) {
+        const f = new Date(hoy);
+        const diff = (diaIdx - f.getDay() + 7) % 7 || 7;
+        f.setDate(f.getDate() + diff);
+        return { fecha: fechaISO(f), frase: m[0].trim() };
+      }
+    }
+    // 7. "fin de mes", "principio de mes", "mitad de mes"
+    if (/\bfin\s+de\s+(este\s+)?mes\b/.test(t)) {
+      const f = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+      return { fecha: fechaISO(f), frase: 'fin de mes' };
+    }
+    if (/\bprincipi[oa]s?\s+de\s+(este\s+)?mes\b/.test(t) || /\binicio\s+de\s+(este\s+)?mes\b/.test(t)) {
+      const f = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+      if (f < hoy) f.setMonth(f.getMonth() + 1);
+      return { fecha: fechaISO(f), frase: 'inicio de mes' };
+    }
+    if (/\bmitad\s+de\s+(este\s+)?mes\b/.test(t)) {
+      const f = new Date(hoy.getFullYear(), hoy.getMonth(), 15);
+      if (f < hoy) f.setMonth(f.getMonth() + 1);
+      return { fecha: fechaISO(f), frase: 'mitad de mes' };
+    }
+    // 8. "en mes" (sin día) → día 1 del mes
+    m = t.match(new RegExp(`\\ben\\s+(${mesesPattern})\\b`));
+    if (m) {
+      let mesIdx = MESES_NOMBRE.indexOf(m[1]);
+      if (mesIdx < 0) mesIdx = MESES_ABBR.indexOf(m[1]);
+      if (mesIdx >= 0) {
+        let y = hoy.getFullYear();
+        const f = new Date(y, mesIdx, 1);
+        if (f < hoy) f.setFullYear(y + 1);
+        return { fecha: fechaISO(f), frase: m[0] };
+      }
+    }
+    return null;
+  };
+
+  // ─── Formato de fechas legibles ──────────────────────────────
+  function formatearFechaRelativa(timestamp) {
+    const ahora = Date.now();
+    const diff = ahora - new Date(timestamp).getTime();
+    const segs = Math.floor(diff / 1000);
+    const mins = Math.floor(segs / 60);
+    const horas = Math.floor(mins / 60);
+    const dias = Math.floor(horas / 24);
+    if (segs < 60) return 'hace un momento';
+    if (mins < 60) return `hace ${mins} min`;
+    if (horas < 24) return `hace ${horas}h`;
+    if (dias < 2) return 'ayer';
+    if (dias < 7) return `hace ${dias} días`;
+    const d = new Date(timestamp);
+    return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+  }
+
+  function formatearFechaRecordatorio(fechaISOStr) {
+    if (!fechaISOStr) return '';
+    const [y, m, d] = fechaISOStr.split('-').map(Number);
+    return `${d} de ${MESES_NOMBRE[m-1]}${y !== new Date().getFullYear() ? ' ' + y : ''}`;
+  }
+
+  // ─── Estado de un recordatorio: hoy, vencido, futuro, sin fecha
+  function estadoRecordatorio(nota) {
+    if (!nota.recordatorio_fecha) return 'sin-fecha';
+    const hoy = hoyISO();
+    if (nota.recordatorio_fecha === hoy) return 'hoy';
+    if (nota.recordatorio_fecha < hoy) return 'vencido';
+    return 'futuro';
+  }
+
+  // ─── CRUD de notas ───────────────────────────────────────────
+  window.agregarNota = async function(texto) {
+    texto = (texto || '').trim();
+    if (!texto) return;
+    const detec = detectarFecha(texto);
+    const nueva = {
+      id: 'nota_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      texto,
+      fecha_creacion: new Date().toISOString(),
+      recordatorio_fecha: detec ? detec.fecha : null,
+      recordatorio_original: detec ? detec.frase : null,
+      pin: false,
+      completado: false
+    };
+    window._notas = window._notas || [];
+    window._notas.unshift(nueva);
+    renderNotasMini();
+    if (document.getElementById('page-notas')?.classList.contains('active')) renderNotasPagina();
+    actualizarBadgeNotas();
+    if (typeof guardar === 'function') await guardar();
+    return nueva;
+  };
+
+  window.togglePinNota = async function(id) {
+    const n = (window._notas || []).find(x => x.id === id);
+    if (!n) return;
+    n.pin = !n.pin;
+    renderNotasPagina();
+    renderNotasMini();
+    if (typeof guardar === 'function') await guardar();
+  };
+
+  window.toggleHechaNota = async function(id) {
+    const n = (window._notas || []).find(x => x.id === id);
+    if (!n) return;
+    n.completado = !n.completado;
+    renderNotasPagina();
+    renderNotasMini();
+    actualizarBadgeNotas();
+    if (typeof guardar === 'function') await guardar();
+  };
+
+  window.editarNota = async function(id) {
+    const n = (window._notas || []).find(x => x.id === id);
+    if (!n) return;
+    const nuevo = prompt('Editar nota:', n.texto);
+    if (nuevo === null) return;
+    const trimmed = nuevo.trim();
+    if (!trimmed) { alert('La nota no puede estar vacía'); return; }
+    n.texto = trimmed;
+    // Re-detectar fecha al editar
+    const detec = detectarFecha(trimmed);
+    n.recordatorio_fecha = detec ? detec.fecha : null;
+    n.recordatorio_original = detec ? detec.frase : null;
+    renderNotasPagina();
+    renderNotasMini();
+    actualizarBadgeNotas();
+    if (typeof guardar === 'function') await guardar();
+  };
+
+  window.eliminarNota = async function(id) {
+    if (!confirm('¿Eliminar esta nota? No se puede deshacer.')) return;
+    window._notas = (window._notas || []).filter(x => x.id !== id);
+    renderNotasPagina();
+    renderNotasMini();
+    actualizarBadgeNotas();
+    if (typeof guardar === 'function') await guardar();
+  };
+
+  window.setNotasFiltro = function(filtro, btn) {
+    window._notasFiltroActivo = filtro;
+    document.querySelectorAll('.notas-filtro-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    renderNotasPagina();
+  };
+
+  // ─── Renderizar el panel chat (últimas 5 notas) ──────────────
+  function renderNotasMini() {
+    const cont = document.getElementById('chat-recientes-lista');
+    if (!cont) return;
+    const arr = window._notas || [];
+    if (arr.length === 0) {
+      cont.innerHTML = `
+        <div class="chat-burbuja-recientes-titulo">Recientes</div>
+        <div style="font-size:12px;color:var(--muted);padding:14px 0;text-align:center;">
+          Sin notas aún. Escribe una abajo.
+        </div>
+      `;
+      return;
+    }
+    const recientes = arr.slice(0, 5);
+    const items = recientes.map(n => {
+      const estado = estadoRecordatorio(n);
+      const chipHtml = n.recordatorio_fecha
+        ? `<div><span class="nota-mini-chip ${estado}">⏰ ${formatearFechaRecordatorio(n.recordatorio_fecha)}</span></div>`
+        : '';
+      return `<div class="nota-mini ${n.completado ? 'hecho' : ''}">
+        <div class="nota-texto">${escapeHtml(n.texto)}</div>
+        ${chipHtml}
+        <div class="nota-mini-time">${formatearFechaRelativa(n.fecha_creacion)}</div>
+      </div>`;
+    }).join('');
+    cont.innerHTML = `<div class="chat-burbuja-recientes-titulo">Últimas notas (${Math.min(5, arr.length)} de ${arr.length})</div>${items}`;
+  }
+
+  // ─── Renderizar la página Notas completa ─────────────────────
+  window.renderNotasPagina = function() {
+    const cont = document.getElementById('notas-lista-completa');
+    if (!cont) return;
+    const arr = window._notas || [];
+    const search = (document.getElementById('notas-search')?.value || '').toLowerCase().trim();
+    const filtro = window._notasFiltroActivo || 'todas';
+
+    let filtradas = arr;
+    if (filtro === 'pin') filtradas = filtradas.filter(n => n.pin);
+    else if (filtro === 'recordatorio') filtradas = filtradas.filter(n => n.recordatorio_fecha);
+    else if (filtro === 'hechas') filtradas = filtradas.filter(n => n.completado);
+    if (search) filtradas = filtradas.filter(n => n.texto.toLowerCase().includes(search));
+
+    // Orden: pinneadas primero, luego por fecha de creación desc
+    filtradas.sort((a, b) => {
+      if (a.pin !== b.pin) return b.pin - a.pin;
+      return new Date(b.fecha_creacion) - new Date(a.fecha_creacion);
+    });
+
+    if (filtradas.length === 0) {
+      cont.innerHTML = `<div style="text-align:center;padding:32px 16px;color:var(--muted);font-size:13px;">
+        ${arr.length === 0 ? '📝 Sin notas todavía. Usa la burbuja 💬 para escribir tu primera nota.' : 'No hay notas que coincidan con el filtro.'}
+      </div>`;
+      return;
+    }
+
+    cont.innerHTML = filtradas.map(n => {
+      const estado = estadoRecordatorio(n);
+      const cardClass = ['nota-card'];
+      if (n.pin) cardClass.push('pinneada');
+      if (n.completado) cardClass.push('hecha');
+      if (estado === 'vencido' || estado === 'hoy') cardClass.push('vencida');
+
+      const chips = [];
+      if (n.pin) chips.push('<span class="nota-chip pin">📌 Pinneada</span>');
+      if (n.recordatorio_fecha) {
+        const label = estado === 'hoy' ? '⏰ HOY' :
+                      estado === 'vencido' ? `⏰ Vencido (${formatearFechaRecordatorio(n.recordatorio_fecha)})` :
+                      `⏰ ${formatearFechaRecordatorio(n.recordatorio_fecha)}`;
+        chips.push(`<span class="nota-chip ${estado}">${label}</span>`);
+      }
+
+      return `<div class="${cardClass.join(' ')}">
+        <div class="nota-card-head">
+          <div style="flex:1;min-width:0;">
+            <div class="nota-texto">${escapeHtml(n.texto)}</div>
+            <div class="nota-meta">
+              ${formatearFechaRelativa(n.fecha_creacion)}
+              ${n.recordatorio_original ? ' · detectado: "' + escapeHtml(n.recordatorio_original) + '"' : ''}
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:8px;">${chips.join(' ')}</div>
+        <div class="nota-actions">
+          <button class="nota-action-btn ${n.pin ? 'activa' : ''}" onclick="togglePinNota('${n.id}')">${n.pin ? '📌 Quitar pin' : '📌 Pinear'}</button>
+          <button class="nota-action-btn ${n.completado ? 'activa' : ''}" onclick="toggleHechaNota('${n.id}')">${n.completado ? '↩ Marcar pendiente' : '✓ Hecha'}</button>
+          <button class="nota-action-btn" onclick="editarNota('${n.id}')">✏ Editar</button>
+          <button class="nota-action-btn danger" onclick="eliminarNota('${n.id}')">🗑 Eliminar</button>
+        </div>
+      </div>`;
+    }).join('');
+  };
+
+  // ─── Burbuja chat: abrir/cerrar ──────────────────────────────
+  window.openChatBurbuja = function() {
+    renderNotasMini();
+    document.getElementById('chat-burbuja-overlay').classList.add('active');
+    setTimeout(() => {
+      const ta = document.getElementById('chat-input-texto');
+      if (ta) ta.focus();
+    }, 200);
+  };
+  window.closeChatBurbuja = function() {
+    document.getElementById('chat-burbuja-overlay').classList.remove('active');
+    const ta = document.getElementById('chat-input-texto');
+    if (ta) ta.value = '';
+  };
+  window.enviarNotaDesdeChat = async function() {
+    const ta = document.getElementById('chat-input-texto');
+    if (!ta) return;
+    const texto = ta.value.trim();
+    if (!texto) return;
+    const btn = document.getElementById('chat-enviar-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+    await agregarNota(texto);
+    if (btn) { btn.disabled = false; btn.textContent = 'Guardar'; }
+    ta.value = '';
+    // Cerrar el chat y volver a donde estaba navegando
+    closeChatBurbuja();
+    if (typeof v6ShowToast === 'function') v6ShowToast('📝 Nota guardada', 'success');
+  };
+
+  // ─── Popup recordatorios para hoy (Opción 2) ─────────────────
+  window.verificarRecordatoriosHoy = function() {
+    const hoy = hoyISO();
+    const key = 'notas_popup_shown_' + hoy;
+    if (localStorage.getItem(key) === 'si') return; // ya se mostró hoy
+    const paraHoy = (window._notas || []).filter(n => !n.completado && n.recordatorio_fecha === hoy);
+    if (paraHoy.length === 0) return;
+    const lista = document.getElementById('recordatorios-hoy-lista');
+    const sub = document.getElementById('recordatorios-hoy-subtitle');
+    if (sub) sub.textContent = `Tienes ${paraHoy.length} ${paraHoy.length === 1 ? 'recordatorio' : 'recordatorios'} agendados para hoy:`;
+    if (lista) lista.innerHTML = paraHoy.map(n => `
+      <div class="recordatorios-item">
+        ${escapeHtml(n.texto)}
+        <div class="recordatorios-item-meta">Detectado: "${escapeHtml(n.recordatorio_original || '')}" · ${formatearFechaRelativa(n.fecha_creacion)}</div>
+      </div>
+    `).join('');
+    document.getElementById('recordatorios-hoy-modal').classList.add('active');
+    localStorage.setItem(key, 'si');
+  };
+  window.cerrarPopupRecordatorios = function() {
+    document.getElementById('recordatorios-hoy-modal').classList.remove('active');
+  };
+
+  // ─── Badge en la burbuja y sidebar (conteo recordatorios próximos)
+  window.actualizarBadgeNotas = function() {
+    const hoy = hoyISO();
+    const proximos7 = new Date();
+    proximos7.setDate(proximos7.getDate() + 7);
+    const proximos7ISO = fechaISO(proximos7);
+    const arr = (window._notas || []).filter(n => !n.completado && n.recordatorio_fecha && n.recordatorio_fecha <= proximos7ISO);
+    const fab = document.getElementById('notas-fab-badge');
+    const sb  = document.getElementById('notas-badge');
+    if (fab) {
+      if (arr.length > 0) {
+        fab.textContent = arr.length;
+        fab.style.display = 'inline-block';
+      } else {
+        fab.style.display = 'none';
+      }
+    }
+    if (sb) {
+      if (arr.length > 0) {
+        sb.textContent = arr.length;
+        sb.style.display = 'inline-block';
+      } else {
+        sb.style.display = 'none';
+      }
+    }
+  };
+
+  // ─── Persistencia: _buildData / _aplicarDatos ───────────────
+  const _v31n_origBuildData = window._buildData;
+  if (typeof _v31n_origBuildData === 'function') {
+    window._buildData = function() {
+      const data = _v31n_origBuildData.apply(this, arguments);
+      if (data && typeof data === 'object') {
+        data.notas = window._notas || [];
+      }
+      return data;
+    };
+  }
+  const _v31n_origAplicarDatos = window._aplicarDatos;
+  if (typeof _v31n_origAplicarDatos === 'function') {
+    window._aplicarDatos = function(d) {
+      const result = _v31n_origAplicarDatos.apply(this, arguments);
+      if (d && Array.isArray(d.notas)) window._notas = d.notas;
+      setTimeout(() => {
+        renderNotasMini();
+        if (document.getElementById('page-notas')?.classList.contains('active')) renderNotasPagina();
+        actualizarBadgeNotas();
+        verificarRecordatoriosHoy();
+      }, 250);
+      return result;
+    };
+  }
+
+  // ─── Hook v6Go para render automático al entrar a Notas ─────
+  const _v31n_origV6Go = window.v6Go;
+  if (typeof _v31n_origV6Go === 'function') {
+    window.v6Go = function(pageName, btn) {
+      const r = _v31n_origV6Go.apply(this, arguments);
+      if (pageName === 'notas') renderNotasPagina();
+      return r;
+    };
+  }
+
+  // ─── Helper escapeHtml para evitar XSS al renderizar texto libre
+  function escapeHtml(s) {
+    if (s == null) return '';
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // ─── Atajos de teclado en el textarea: Ctrl+Enter envía ─────
+  setTimeout(() => {
+    const ta = document.getElementById('chat-input-texto');
+    if (ta) {
+      ta.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          enviarNotaDesdeChat();
+        }
+      });
+    }
+  }, 600);
+
+  // ─── Init: render una vez que la app esté lista ─────────────
+  setTimeout(() => {
+    renderNotasMini();
+    if (document.getElementById('page-notas')?.classList.contains('active')) renderNotasPagina();
+    actualizarBadgeNotas();
+  }, 1500);
 
 </script>
 
