@@ -1438,8 +1438,8 @@ body {
   <div class="card">
     <div class="v6-section-label" style="margin-top:0;">ℹ️ Acerca de</div>
     <p style="font-size:12px;color:var(--muted);line-height:1.6;">
-      <strong>Mis Finanzas v31.3</strong><br>
-      Modo seguro 🔒 · Asignador agrupado · Snapshot live · ⬇ Retiros · ➕ Cuentas/metas custom unificadas · Fix doble conteo MP · Delay 120ms post-Drive · 📝 Bitácora con detección de fechas + burbuja flotante<br><br>
+      <strong>Mis Finanzas v31.4</strong><br>
+      Modo seguro 🔒 · Asignador agrupado · ⬇ Retiros · ➕ Cuentas/metas custom · Fix doble conteo MP · 💬 Chat asistente con burbujas, markdown, consultas de saldos y detección de fechas<br><br>
       <em>Toda tu data del JSON original está 100% preservada.</em>
     </p>
   </div>
@@ -9439,16 +9439,16 @@ function v6MoveBlocks() {
       /* Burbuja flotante */
       .notas-fab {
         position: fixed;
-        bottom: 90px;
-        right: 20px;
-        width: 56px;
-        height: 56px;
+        bottom: 88px;
+        right: 24px;
+        width: 38px;
+        height: 38px;
         border-radius: 50%;
         background: var(--terracotta, #d16d3e);
         color: white;
         border: none;
-        font-size: 24px;
-        box-shadow: 0 6px 16px rgba(0,0,0,.35);
+        font-size: 16px;
+        box-shadow: 0 3px 10px rgba(0,0,0,.3);
         cursor: pointer;
         z-index: 1500;
         display: flex !important;
@@ -9457,7 +9457,7 @@ function v6MoveBlocks() {
         transition: transform .15s, box-shadow .15s;
       }
       @media (max-width: 767px) {
-        .notas-fab { bottom: 80px; right: 16px; width: 52px; height: 52px; font-size: 22px; }
+        .notas-fab { bottom: 92px; right: 20px; width: 36px; height: 36px; font-size: 15px; }
       }
       .notas-fab:hover { transform: scale(1.06); box-shadow: 0 8px 22px rgba(0,0,0,.45); }
       .notas-fab:active { transform: scale(.98); }
@@ -9492,17 +9492,19 @@ function v6MoveBlocks() {
         background: var(--surface);
         width: 100%;
         max-width: 560px;
-        max-height: 85vh;
-        border-radius: 14px 14px 0 0;
-        padding: 16px 16px 20px;
+        height: 78vh;
+        max-height: 640px;
+        border-radius: 16px 16px 0 0;
+        padding: 0;
         box-shadow: 0 -8px 28px rgba(0,0,0,.5);
         animation: slideUpChat .25s ease-out;
         display: flex;
         flex-direction: column;
+        overflow: hidden;
       }
       @media (min-width: 768px) {
         .chat-burbuja-overlay { align-items: center; }
-        .chat-burbuja-panel { border-radius: 14px; max-width: 480px; }
+        .chat-burbuja-panel { border-radius: 16px; max-width: 440px; height: 70vh; }
       }
       @keyframes slideUpChat {
         from { transform: translateY(100%); opacity: 0; }
@@ -9512,90 +9514,125 @@ function v6MoveBlocks() {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 12px;
-        padding-bottom: 10px;
+        padding: 14px 16px;
         border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+        background: var(--surface);
       }
       .chat-burbuja-titulo {
         font-family: 'Syne', sans-serif;
         font-weight: 700;
         font-size: 15px;
         color: var(--text);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .chat-burbuja-titulo .estado-dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: var(--green); display: inline-block;
       }
       .chat-burbuja-cerrar {
         background: transparent;
         border: none;
         color: var(--muted);
-        font-size: 20px;
+        font-size: 22px;
         cursor: pointer;
-        padding: 4px 8px;
+        padding: 2px 8px;
+        line-height: 1;
       }
-      .chat-burbuja-recientes {
+
+      /* Stream de mensajes */
+      .chat-mensajes {
         flex: 1;
         overflow-y: auto;
-        max-height: 280px;
-        margin-bottom: 12px;
+        padding: 14px 14px 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        -webkit-overflow-scrolling: touch;
       }
-      .chat-burbuja-recientes-titulo {
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: 1.2px;
-        color: var(--muted);
-        font-weight: 700;
-        margin-bottom: 8px;
-      }
-      .nota-mini {
-        background: var(--surface2);
-        border-radius: 10px;
-        padding: 10px 12px;
-        margin-bottom: 8px;
-        font-size: 13px;
-        color: var(--text);
-        line-height: 1.4;
+      .msg-row { display: flex; width: 100%; }
+      .msg-row.user { justify-content: flex-end; }
+      .msg-row.app  { justify-content: flex-start; }
+      .msg-burbuja {
+        max-width: 82%;
+        padding: 9px 13px;
+        border-radius: 16px;
+        font-size: 14px;
+        line-height: 1.45;
+        word-wrap: break-word;
+        white-space: pre-wrap;
         position: relative;
       }
-      .nota-mini-time {
-        font-size: 10px;
-        color: var(--muted);
+      .msg-row.user .msg-burbuja {
+        background: var(--terracotta, #d16d3e);
+        color: white;
+        border-bottom-right-radius: 4px;
+      }
+      .msg-row.app .msg-burbuja {
+        background: var(--surface2);
+        color: var(--text);
+        border-bottom-left-radius: 4px;
+      }
+      .msg-burbuja strong { font-weight: 700; }
+      .msg-burbuja em { font-style: italic; }
+      .msg-burbuja code {
+        font-family: 'DM Mono', monospace;
+        font-size: 12px;
+        background: rgba(0,0,0,.18);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+      .msg-hora {
+        display: block;
+        font-size: 9px;
+        opacity: .65;
         margin-top: 4px;
         font-family: 'DM Mono', monospace;
+        text-align: right;
       }
-      .nota-mini-chip {
+      .msg-chip-fecha {
         display: inline-block;
         margin-top: 6px;
-        padding: 3px 8px;
-        background: rgba(155, 114, 207, 0.18);
-        color: #b394d8;
+        padding: 3px 9px;
+        background: rgba(255,255,255,.18);
         border-radius: 10px;
         font-size: 10px;
         font-weight: 700;
         font-family: 'DM Mono', monospace;
       }
-      .nota-mini-chip.vencido,
-      .nota-mini-chip.hoy {
-        background: rgba(196, 69, 54, 0.22);
-        color: #e88575;
+      .msg-row.app .msg-chip-fecha {
+        background: rgba(155, 114, 207, 0.18);
+        color: #b394d8;
       }
-      .nota-mini.hecho { opacity: 0.55; }
-      .nota-mini.hecho .nota-texto { text-decoration: line-through; }
+
+      /* Input fijo abajo */
       .chat-burbuja-input-row {
         display: flex;
         gap: 8px;
-        align-items: stretch;
+        align-items: flex-end;
+        padding: 10px 12px;
+        border-top: 1px solid var(--border);
+        background: var(--surface);
+        flex-shrink: 0;
       }
       .chat-burbuja-textarea {
         flex: 1;
+        min-width: 0;
         background: var(--bg);
         border: 1px solid var(--border);
         color: var(--text);
-        padding: 10px 12px;
-        border-radius: 10px;
+        padding: 10px 14px;
+        border-radius: 20px;
         font-family: inherit;
         font-size: 14px;
         resize: none;
-        min-height: 44px;
-        max-height: 140px;
+        height: 42px;
+        min-height: 42px;
+        max-height: 110px;
         line-height: 1.4;
+        box-sizing: border-box;
       }
       .chat-burbuja-textarea:focus {
         outline: none;
@@ -9605,27 +9642,33 @@ function v6MoveBlocks() {
         background: var(--terracotta, #d16d3e);
         color: white;
         border: none;
-        border-radius: 10px;
-        padding: 0 16px;
-        font-family: inherit;
-        font-size: 14px;
-        font-weight: 600;
+        border-radius: 50%;
+        width: 42px;
+        height: 42px;
+        font-size: 17px;
         cursor: pointer;
         flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
       }
+      .chat-burbuja-enviar:disabled { opacity: .5; }
       .chat-burbuja-ver-todas {
         display: block;
         text-align: center;
         color: var(--terracotta, #d16d3e);
-        font-size: 12px;
+        font-size: 11px;
         text-decoration: none;
-        margin-top: 10px;
         padding: 8px;
-        background: transparent;
+        background: var(--surface);
         border: none;
+        border-top: 1px solid var(--border);
         cursor: pointer;
         font-family: inherit;
         font-weight: 600;
+        flex-shrink: 0;
+        width: 100%;
       }
 
       /* Página Notas */
@@ -9794,15 +9837,15 @@ function v6MoveBlocks() {
     chat.innerHTML = `
       <div class="chat-burbuja-panel" onclick="event.stopPropagation()">
         <div class="chat-burbuja-header">
-          <div class="chat-burbuja-titulo">💬 Bitácora financiera</div>
+          <div class="chat-burbuja-titulo"><span class="estado-dot"></span> Asistente de finanzas</div>
           <button class="chat-burbuja-cerrar" onclick="closeChatBurbuja()">×</button>
         </div>
-        <div class="chat-burbuja-recientes" id="chat-recientes-lista"></div>
+        <div class="chat-mensajes" id="chat-mensajes-stream"></div>
         <div class="chat-burbuja-input-row">
-          <textarea class="chat-burbuja-textarea" id="chat-input-texto" placeholder="Escribe una nota o recordatorio... (ej. 'Renovar seguro el 15 de octubre')" rows="1"></textarea>
-          <button class="chat-burbuja-enviar" id="chat-enviar-btn" onclick="enviarNotaDesdeChat()">Guardar</button>
+          <textarea class="chat-burbuja-textarea" id="chat-input-texto" placeholder="Escribe una nota o pregunta..." rows="1"></textarea>
+          <button class="chat-burbuja-enviar" id="chat-enviar-btn" onclick="enviarNotaDesdeChat()" title="Enviar">➤</button>
         </div>
-        <button class="chat-burbuja-ver-todas" onclick="closeChatBurbuja(); setTimeout(() => v6Go('notas', document.querySelector('[data-page=notas]')), 100);">Ver todas las notas →</button>
+        <button class="chat-burbuja-ver-todas" onclick="closeChatBurbuja(); setTimeout(() => v6Go('notas', document.querySelector('[data-page=notas]')), 100);">📝 Ver todas las notas →</button>
       </div>
     `;
     chat.addEventListener('click', e => { if (e.target === chat) closeChatBurbuja(); });
@@ -10061,33 +10104,139 @@ function v6MoveBlocks() {
   };
 
   // ─── Renderizar el panel chat (últimas 5 notas) ──────────────
-  function renderNotasMini() {
-    const cont = document.getElementById('chat-recientes-lista');
+  // ─── Chat log (mensajes user/app, persiste en Drive) ─────────
+  window._chatLog = window._chatLog || [];
+
+  // Markdown-lite: escapa HTML primero y luego aplica **negrita**, *cursiva*, \`código\`
+  function mdLite(s) {
+    let t = escapeHtml(s || '');
+    t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    t = t.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    t = t.replace(/`([^`]+)`/g, '<code>$1</code>');
+    return t;
+  }
+
+  function horaCorta(ts) {
+    const d = new Date(ts);
+    return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+  }
+
+  function pushChatMsg(rol, texto, extra) {
+    window._chatLog = window._chatLog || [];
+    window._chatLog.push(Object.assign({
+      id: 'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
+      rol, texto, ts: new Date().toISOString()
+    }, extra || {}));
+    // Mantener el log acotado (últimos 200 mensajes)
+    if (window._chatLog.length > 200) window._chatLog = window._chatLog.slice(-200);
+  }
+
+  // ─── Asistente local: responde consultas sobre los datos de la app
+  function responderConsulta(texto) {
+    const t = texto.toLowerCase();
+    const fmtP = (n) => '$' + Math.round(n).toLocaleString('es-CL');
+    const saldoDe = (k) => {
+      const el = document.getElementById('c-'+k);
+      return el ? (parseFloat(el.value)||0) : 0;
+    };
+
+    // Saludos / cortesía
+    if (/^(hola|buenas|hey|wena|holi)\b/.test(t)) {
+      return '¡Hola Gonzalo! 👋 Escríbeme una nota o pregúntame por tus saldos, metas o deudores.';
+    }
+    if (/\b(gracias|genial|perfecto|buena)\b/.test(t) && t.length < 30) {
+      return '¡De nada! 💪';
+    }
+    if (/\b(qu[eé] puedes hacer|ayuda|help|c[oó]mo funciona)\b/.test(t)) {
+      return 'Puedo:\n• Guardar **notas y recordatorios** (detecto fechas como *"el 15 de octubre"* o *"el viernes"*)\n• Responder consultas: *"¿cuánto tengo en MP?"*, *"¿cuánto me deben?"*, *"¿cuánto falta para el auto?"*, *"total ahorros"*\n\nTodo lo demás que escribas lo guardo como nota. 📝';
+    }
+
+    // Saldos por cuenta
+    if (/\b(mp|mercado\s*pago)\b/.test(t) && /\b(cu[aá]nto|saldo|tengo|hay|lleva)\b/.test(t)) {
+      return `En **MercadoPago** tienes ${fmtP(saldoDe('mp'))} 🟡`;
+    }
+    if (/\b(be|banco\s*estado|vivienda)\b/.test(t) && /\b(cu[aá]nto|saldo|tengo|hay|lleva)\b/.test(t)) {
+      return `En **BancoEstado Vivienda** tienes ${fmtP(saldoDe('be'))} 🏠`;
+    }
+    if (/\b(fintual|reserva)\b/.test(t) && /\b(cu[aá]nto|saldo|tengo|hay)\b/.test(t) && !/capital/.test(t)) {
+      return `En **Fintual Reserva** tienes ${fmtP(saldoDe('fr'))} 📦`;
+    }
+    if (/\b(capital|importar)\b/.test(t) && /\b(cu[aá]nto|saldo|tengo|hay)\b/.test(t)) {
+      return `En **Fintual Capital** tienes ${fmtP(saldoDe('fc'))} 📦`;
+    }
+    if (/\b(cripto|btc|eth|bitcoin)\b/.test(t) && /\b(cu[aá]nto|saldo|tengo|hay)\b/.test(t)) {
+      return `En **Cripto (ETH + BTC)** tienes ${fmtP(saldoDe('cripto'))} ₿`;
+    }
+
+    // Total ahorros / patrimonio
+    if (/\b(total|patrimonio|todo)\b/.test(t) && /\b(ahorro|tengo|cu[aá]nto|plata)\b/.test(t)) {
+      const base = ['mp','be','fr','fc','cripto'].reduce((s,k) => s + saldoDe(k), 0);
+      const custom = (window._cuentasCustom || []).reduce((s,c) => s + (c.saldo||0), 0);
+      return `Tu patrimonio total es **${fmtP(base + custom)}** 💰\n\n• MercadoPago: ${fmtP(saldoDe('mp'))}\n• BancoEstado: ${fmtP(saldoDe('be'))}\n• Fintual Reserva: ${fmtP(saldoDe('fr'))}\n• Fintual Capital: ${fmtP(saldoDe('fc'))}\n• Cripto: ${fmtP(saldoDe('cripto'))}${custom > 0 ? '\n• Cuentas custom: ' + fmtP(custom) : ''}`;
+    }
+
+    // Deudores
+    if (/\b(deben|deudor|debe)\b/.test(t)) {
+      const deudores = (window._deudores || []).filter(d => !d.cobrado);
+      const tot = deudores.reduce((s,d) => s + (d.monto||0), 0);
+      if (deudores.length === 0) return 'No tienes deudas pendientes por cobrar. ✅';
+      const detalle = deudores.slice(0, 6).map(d => `• ${d.nombre}: ${fmtP(d.monto||0)}`).join('\n');
+      return `Te deben **${fmtP(tot)}** en total 👥\n\n${detalle}${deudores.length > 6 ? '\n…y ' + (deudores.length - 6) + ' más' : ''}`;
+    }
+
+    // Meta auto
+    if (/\bauto\b/.test(t) && /\b(falta|cu[aá]nto|meta|voy|llevo)\b/.test(t)) {
+      const saldo = saldoDe('mp');
+      const target = 5000000;
+      const falta = Math.max(0, target - saldo);
+      const pct = Math.min(100, (saldo/target)*100);
+      return `**Meta Auto** 🚗\n• Llevas: ${fmtP(saldo)} (${pct.toFixed(1)}%)\n• Faltan: **${fmtP(falta)}**\n• Para llegar en diciembre necesitas ~${fmtP(falta/6)} al mes`;
+    }
+
+    // Meta vivienda
+    if (/\bvivienda\b/.test(t) && /\b(falta|cu[aá]nto|meta|voy|llevo)\b/.test(t)) {
+      const saldo = saldoDe('be');
+      return `**Meta Vivienda** 🏠\n• Llevas: ${fmtP(saldo)}\n• Estado: ¡meta cumplida! Todo lo que sumes es pie extra para el depto.`;
+    }
+
+    // Recordatorios pendientes
+    if (/\b(recordatorio|pendiente|agendado)\b/.test(t) && /\b(qu[eé]|cu[aá]l|tengo|hay|mis)\b/.test(t)) {
+      const hoy = hoyISO();
+      const pend = (window._notas || []).filter(n => !n.completado && n.recordatorio_fecha && n.recordatorio_fecha >= hoy)
+        .sort((a,b) => a.recordatorio_fecha.localeCompare(b.recordatorio_fecha));
+      if (pend.length === 0) return 'No tienes recordatorios pendientes. 🎉';
+      const detalle = pend.slice(0, 6).map(n => `• ⏰ ${formatearFechaRecordatorio(n.recordatorio_fecha)}: ${n.texto.length > 50 ? n.texto.slice(0,50)+'…' : n.texto}`).join('\n');
+      return `Tienes **${pend.length}** ${pend.length === 1 ? 'recordatorio pendiente' : 'recordatorios pendientes'}:\n\n${detalle}`;
+    }
+
+    return null; // no es consulta → se guarda como nota
+  }
+
+  // ─── Render del stream de mensajes ───────────────────────────
+  function renderChatMensajes() {
+    const cont = document.getElementById('chat-mensajes-stream');
     if (!cont) return;
-    const arr = window._notas || [];
-    if (arr.length === 0) {
-      cont.innerHTML = `
-        <div class="chat-burbuja-recientes-titulo">Recientes</div>
-        <div style="font-size:12px;color:var(--muted);padding:14px 0;text-align:center;">
-          Sin notas aún. Escribe una abajo.
-        </div>
-      `;
+    const log = window._chatLog || [];
+
+    if (log.length === 0) {
+      const bienvenida = '¡Hola Gonzalo! 👋 Soy tu bitácora financiera.\n\nEscríbeme cualquier **nota o recordatorio** y la guardo. Si incluyes una fecha (*"el 15 de octubre"*, *"el viernes"*, *"en 2 semanas"*) te la agendo. ⏰\n\nTambién puedes preguntarme: *"¿cuánto tengo en MP?"*, *"¿cuánto me deben?"*, *"¿cuánto falta para el auto?"*';
+      cont.innerHTML = `<div class="msg-row app"><div class="msg-burbuja">${mdLite(bienvenida)}</div></div>`;
       return;
     }
-    const recientes = arr.slice(0, 5);
-    const items = recientes.map(n => {
-      const estado = estadoRecordatorio(n);
-      const chipHtml = n.recordatorio_fecha
-        ? `<div><span class="nota-mini-chip ${estado}">⏰ ${formatearFechaRecordatorio(n.recordatorio_fecha)}</span></div>`
+
+    cont.innerHTML = log.map(m => {
+      const chipHtml = m.notaFecha
+        ? `<span class="msg-chip-fecha">⏰ ${formatearFechaRecordatorio(m.notaFecha)}</span>`
         : '';
-      return `<div class="nota-mini ${n.completado ? 'hecho' : ''}">
-        <div class="nota-texto">${escapeHtml(n.texto)}</div>
-        ${chipHtml}
-        <div class="nota-mini-time">${formatearFechaRelativa(n.fecha_creacion)}</div>
+      return `<div class="msg-row ${m.rol}">
+        <div class="msg-burbuja">${mdLite(m.texto)}${chipHtml ? '<br>' + chipHtml : ''}<span class="msg-hora">${horaCorta(m.ts)}</span></div>
       </div>`;
     }).join('');
-    cont.innerHTML = `<div class="chat-burbuja-recientes-titulo">Últimas notas (${Math.min(5, arr.length)} de ${arr.length})</div>${items}`;
+    // Scroll al final
+    cont.scrollTop = cont.scrollHeight;
   }
+  // Alias para compatibilidad con los hooks que llaman renderNotasMini
+  function renderNotasMini() { renderChatMensajes(); }
 
   // ─── Renderizar la página Notas completa ─────────────────────
   window.renderNotasPagina = function() {
@@ -10135,7 +10284,7 @@ function v6MoveBlocks() {
       return `<div class="${cardClass.join(' ')}">
         <div class="nota-card-head">
           <div style="flex:1;min-width:0;">
-            <div class="nota-texto">${escapeHtml(n.texto)}</div>
+            <div class="nota-texto">${mdLite(n.texto)}</div>
             <div class="nota-meta">
               ${formatearFechaRelativa(n.fecha_creacion)}
               ${n.recordatorio_original ? ' · detectado: "' + escapeHtml(n.recordatorio_original) + '"' : ''}
@@ -10173,13 +10322,40 @@ function v6MoveBlocks() {
     const texto = ta.value.trim();
     if (!texto) return;
     const btn = document.getElementById('chat-enviar-btn');
-    if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
-    await agregarNota(texto);
-    if (btn) { btn.disabled = false; btn.textContent = 'Guardar'; }
+    if (btn) btn.disabled = true;
     ta.value = '';
-    // Cerrar el chat y volver a donde estaba navegando
-    closeChatBurbuja();
-    if (typeof v6ShowToast === 'function') v6ShowToast('📝 Nota guardada', 'success');
+
+    // 1. Mensaje del usuario al stream
+    pushChatMsg('user', texto);
+    renderChatMensajes();
+
+    // 2. ¿Es una consulta sobre los datos?
+    const respuestaConsulta = responderConsulta(texto);
+    if (respuestaConsulta) {
+      // Consulta → solo responde, no crea nota
+      setTimeout(async () => {
+        pushChatMsg('app', respuestaConsulta);
+        renderChatMensajes();
+        if (btn) btn.disabled = false;
+        if (typeof guardar === 'function') await guardar();
+      }, 350);
+      return;
+    }
+
+    // 3. No es consulta → guardar como nota + responder confirmación
+    const nota = await agregarNota(texto);
+    let respuesta;
+    if (nota && nota.recordatorio_fecha) {
+      respuesta = `✅ Nota guardada.\n⏰ Te lo recordaré el **${formatearFechaRecordatorio(nota.recordatorio_fecha)}** (detecté *"${nota.recordatorio_original}"*).`;
+    } else {
+      respuesta = '✅ Nota guardada en tu bitácora. 📝';
+    }
+    setTimeout(async () => {
+      pushChatMsg('app', respuesta, nota && nota.recordatorio_fecha ? { notaFecha: nota.recordatorio_fecha } : null);
+      renderChatMensajes();
+      if (btn) btn.disabled = false;
+      if (typeof guardar === 'function') await guardar();
+    }, 350);
   };
 
   // ─── Popup recordatorios para hoy (Opción 2) ─────────────────
@@ -10239,6 +10415,7 @@ function v6MoveBlocks() {
       const data = _v31n_origBuildData.apply(this, arguments);
       if (data && typeof data === 'object') {
         data.notas = window._notas || [];
+        data.chatLog = window._chatLog || [];
       }
       return data;
     };
@@ -10248,6 +10425,7 @@ function v6MoveBlocks() {
     window._aplicarDatos = function(d) {
       const result = _v31n_origAplicarDatos.apply(this, arguments);
       if (d && Array.isArray(d.notas)) window._notas = d.notas;
+      if (d && Array.isArray(d.chatLog)) window._chatLog = d.chatLog;
       setTimeout(() => {
         renderNotasMini();
         if (document.getElementById('page-notas')?.classList.contains('active')) renderNotasPagina();
@@ -10279,12 +10457,12 @@ function v6MoveBlocks() {
       .replace(/'/g, '&#39;');
   }
 
-  // ─── Atajos de teclado en el textarea: Ctrl+Enter envía ─────
+  // ─── Atajos de teclado: Enter envía, Shift+Enter salto de línea ─
   setTimeout(() => {
     const ta = document.getElementById('chat-input-texto');
     if (ta) {
       ta.addEventListener('keydown', e => {
-        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
           enviarNotaDesdeChat();
         }
