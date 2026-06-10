@@ -1355,7 +1355,7 @@ body {
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
       <div>
         <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px;color:var(--text);">📝 Bitácora financiera</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:4px;">Notas rápidas, recordatorios y apuntes. La 💬 burbuja abajo a la izquierda te deja escribir desde cualquier pantalla.</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px;">Notas rápidas, recordatorios y apuntes. La 💬 burbuja abajo a la derecha te deja escribir desde cualquier pantalla.</div>
       </div>
       <button class="custom-add-btn" onclick="openChatBurbuja()" style="white-space:nowrap;">➕ Nueva nota</button>
     </div>
@@ -9439,8 +9439,8 @@ function v6MoveBlocks() {
       /* Burbuja flotante */
       .notas-fab {
         position: fixed;
-        bottom: 20px;
-        left: 20px;
+        bottom: 90px;
+        right: 20px;
         width: 56px;
         height: 56px;
         border-radius: 50%;
@@ -9451,10 +9451,13 @@ function v6MoveBlocks() {
         box-shadow: 0 6px 16px rgba(0,0,0,.35);
         cursor: pointer;
         z-index: 1500;
-        display: flex;
+        display: flex !important;
         align-items: center;
         justify-content: center;
         transition: transform .15s, box-shadow .15s;
+      }
+      @media (max-width: 767px) {
+        .notas-fab { bottom: 80px; right: 16px; width: 52px; height: 52px; font-size: 22px; }
       }
       .notas-fab:hover { transform: scale(1.06); box-shadow: 0 8px 22px rgba(0,0,0,.45); }
       .notas-fab:active { transform: scale(.98); }
@@ -9776,7 +9779,12 @@ function v6MoveBlocks() {
     fab.id = 'notas-fab';
     fab.className = 'notas-fab';
     fab.title = 'Bitácora financiera';
-    fab.onclick = openChatBurbuja;
+    // FIX V31.3.1: usar wrapper en lugar de referencia directa porque
+    // openChatBurbuja se define más abajo en el script. Si referenciamos
+    // directamente acá, JS hace lookup ahora, no encuentra la función,
+    // tira ReferenceError y aborta el resto del script (incluyendo las
+    // declaraciones de las funciones de la bitácora).
+    fab.onclick = function() { if (typeof window.openChatBurbuja === 'function') window.openChatBurbuja(); };
     fab.innerHTML = '💬 <span class="badge-count" id="notas-fab-badge" style="display:none;"></span>';
     document.body.appendChild(fab);
 
