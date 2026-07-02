@@ -1397,8 +1397,10 @@ body {
     <div style="font-size:13px;color:var(--muted);">
       Snapshots completos de meses cerrados. Se crean automáticamente al iniciar un nuevo mes.
     </div>
+    <button class="icon-btn" style="width:auto;padding:0 14px;height:36px;" onclick="v6AbrirRecuperarSnapshot()">🩹 Recuperar mes manualmente</button>
     <button class="icon-btn primary" style="width:auto;padding:0 14px;height:36px;" onclick="v6CerrarMesManual()">📅 Cerrar mes ahora</button>
   </div>
+  <div id="v6-recuperar-form" style="display:none;"></div>
   <div id="v6-historico-list"></div>
 </div>
 
@@ -1779,7 +1781,8 @@ body {
     <div class="card-title">📋 Gastos fijos</div>
     <div class="fijo-row" id="fijo-casa"><div class="fijo-check" onclick="toggleFijo('casa',this)"></div><div class="fijo-row-info"><div>Cuota casa</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$150.000</div></div>
     <div class="fijo-row" id="fijo-crossfit"><div class="fijo-check" onclick="toggleFijo('crossfit',this)"></div><div class="fijo-row-info"><div>Crossfit</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$45.000</div></div>
-    <div class="fijo-row" id="fijo-flores"><div class="fijo-check" onclick="toggleFijo('flores',this)"></div><div class="fijo-row-info"><div>Flores</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$30.000</div></div>
+    <div class="fijo-row" id="fijo-flores"><div class="fijo-check" onclick="toggleFijo('flores',this)"></div><div class="fijo-row-info"><div>Flores (20)</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$46.000</div></div>
+    <div class="fijo-row" id="fijo-claude"><div class="fijo-check" onclick="toggleFijo('claude',this)"></div><div class="fijo-row-info"><div>Claude</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$23.990</div></div>
     <div class="fijo-row" id="fijo-psico"><div class="fijo-check" onclick="toggleFijo('psico',this)"></div><div class="fijo-row-info"><div>Psicólogo</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$44.000</div></div>
     <div class="fijo-row" id="fijo-wizz"><div class="fijo-check" onclick="toggleFijo('wizz',this)"></div><div class="fijo-row-info"><div>Wizz (cuotas)</div><div class="fijo-estado" style="color:var(--yellow);">⚠ Termina nov</div></div><div class="fijo-amount" style="color:var(--yellow);">$61.666</div></div>
     <div class="fijo-row" id="fijo-bodega"><div class="fijo-check" onclick="toggleFijo('bodega',this)"></div><div class="fijo-row-info"><div>Bodega</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$24.600</div></div>
@@ -1789,7 +1792,7 @@ body {
     <div class="fijo-row" id="fijo-celu"><div class="fijo-check" onclick="toggleFijo('celu',this)"></div><div class="fijo-row-info"><div>Plan Celu</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$9.027</div></div>
     <div class="total-row">
       <span class="total-label">Total fijos</span>
-      <span class="total-amount" style="color:var(--yellow);font-size:17px;">$382.823</span>
+      <span class="total-amount" style="color:var(--yellow);font-size:17px;">$422.813</span>
     </div>
   </div>
 
@@ -2704,9 +2707,10 @@ async function guardar() {
   }
 
   // 2. Intenta guardar en Drive
+  let driveOk = true;
   if (driveAccessToken) {
-    const ok = await driveGuardar(jsonStr);
-    btn.textContent = ok ? '✅ Guardado en Drive' : '✅ Guardado local';
+    driveOk = await driveGuardar(jsonStr);
+    btn.textContent = driveOk ? '✅ Guardado en Drive' : '⚠️ Solo local (Drive falló)';
   } else {
     btn.textContent = '✅ Guardado local';
   }
@@ -2714,6 +2718,10 @@ async function guardar() {
   btn.classList.add('saved');
   btn.disabled = false;
   setTimeout(() => { btn.textContent = '💾 Guardar'; btn.classList.remove('saved'); }, 2500);
+  // FIX cierre de mes: guardar() ahora informa si la escritura en Drive
+  // realmente terminó bien, para que quien la llame (p.ej. v6CerrarMesManual)
+  // pueda esperarla (await) en vez de dispararla y olvidarse.
+  return driveOk;
 }
 
 // ─── Aplica datos deserializados al DOM (lógica de restauración) ─
@@ -2753,8 +2761,26 @@ function _aplicarDatos(d) {
     // ── V31: v6_snapshots (página Histórico) ──────────────────
     // Antes vivían sólo en localStorage. Ahora se persisten en Drive
     // para que la página Histórico sobreviva cambios de navegador.
+    // FIX cierre de mes: ANTES esto pisaba (overwrite) el localStorage
+    // completo con lo que viniera de Drive. Si un guardado previo a Drive
+    // había fallado o quedado a medias (p.ej. cierre de mes con la pestaña
+    // cerrada antes de que terminara la subida), Drive podía tener una
+    // versión más VIEJA que la local — y esa versión vieja borraba el
+    // snapshot del mes recién cerrado que sí estaba bien guardado en local.
+    // Ahora se hace un merge por "mes", quedándose con el registro más
+    // reciente (mayor "ts") de cada lado, en vez de un reemplazo ciego.
     if (d.v6_snapshots && Array.isArray(d.v6_snapshots) && typeof v6SaveSnapshots === 'function') {
-      v6SaveSnapshots(d.v6_snapshots);
+      const locales = (typeof v6GetSnapshots === 'function') ? v6GetSnapshots() : [];
+      const porMes = {};
+      locales.forEach(s => { if (s && s.mes) porMes[s.mes] = s; });
+      d.v6_snapshots.forEach(s => {
+        if (!s || !s.mes) return;
+        const actual = porMes[s.mes];
+        if (!actual || (s.ts || 0) >= (actual.ts || 0)) porMes[s.mes] = s;
+      });
+      // Reordenar cronológicamente por ts para mantener el orden de siempre
+      const merged = Object.values(porMes).sort((a,b) => (a.ts||0) - (b.ts||0));
+      v6SaveSnapshots(merged);
     }
 
     // ── V31: retiros de cuentas (audit trail) ─────────────────
@@ -3058,6 +3084,16 @@ window.onload = async function() {
     if (typeof v6RenderHistorico === 'function') v6RenderHistorico();
     if (typeof renderRetiros === 'function') renderRetiros();
   }, 150);
+  // FIX cierre de mes: v6CheckAutoSnapshot() ANTES corría en un setTimeout
+  // de 2000ms colgado de 'DOMContentLoaded', totalmente independiente de si
+  // cargar() (que trae los datos reales desde Drive) ya había terminado.
+  // Si Drive tardaba más de 2s, el auto-cierre corría sobre datos aún no
+  // cargados y, peor, cargar() podía terminar DESPUÉS y pisar con datos
+  // viejos el snapshot recién creado. Ahora corre acá, garantizado después
+  // de que cargar() ya aplicó los datos al DOM.
+  if (typeof v6CheckAutoSnapshot === 'function') {
+    try { await v6CheckAutoSnapshot(); } catch(e) { console.warn('v6CheckAutoSnapshot:', e); }
+  }
 };
 
 // ─── MODAL COMPARTIDO ────────────────────────────────────────────
@@ -5365,23 +5401,57 @@ function v6LimpiarMesActualUI() {
   v6RenderDashboard();
 }
 
-function v6CerrarMesManual() {
+// FIX cierre de mes (jul 2026): el guardado en Drive era "fire and forget"
+// (guardar() se llamaba sin await). Si la pestaña se cerraba/recargaba antes
+// de que terminara la escritura en Drive, la siguiente carga (cargar()) traía
+// desde Drive el estado VIEJO (sin el snapshot recién creado) y _aplicarDatos()
+// sobreescribía el localStorage con eso, borrando el histórico recién cerrado.
+// Ahora: (1) se espera (await) a que guardar() termine antes de confirmar el
+// cierre, (2) se bloquea el botón mientras tanto para evitar cierres duplicados
+// o que el usuario navegue fuera antes de que termine, y (3) v6CheckAutoSnapshot
+// ya no corre en un timer independiente: corre DESPUÉS de que cargar() terminó
+// de traer los datos de Drive (ver window.onload), para no pisarse con esa carga.
+let _v6CerrandoMes = false;
+
+async function v6CerrarMesManual() {
+  if (_v6CerrandoMes) return;
   const mes = v6GetMesActualNombre();
   if (!confirm('📅 ¿Cerrar el mes "' + mes + '" ahora?\n\n✅ Se guardará snapshot completo en Histórico\n✅ Depósitos del mes se SUMAN al saldo actual de cada cuenta\n🗑 Se limpia: TC, asignador, checks de fijos, checklist, depósitos\n❌ NO se toca: metas, deudores\n\n¿Continuar?')) return;
-  const snap = v6TomarSnapshot(mes);
-  if (!snap) { alert('Error: no se pudo crear snapshot'); return; }
-  const snaps = v6GetSnapshots();
-  const idx = snaps.findIndex(s => s.mes === mes);
-  if (idx >= 0) snaps[idx] = snap;
-  else snaps.push(snap);
-  v6SaveSnapshots(snaps);
-  v6LimpiarMesActualUI();
-  if (driveAccessToken && typeof guardar === 'function') guardar();
-  alert('✅ Snapshot de ' + mes + ' guardado.\nEl mes nuevo está limpio.');
-  v6RenderHistorico();
+
+  _v6CerrandoMes = true;
+  const btn = document.querySelector('button[onclick="v6CerrarMesManual()"]');
+  const btnTxtOriginal = btn ? btn.textContent : null;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Cerrando mes…'; }
+
+  try {
+    const snap = v6TomarSnapshot(mes);
+    if (!snap) { alert('Error: no se pudo crear snapshot'); return; }
+    const snaps = v6GetSnapshots();
+    const idx = snaps.findIndex(s => s.mes === mes);
+    if (idx >= 0) snaps[idx] = snap;
+    else snaps.push(snap);
+    v6SaveSnapshots(snaps);
+    v6LimpiarMesActualUI();
+
+    let driveOk = true;
+    if (driveAccessToken && typeof guardar === 'function') {
+      driveOk = await guardar() !== false;
+    }
+
+    v6RenderHistorico();
+    if (driveOk) {
+      alert('✅ Snapshot de ' + mes + ' guardado (local + Drive).\nEl mes nuevo está limpio.');
+    } else {
+      alert('⚠️ Snapshot de ' + mes + ' guardado LOCALMENTE, pero falló el guardado en Drive.\nNo cierres la app hasta reintentar "Guardar" o revisar tu conexión, o el histórico podría perderse.');
+    }
+  } finally {
+    _v6CerrandoMes = false;
+    if (btn) { btn.disabled = false; btn.textContent = btnTxtOriginal; }
+  }
 }
 
-function v6CheckAutoSnapshot() {
+async function v6CheckAutoSnapshot() {
+  if (_v6CerrandoMes) return;
   const lastMonth = localStorage.getItem(V6_LAST_MONTH_KEY);
   const currentMonth = v6GetMesActualKey();
 
@@ -5402,17 +5472,31 @@ function v6CheckAutoSnapshot() {
       '¿Proceder?'
     );
     if (ok) {
-      const snap = v6TomarSnapshot(mesAnt);
-      if (snap) {
-        const snaps = v6GetSnapshots();
-        const idx = snaps.findIndex(s => s.mes === mesAnt);
-        if (idx >= 0) snaps[idx] = snap;
-        else snaps.push(snap);
-        v6SaveSnapshots(snaps);
-        v6LimpiarMesActualUI();
-        if (driveAccessToken && typeof guardar === 'function') guardar();
+      _v6CerrandoMes = true;
+      try {
+        const snap = v6TomarSnapshot(mesAnt);
+        if (snap) {
+          const snaps = v6GetSnapshots();
+          const idx = snaps.findIndex(s => s.mes === mesAnt);
+          if (idx >= 0) snaps[idx] = snap;
+          else snaps.push(snap);
+          v6SaveSnapshots(snaps);
+          v6LimpiarMesActualUI();
+          let driveOk = true;
+          if (driveAccessToken && typeof guardar === 'function') {
+            driveOk = await guardar() !== false;
+          }
+          v6RenderHistorico();
+          if (!driveOk) {
+            alert('⚠️ Snapshot de ' + mesAnt + ' guardado LOCALMENTE, pero falló el guardado en Drive.\nNo cierres la app hasta reintentar "Guardar", o el histórico podría perderse.');
+          }
+        }
+      } finally {
+        _v6CerrandoMes = false;
       }
     }
+    // Se marca el mes como "visto" tanto si se cerró como si se canceló,
+    // para no volver a preguntar en cada carga dentro del mismo mes.
     localStorage.setItem(V6_LAST_MONTH_KEY, currentMonth);
   }
 }
@@ -5930,6 +6014,112 @@ function v6EliminarSnapshot(idx) {
   v6RenderHistorico();
 }
 
+// ═══ Recuperación manual de un snapshot perdido ═══════════════════
+// Herramienta de recuperación: como el bug de cierre de mes pudo borrar
+// el histórico de un mes (p.ej. junio 2026) sin dejar rastro de los montos
+// reales, no hay forma de reconstruirlo automáticamente — esos números
+// sólo existían en tu cabeza/capturas/Drive borrado. Este formulario te
+// permite volver a ingresarlos a mano y crear (o reemplazar) el snapshot
+// de ese mes en el Histórico, igual que si se hubiera cerrado bien.
+const V6_CUENTAS_LABELS = { mp:'MercadoPago', be:'BancoEstado', fr:'Fintual Reserva', fc:'Fintual Capital', cripto:'Cripto' };
+
+function v6AbrirRecuperarSnapshot() {
+  const cont = document.getElementById('v6-recuperar-form');
+  if (!cont) return;
+  if (cont.style.display !== 'none') { cont.style.display = 'none'; cont.innerHTML = ''; return; }
+
+  const cuentasRows = Object.entries(V6_CUENTAS_LABELS).map(([k, label]) => `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px;">
+      <label style="font-size:12px;color:var(--muted);">${label}</label>
+      <input type="number" id="v6rec-saldo-${k}" placeholder="Saldo final" style="padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:'DM Mono',monospace;">
+      <input type="number" id="v6rec-dep-${k}" placeholder="Depositado ese mes" style="padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:'DM Mono',monospace;">
+    </div>`).join('');
+
+  cont.innerHTML = `<div class="card" style="border-left:3px solid var(--mustard, #D09A27);margin-bottom:16px;">
+    <div class="v6-section-label" style="margin-top:0;">🩹 Recuperar snapshot manual</div>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:10px;">
+      Ingresa los montos reales de ese mes (los tienes que recordar tú — no quedaron guardados en ningún lado por el bug). Si el mes ya existe en el Histórico, esto lo reemplaza.
+    </p>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Mes</label>
+      <input type="text" id="v6rec-mes" value="Junio 2026" style="padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:'DM Mono',monospace;width:200px;">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">
+      <span>Cuenta</span><span>Saldo final del mes</span><span>Depositado ese mes</span>
+    </div>
+    ${cuentasRows}
+    <div style="display:flex;gap:10px;margin-top:14px;">
+      <button class="icon-btn primary" style="width:auto;padding:0 14px;height:36px;" onclick="v6GuardarSnapshotManual()">💾 Guardar snapshot</button>
+      <button class="icon-btn" style="width:auto;padding:0 14px;height:36px;" onclick="document.getElementById('v6-recuperar-form').style.display='none';document.getElementById('v6-recuperar-form').innerHTML='';">Cancelar</button>
+    </div>
+  </div>`;
+  cont.style.display = 'block';
+}
+
+async function v6GuardarSnapshotManual() {
+  const mesEl = document.getElementById('v6rec-mes');
+  const mes = mesEl ? mesEl.value.trim() : '';
+  if (!mes) { alert('Ingresa el nombre del mes (ej: "Junio 2026").'); return; }
+
+  const cuentas = {};
+  const depositos = {};
+  Object.keys(V6_CUENTAS_LABELS).forEach(k => {
+    const saldoEl = document.getElementById('v6rec-saldo-' + k);
+    const depEl = document.getElementById('v6rec-dep-' + k);
+    cuentas[k] = saldoEl ? (parseFloat(saldoEl.value) || 0) : 0;
+    depositos[k] = { monto: depEl ? (parseFloat(depEl.value) || 0) : 0, listo: true };
+  });
+
+  const snaps = v6GetSnapshots();
+  const idx = snaps.findIndex(s => s.mes === mes);
+  if (idx >= 0 && !confirm('Ya existe un snapshot para "' + mes + '". ¿Reemplazarlo con estos valores?')) return;
+
+  // Construye un snapshot con la misma forma que v6TomarSnapshot(), pero
+  // sólo con los datos que podemos reconstruir a mano. metas/deudores se
+  // toman del estado actual de la app (no cambian mes a mes salvo que tú
+  // los edites), y todo lo demás (TC, fijos, gastos) queda vacío porque no
+  // es recuperable retroactivamente.
+  let metasActuales = {}, deudoresActuales = [];
+  try {
+    if (typeof _buildData === 'function') {
+      const live = _buildData();
+      metasActuales = live.metas || {};
+      deudoresActuales = live.deudores || [];
+    }
+  } catch(e) {}
+
+  const snap = {
+    mes: mes,
+    ts: Date.now(),
+    cuentas: cuentas,
+    metas: metasActuales,
+    depositos: depositos,
+    tarjetaMontos: {},
+    pagos: {},
+    customPersonas: [],
+    fijosPagados: {},
+    deudores: deudoresActuales,
+    gastosCount: 0,
+    gastos: [],
+    _recuperadoManualmente: true
+  };
+
+  if (idx >= 0) snaps[idx] = snap; else snaps.push(snap);
+  v6SaveSnapshots(snaps);
+
+  let driveOk = true;
+  if (driveAccessToken && typeof guardar === 'function') {
+    driveOk = await guardar() !== false;
+  }
+
+  document.getElementById('v6-recuperar-form').style.display = 'none';
+  document.getElementById('v6-recuperar-form').innerHTML = '';
+  v6RenderHistorico();
+  alert(driveOk
+    ? ('✅ Snapshot de ' + mes + ' recuperado y guardado (local + Drive).')
+    : ('⚠️ Snapshot de ' + mes + ' guardado LOCALMENTE, pero falló Drive. Reintenta "Guardar" pronto.'));
+}
+
 // ═══ Asignador unificado ═══════════════════════════════════════
 function v6HandleUnifiedFiles(input) {
   const files = Array.from(input.files);
@@ -6369,7 +6559,9 @@ window.addEventListener('DOMContentLoaded', () => {
     if (btn) btn.textContent = isDark ? '☀️' : '🌙';
   }, 100);
   setTimeout(() => {
-    v6CheckAutoSnapshot();
+    // FIX cierre de mes: v6CheckAutoSnapshot() se movió a window.onload,
+    // después de await cargar(), para no correr antes de que los datos
+    // reales (Drive) estén cargados. Ver comentario en window.onload.
     v6RenderDashboard();
   }, 2000);
 });
