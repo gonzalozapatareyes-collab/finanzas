@@ -1703,29 +1703,6 @@ body {
   </div>
 
 
-
-  <!-- Cripto -->
-  <div class="ahorro-row">
-    <div class="ahorro-info">
-      <div class="cuenta-left">
-        <div class="cuenta-dot" style="background:var(--green);"></div>
-        <div><div class="cuenta-name">ETH + BTC (MP)</div><div class="cuenta-dest">₿ Cripto</div></div>
-      </div>
-      <div id="listo-cripto" style="margin-left:18px;margin-top:2px;"></div>
-    </div>
-    <div class="ahorro-controls">
-      <div class="ahorro-field">
-        <span class="ahorro-field-label">Saldo actual</span>
-        <input class="editable" type="number" id="c-cripto" value="" placeholder="0" onchange="recalcular()" style="color:var(--green);width:140px;">
-      </div>
-      <div class="ahorro-field">
-        <span class="ahorro-field-label">Deposité este mes</span>
-        <input class="editable" type="number" id="dep-cripto" value="0" onchange="recalcularDeposito('cripto')" placeholder="0" style="color:var(--green);width:140px;">
-      </div>
-      <button class="ahorro-confirm pendiente" id="btn-cripto" onclick="confirmarDeposito('cripto')">✓ Listo</button>
-    </div>
-  </div>
-
   <!-- Total row -->
   <div class="ahorro-total-row">
     <span class="total-label">Total ahorros</span>
@@ -1790,9 +1767,10 @@ body {
     <div class="fijo-row" id="fijo-netflix"><div class="fijo-check" onclick="toggleFijo('netflix',this)"></div><div class="fijo-row-info"><div>Netflix</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$9.990</div></div>
     <div class="fijo-row" id="fijo-google"><div class="fijo-check" onclick="toggleFijo('google',this)"></div><div class="fijo-row-info"><div>Google One</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$1.790</div></div>
     <div class="fijo-row" id="fijo-celu"><div class="fijo-check" onclick="toggleFijo('celu',this)"></div><div class="fijo-row-info"><div>Plan Celu</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$9.027</div></div>
+    <div class="fijo-row" id="fijo-bip"><div class="fijo-check" onclick="toggleFijo('bip',this)"></div><div class="fijo-row-info"><div>BIP</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$15.000</div></div>
     <div class="total-row">
       <span class="total-label">Total fijos</span>
-      <span class="total-amount" style="color:var(--yellow);font-size:17px;">$422.813</span>
+      <span class="total-amount" style="color:var(--yellow);font-size:17px;">$437.813</span>
     </div>
   </div>
 
@@ -1935,7 +1913,7 @@ function calcGrandTotal() {
 }
 
 function recalcular() {
-  const ids = ['c-mp','c-be','c-fr','c-fc','c-cripto'];
+  const ids = ['c-mp','c-be','c-fr','c-fc'];
   let total = 0;
   ids.forEach(id => total += val(id));
   document.getElementById('totalCuentas').textContent = fmt(total);
@@ -1982,7 +1960,7 @@ window._historialAhorros = window._historialAhorros || [];
 
 const CUENTAS_NOMBRES = {
   mp: 'MercadoPago', be: 'BancoEstado', fr: 'Fintual Reserva',
-  fc: 'Fintual Capital', cripto: 'ETH + BTC'
+  fc: 'Fintual Capital'
 };
 
 function getMesActual() {
@@ -2022,7 +2000,7 @@ function initHeroHidden() {
 
 function recalcularTotalDepositos() {
   let totalDep = 0;
-  ['mp','be','fr','fc','cripto'].forEach(k => {
+  ['mp','be','fr','fc'].forEach(k => {
     const el = document.getElementById('dep-'+k);
     const valInput = parseFloat(el ? el.value : 0) || 0;
     // FIX V31.2: NO sumar _acumuladoMes acá porque ya está consolidado en el saldo.
@@ -2033,7 +2011,7 @@ function recalcularTotalDepositos() {
   });
 
   // Total saldos actuales (sin depósitos)
-  const totalSaldo = ['c-mp','c-be','c-fr','c-fc','c-cripto'].reduce((s,id) => s + val(id), 0);
+  const totalSaldo = ['c-mp','c-be','c-fr','c-fc'].reduce((s,id) => s + val(id), 0);
 
   // Hero: saldo + depósitos del mes
   const totalConDep = totalSaldo + totalDep;
@@ -2133,10 +2111,10 @@ function confirmarDeposito(k) {
 
 function guardarSnapshotHistorial() {
   const mes = getMesActual();
-  const saldoTotal = ['mp','be','fr','fc','cripto'].reduce((s,k) => s + val('c-'+k), 0);
+  const saldoTotal = ['mp','be','fr','fc'].reduce((s,k) => s + val('c-'+k), 0);
   let totalDeposito = 0;
   const detalle = {};
-  ['mp','be','fr','fc','cripto'].forEach(k => {
+  ['mp','be','fr','fc'].forEach(k => {
     const dep = parseFloat(document.getElementById('dep-'+k)?.value||0)||0;
     totalDeposito += dep;
     detalle[k] = { saldo: val('c-'+k), deposito: dep };
@@ -2628,7 +2606,7 @@ async function driveCargar() {
 // ══════════════════════════════════════════════════════════════════
 function _buildData() {
   const data = {
-    cuentas: { mp:val('c-mp'), be:val('c-be'), fr:val('c-fr'), fc:val('c-fc'), cripto:val('c-cripto') },
+    cuentas: { mp:val('c-mp'), be:val('c-be'), fr:val('c-fr'), fc:val('c-fc') },
     metas:   { auto:val('auto-meta'), vivienda:val('viv-meta') },
     pagos:   {}, checks: [], tarjetaMontos: {}, gastos: null,
     depositos: {},
@@ -2648,7 +2626,7 @@ function _buildData() {
     })()
   };
   // Save deposit amounts and confirmation states
-  ['mp','be','fr','fc','cripto'].forEach(k => {
+  ['mp','be','fr','fc'].forEach(k => {
     const depEl = document.getElementById('dep-'+k);
     const btnEl = document.getElementById('btn-'+k);
     data.depositos[k] = {
@@ -2729,14 +2707,14 @@ function _aplicarDatos(d) {
   try {
     // ── Saldos de cuentas ──────────────────────────────────────
     if (d.cuentas) {
-      ['mp','be','fr','fc','cripto'].forEach(k => {
+      ['mp','be','fr','fc'].forEach(k => {
         if (d.cuentas[k] !== undefined) document.getElementById('c-'+k).value = d.cuentas[k];
       });
     }
 
     // ── Depósitos del mes ──────────────────────────────────────
     if (d.depositos) {
-      ['mp','be','fr','fc','cripto'].forEach(k => {
+      ['mp','be','fr','fc'].forEach(k => {
         const dep = d.depositos[k];
         if (!dep) return;
         const depEl = document.getElementById('dep-'+k);
@@ -5345,7 +5323,7 @@ function v6LimpiarMesActualUI() {
   // CRÍTICO: consolidar depósitos en saldos antes de limpiar
   // saldo_nuevo = saldo_actual + deposito_del_mes
   // deposito_nuevo = 0
-  const CUENTAS = ['mp','be','fr','fc','cripto'];
+  const CUENTAS = ['mp','be','fr','fc'];
   CUENTAS.forEach(k => {
     const saldoEl = document.getElementById('c-' + k);
     const depEl = document.getElementById('dep-' + k);
@@ -5595,7 +5573,7 @@ function v6RenderDashboard() {
   if (typeof val !== 'function') return;
   // FIX V31.2: Patrimonio = saldo + dep pendiente. NO sumar _acumuladoMes
   // porque ya está consolidado en el saldo input (evita doble conteo).
-  const total = ['mp','be','fr','fc','cripto'].reduce((s,k) => {
+  const total = ['mp','be','fr','fc'].reduce((s,k) => {
     const saldo = val('c-'+k) || 0;
     const depEl = document.getElementById('dep-'+k);
     const dep = depEl ? (parseFloat(depEl.value)||0) : 0;
@@ -5604,13 +5582,13 @@ function v6RenderDashboard() {
   // totDep = solo el input dep pendiente. El widget "depositado este mes"
   // del dashboard que usa _acumuladoMes para mostrar el progreso del mes
   // se calcula aparte (es solo informativo, no se suma al patrimonio).
-  const totDep = ['mp','be','fr','fc','cripto'].reduce((s,k) => {
+  const totDep = ['mp','be','fr','fc'].reduce((s,k) => {
     const elActual = document.getElementById('dep-'+k);
     return s + (elActual ? (parseFloat(elActual.value)||0) : 0);
   }, 0);
   // El widget "Depositado este mes" del dashboard sigue mostrando _acumuladoMes
   // como referencia informativa (cuánto se ha depositado en el mes en curso).
-  const depMesAcumulado = ['mp','be','fr','fc','cripto'].reduce((s,k) => {
+  const depMesAcumulado = ['mp','be','fr','fc'].reduce((s,k) => {
     return s + ((window._acumuladoMes && window._acumuladoMes[k]) || 0);
   }, 0);
   const PERSONAS = ['pappaola','yo','vania','paula','aldo','mama','rorro','luis'];
@@ -5681,7 +5659,6 @@ function v6RenderDashboard() {
     { name: 'BancoEstado', value: (val('c-be')||0) + _ge('dep-be'), color: '#D16D3E' },
     { name: 'Fintual Reserva', value: (val('c-fr')||0) + _ge('dep-fr'), color: '#B5856B' },
     { name: 'Fintual Capital', value: (val('c-fc')||0) + _ge('dep-fc'), color: '#D9B1A7' },
-    { name: 'Cripto', value: (val('c-cripto')||0) + _ge('dep-cripto'), color: '#6B9B3F' }
   ], 'Total');
 
   // Barras horizontales TC por persona
@@ -5743,12 +5720,12 @@ function v6RenderAhorros() {
   if (typeof val === 'function') {
     const mes = v6GetMesActualNombre();
     // V30: incluir acumulado mensual en total y totDep para vista de evolución mes actual
-    const total = ['mp','be','fr','fc','cripto'].reduce((s,k) => {
+    const total = ['mp','be','fr','fc'].reduce((s,k) => {
       const saldo = val('c-'+k) || 0;
       const acum = (window._acumuladoMes && window._acumuladoMes[k]) || 0;
       return s + saldo + acum;
     }, 0);
-    const totDep = ['mp','be','fr','fc','cripto'].reduce((s,k) => {
+    const totDep = ['mp','be','fr','fc'].reduce((s,k) => {
       const el = document.getElementById('dep-'+k);
       const vIn = el ? (parseFloat(el.value)||0) : 0;
       const acum = (window._acumuladoMes && window._acumuladoMes[k]) || 0;
@@ -5781,7 +5758,7 @@ function v6RenderAhorros() {
       insightsEl.innerHTML = '';
     } else {
       // FIX V31.2: NO sumar _acumuladoMes (ya está consolidado en el saldo).
-      const totActual = ['mp','be','fr','fc','cripto'].reduce((s,k) => {
+      const totActual = ['mp','be','fr','fc'].reduce((s,k) => {
         const saldo = val('c-'+k) || 0;
         const depEl = document.getElementById('dep-'+k);
         const dep = depEl ? (parseFloat(depEl.value)||0) : 0;
@@ -5838,7 +5815,6 @@ function v6RenderAhorros() {
       { name: 'BancoEstado', value: (val('c-be')||0) + _ge2('dep-be'), color: '#D16D3E' },
       { name: 'Fintual Reserva', value: (val('c-fr')||0) + _ge2('dep-fr'), color: '#B5856B' },
       { name: 'Fintual Capital', value: (val('c-fc')||0) + _ge2('dep-fc'), color: '#D9B1A7' },
-      { name: 'Cripto', value: (val('c-cripto')||0) + _ge2('dep-cripto'), color: '#6B9B3F' }
     ], 'Total');
   }
 
@@ -6021,7 +5997,7 @@ function v6EliminarSnapshot(idx) {
 // sólo existían en tu cabeza/capturas/Drive borrado. Este formulario te
 // permite volver a ingresarlos a mano y crear (o reemplazar) el snapshot
 // de ese mes en el Histórico, igual que si se hubiera cerrado bien.
-const V6_CUENTAS_LABELS = { mp:'MercadoPago', be:'BancoEstado', fr:'Fintual Reserva', fc:'Fintual Capital', cripto:'Cripto' };
+const V6_CUENTAS_LABELS = { mp:'MercadoPago', be:'BancoEstado', fr:'Fintual Reserva', fc:'Fintual Capital' };
 
 function v6AbrirRecuperarSnapshot() {
   const cont = document.getElementById('v6-recuperar-form');
@@ -6580,14 +6556,13 @@ window.v17GenerarInsights = function() {
     mp: val('c-mp') + val('dep-mp') + (_ac.mp || 0),
     be: val('c-be') + val('dep-be') + (_ac.be || 0),
     fr: val('c-fr') + val('dep-fr') + (_ac.fr || 0),
-    fc: val('c-fc') + val('dep-fc') + (_ac.fc || 0),
-    cripto: val('c-cripto') + val('dep-cripto') + (_ac.cripto || 0)
+    fc: val('c-fc') + val('dep-fc') + (_ac.fc || 0)
   };
   const patrimonioActual = Object.values(cuentas).reduce((a,b) => a+b, 0);
   const depositoMes = (function(){
     const acum = window._acumuladoMes || {};
     let total = 0;
-    ['mp','be','fr','fc','cripto'].forEach(k => {
+    ['mp','be','fr','fc'].forEach(k => {
       total += val('dep-'+k) + (acum[k] || 0);
     });
     return total;
@@ -6880,7 +6855,7 @@ window.v17RenderInsights = function() {
 // ═══ V19: UI para mostrar acumulado mensual debajo del input ═══════
 window.v19UpdateAcumuladoUI = function() {
   if (!window._acumuladoMes) return;
-  const cuentas = ['mp','be','fr','fc','cripto'];
+  const cuentas = ['mp','be','fr','fc'];
   cuentas.forEach(k => {
     const acum = window._acumuladoMes[k] || 0;
     let lbl = document.getElementById('v19-acum-' + k);
@@ -7875,14 +7850,13 @@ window.v17GenerarReportePDF = async function() {
     'MercadoPago': val('c-mp') + val('dep-mp'),
     'BancoEstado': val('c-be') + val('dep-be'),
     'Fintual Reserva': val('c-fr') + val('dep-fr'),
-    'Fintual Capital': val('c-fc') + val('dep-fc'),
-    'Cripto': val('c-cripto') + val('dep-cripto')
+    'Fintual Capital': val('c-fc') + val('dep-fc')
   };
   const patrimonioTotal = Object.values(cuentas).reduce((a,b) => a+b, 0);
   const depositoMes = (function(){
     const acum = window._acumuladoMes || {};
     let total = 0;
-    ['mp','be','fr','fc','cripto'].forEach(k => {
+    ['mp','be','fr','fc'].forEach(k => {
       total += val('dep-'+k) + (acum[k] || 0);
     });
     return total;
@@ -8374,8 +8348,7 @@ function v6MoveBlocks() {
     mp:     { nombre: 'MercadoPago',           tag: '🚗 Auto' },
     be:     { nombre: 'BancoEstado Vivienda',  tag: '🏠 Vivienda' },
     fr:     { nombre: 'Fintual Reserva',       tag: '📦 Emergencia/Importación' },
-    fc:     { nombre: 'Fintual Capital Importar', tag: '📦 Importación' },
-    cripto: { nombre: 'ETH + BTC (MP)',        tag: '₿ Cripto' }
+    fc:     { nombre: 'Fintual Capital Importar', tag: '📦 Importación' }
   };
 
   const RETIRO_MOTIVOS = [
@@ -8976,8 +8949,7 @@ function v6MoveBlocks() {
       { id: 'mp', nombre: 'MercadoPago', tag: '🚗 Auto', custom: false, color: '#F7DC4B' },
       { id: 'be', nombre: 'BancoEstado Vivienda', tag: '🏠 Vivienda', custom: false, color: '#4548FF' },
       { id: 'fr', nombre: 'Fintual Reserva', tag: '📦 Reserva/Importación', custom: false, color: '#A0826D' },
-      { id: 'fc', nombre: 'Fintual Capital Importar', tag: '📦 Importación', custom: false, color: '#D3B0AD' },
-      { id: 'cripto', nombre: 'ETH + BTC (MP)', tag: '₿ Cripto', custom: false, color: '#73B57F' }
+      { id: 'fc', nombre: 'Fintual Capital Importar', tag: '📦 Importación', custom: false, color: '#D3B0AD' }
     ];
     const custom = (window._cuentasCustom || []).map(c => ({
       id: c.id, nombre: c.nombre, tag: c.tag || '', custom: true, color: c.color || CUSTOM_COLORS[0]
@@ -8986,7 +8958,7 @@ function v6MoveBlocks() {
   }
 
   function getSaldoCuenta(id) {
-    if (['mp','be','fr','fc','cripto'].includes(id)) {
+    if (['mp','be','fr','fc'].includes(id)) {
       const el = document.getElementById('c-'+id);
       return el ? (parseFloat(el.value) || 0) : 0;
     }
@@ -9443,7 +9415,6 @@ function v6MoveBlocks() {
           { name: 'BancoEstado',     value: (val('c-be')||0)     + _ge('dep-be'),     color: '#D16D3E' },
           { name: 'Fintual Reserva', value: (val('c-fr')||0)     + _ge('dep-fr'),     color: '#B5856B' },
           { name: 'Fintual Capital', value: (val('c-fc')||0)     + _ge('dep-fc'),     color: '#D9B1A7' },
-          { name: 'Cripto',          value: (val('c-cripto')||0) + _ge('dep-cripto'), color: '#6B9B3F' }
         ];
         customArr.forEach(c => {
           items.push({
@@ -9477,7 +9448,6 @@ function v6MoveBlocks() {
           { name: 'BancoEstado',     value: (val('c-be')||0)     + _ge('dep-be'),     color: '#D16D3E' },
           { name: 'Fintual Reserva', value: (val('c-fr')||0)     + _ge('dep-fr'),     color: '#B5856B' },
           { name: 'Fintual Capital', value: (val('c-fc')||0)     + _ge('dep-fc'),     color: '#D9B1A7' },
-          { name: 'Cripto',          value: (val('c-cripto')||0) + _ge('dep-cripto'), color: '#6B9B3F' }
         ];
         customArr.forEach(c => {
           items.push({
@@ -9504,7 +9474,7 @@ function v6MoveBlocks() {
       if (customArr.length === 0) return result;
 
       // Saldos: leer directo desde inputs base + arrays custom
-      const baseSaldo = ['c-mp','c-be','c-fr','c-fc','c-cripto'].reduce((s,id) => {
+      const baseSaldo = ['c-mp','c-be','c-fr','c-fc'].reduce((s,id) => {
         const el = document.getElementById(id);
         return s + (el ? (parseFloat(el.value)||0) : 0);
       }, 0);
@@ -9513,7 +9483,7 @@ function v6MoveBlocks() {
 
       // Depósitos del mes: solo los inputs dep-* / cc-dep-* (pendientes de Listo).
       // FIX V31.2: NO sumar _acumuladoMes acá (ya consolidado en el saldo).
-      const baseDep = ['mp','be','fr','fc','cripto'].reduce((s,k) => {
+      const baseDep = ['mp','be','fr','fc'].reduce((s,k) => {
         const el = document.getElementById('dep-'+k);
         return s + (el ? (parseFloat(el.value)||0) : 0);
       }, 0);
@@ -10356,15 +10326,11 @@ function v6MoveBlocks() {
     if (/\b(capital|importar)\b/.test(t) && /\b(cu[aá]nto|saldo|tengo|hay)\b/.test(t)) {
       return `En **Fintual Capital** tienes ${fmtP(saldoDe('fc'))} 📦`;
     }
-    if (/\b(cripto|btc|eth|bitcoin)\b/.test(t) && /\b(cu[aá]nto|saldo|tengo|hay)\b/.test(t)) {
-      return `En **Cripto (ETH + BTC)** tienes ${fmtP(saldoDe('cripto'))} ₿`;
-    }
-
     // Total ahorros / patrimonio
     if (/\b(total|patrimonio|todo)\b/.test(t) && /\b(ahorro|tengo|cu[aá]nto|plata)\b/.test(t)) {
-      const base = ['mp','be','fr','fc','cripto'].reduce((s,k) => s + saldoDe(k), 0);
+      const base = ['mp','be','fr','fc'].reduce((s,k) => s + saldoDe(k), 0);
       const custom = (window._cuentasCustom || []).reduce((s,c) => s + (c.saldo||0), 0);
-      return `Tu patrimonio total es **${fmtP(base + custom)}** 💰\n\n• MercadoPago: ${fmtP(saldoDe('mp'))}\n• BancoEstado: ${fmtP(saldoDe('be'))}\n• Fintual Reserva: ${fmtP(saldoDe('fr'))}\n• Fintual Capital: ${fmtP(saldoDe('fc'))}\n• Cripto: ${fmtP(saldoDe('cripto'))}${custom > 0 ? '\n• Cuentas custom: ' + fmtP(custom) : ''}`;
+      return `Tu patrimonio total es **${fmtP(base + custom)}** 💰\n\n• MercadoPago: ${fmtP(saldoDe('mp'))}\n• BancoEstado: ${fmtP(saldoDe('be'))}\n• Fintual Reserva: ${fmtP(saldoDe('fr'))}\n• Fintual Capital: ${fmtP(saldoDe('fc'))}${custom > 0 ? '\n• Cuentas custom: ' + fmtP(custom) : ''}`;
     }
 
     // Deudores
