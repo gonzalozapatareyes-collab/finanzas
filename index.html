@@ -2111,7 +2111,8 @@ function confirmarDeposito(k) {
 
 function guardarSnapshotHistorial() {
   const mes = getMesActual();
-  const saldoTotal = ['mp','be','fr','fc'].reduce((s,k) => s + val('c-'+k), 0);
+  const customSaldo = (window._cuentasCustom || []).reduce((s,c) => s + (c.saldo||0), 0);
+  const saldoTotal = ['mp','be','fr','fc'].reduce((s,k) => s + val('c-'+k), 0) + customSaldo;
   let totalDeposito = 0;
   const detalle = {};
   ['mp','be','fr','fc'].forEach(k => {
@@ -5719,12 +5720,13 @@ function v6RenderAhorros() {
 
   if (typeof val === 'function') {
     const mes = v6GetMesActualNombre();
+    const customSaldoLive = (window._cuentasCustom || []).reduce((s,c) => s + (c.saldo||0), 0);
     // V30: incluir acumulado mensual en total y totDep para vista de evolución mes actual
     const total = ['mp','be','fr','fc'].reduce((s,k) => {
       const saldo = val('c-'+k) || 0;
       const acum = (window._acumuladoMes && window._acumuladoMes[k]) || 0;
       return s + saldo + acum;
-    }, 0);
+    }, 0) + customSaldoLive;
     const totDep = ['mp','be','fr','fc'].reduce((s,k) => {
       const el = document.getElementById('dep-'+k);
       const vIn = el ? (parseFloat(el.value)||0) : 0;
@@ -5763,7 +5765,7 @@ function v6RenderAhorros() {
         const depEl = document.getElementById('dep-'+k);
         const dep = depEl ? (parseFloat(depEl.value)||0) : 0;
         return s + saldo + dep;
-      }, 0);
+      }, 0) + (window._cuentasCustom || []).reduce((s,c) => s + (c.saldo||0), 0);
       const totAportes = allMonths.reduce((s,m) => s + (m.deposito||0), 0);
       const numMeses = allMonths.length;
       const promedio = totAportes/numMeses;
