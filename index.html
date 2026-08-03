@@ -1133,8 +1133,31 @@ body {
   --mf-pink:#FF5C7A; --mf-pink-soft:#FFEFF2; --mf-pink-dark:#D62B4F;
   --mf-amber:#B87400; --mf-amber-soft:#FFF3DE;
   --mf-r-card:16px; --mf-r-control:10px;
+  /* Fijo en ambos temas: la "tarjeta oscura" (meta del dashboard, botones
+     primarios oscuros) siempre debe leerse oscura, aunque --mf-ink se
+     invierta en modo oscuro para el texto normal. */
+  --mf-ink-fixed:#0F2018;
+}
+/* ═══ Modo oscuro real para la dirección 1a ═══════════════════════
+   Antes solo se ponía negro el fondo de <body> (vars viejas de temas
+   previos) y las tarjetas nuevas se quedaban blancas fijas — mezcla rota.
+   Acá se invierten los tokens --mf-* para que TODO lo rediseñado (sidebar,
+   dashboard, gastos, cuentas, deudores, modales) responda al toggle. */
+html[data-theme="dark"]{
+  --mf-bg:#0B120E; --mf-surface:#151D19; --mf-surface-2:#1D2621; --mf-ink:#F1F5F2;
+  --mf-text-muted:rgba(241,245,242,.58); --mf-text-faint:rgba(241,245,242,.38); --mf-line:rgba(241,245,242,.09);
+  --mf-green:#1DBE8C; --mf-green-dark:#3BE8AE; --mf-green-soft:rgba(29,190,140,.16);
+  --mf-blue:#7086FF; --mf-blue-soft:rgba(112,134,255,.18);
+  --mf-pink:#FF7690; --mf-pink-soft:rgba(255,92,122,.16); --mf-pink-dark:#FF9DB1;
+  --mf-amber:#E0A542; --mf-amber-soft:rgba(224,165,66,.16);
 }
 :focus-visible{ outline:2px solid var(--mf-green); outline-offset:2px; }
+
+/* FIX modo oscuro: antes solo #page-dashboard pintaba var(--mf-bg) sobre sí
+   mismo; el resto de las pantallas (Gastos/Cuentas/Deudores/...) dejaban ver
+   el --bg viejo (beige claro / marrón oscuro) por detrás de las tarjetas
+   nuevas. Ahora toda la app usa el mismo fondo base en ambos temas. */
+html, body, #main-area{ background:var(--mf-bg); }
 
 /* Sidebar + header: chrome compartido por toda la app, se restylea entero */
 #sidebar{ background:var(--mf-surface); border-right:1px solid var(--mf-line); font-family:'Manrope',system-ui,sans-serif; }
@@ -1177,7 +1200,8 @@ body {
 .mf-dash-row-2{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
 .mf-dash-col-right{ display:flex; flex-direction:column; gap:12px; min-width:0; }
 .mf-card{ background:var(--mf-surface); border-radius:var(--mf-r-card); padding:22px 24px; box-sizing:border-box; }
-.mf-card-dark{ background:var(--mf-ink); color:#fff; border-radius:var(--mf-r-card); padding:20px 22px; box-sizing:border-box; }
+.mf-card-dark{ background:var(--mf-ink-fixed); color:#fff; border-radius:var(--mf-r-card); padding:20px 22px; box-sizing:border-box; }
+html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,255,.08); }
 .mf-card-title{ font:800 14px/1 'Manrope'; }
 .mf-label{ font:700 11px/1 'Manrope'; letter-spacing:.1em; text-transform:uppercase; color:var(--mf-text-faint); }
 .mf-label-dark{ display:flex; align-items:center; gap:8px; color:rgba(255,255,255,.5); }
@@ -1300,6 +1324,53 @@ body {
 #page-gastos .resumen-row{ padding:14px 0; border-bottom:1px solid var(--mf-line); }
 #page-gastos .save-btn{ font-family:'Manrope',system-ui,sans-serif !important; border-radius:9px !important; font-weight:700 !important; cursor:pointer; }
 
+/* ═══ Gastos — pantalla unificada (fusión del handoff 1a) ═══════
+   Fusiona dropzone + panel de total del período + tabla de movimientos
+   en una sola vista, según Mis Finanzas 1a.dc.html. "Gastos fijos" y
+   "Matriz personas" NO están en el handoff (que solo cubre el asignador),
+   así que quedan como pestañas secundarias repintadas, no fusionadas. */
+.mf-gastos-top-grid{ display:grid; grid-template-columns:1fr 320px; gap:16px; margin-bottom:16px; align-items:start; }
+@media (max-width:1100px){ .mf-gastos-top-grid{ grid-template-columns:1fr; } }
+.mf-dropzone-card .mf-card-title{ margin-bottom:6px; }
+.mf-dropzone-desc{ font:500 12.5px/1.5 'Manrope'; color:var(--mf-text-muted); margin:0 0 16px; max-width:62ch; }
+.mf-dropzone{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; width:100%; box-sizing:border-box; padding:34px 20px; cursor:pointer; border-radius:14px; border:2px dashed rgba(15,32,24,.18); background:transparent; transition:border-color .15s, background .15s; text-align:center; }
+.mf-dropzone:hover{ border-color:var(--mf-green); background:var(--mf-green-soft); }
+.mf-dropzone.state-loading, .mf-dropzone.state-done{ border-color:var(--mf-green); border-style:solid; background:var(--mf-green-soft); }
+.mf-dropzone-icon{ width:44px; height:44px; border-radius:14px; display:flex; align-items:center; justify-content:center; background:var(--mf-surface-2); color:var(--mf-green-dark); font-size:24px; }
+.mf-dropzone.state-loading .mf-dropzone-icon, .mf-dropzone.state-done .mf-dropzone-icon{ background:var(--mf-surface); }
+.mf-dropzone.state-loading .mf-dropzone-icon i{ display:inline-block; animation:mf-spin 1s linear infinite; }
+@keyframes mf-spin{ to{ transform:rotate(360deg); } }
+.mf-dropzone-title{ font:800 15px/1.2 'Manrope'; color:var(--mf-ink); }
+.mf-dropzone-sub{ font:500 12.5px/1.4 'Manrope'; color:var(--mf-text-muted); }
+.mf-dropzone-bar-wrap{ display:block; width:240px; max-width:100%; height:6px; border-radius:3px; background:var(--mf-surface); margin-top:6px; overflow:hidden; }
+.mf-dropzone-bar-fill{ display:block; height:6px; border-radius:3px; background:var(--mf-green); transition:width .2s; }
+
+#page-gastos .mf-file-chips{ display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; }
+#page-gastos .mf-file-chips:empty{ display:none; }
+#page-gastos .mf-file-chips .uploaded-file{ display:flex; align-items:center; gap:9px; flex:1; min-width:170px; padding:11px 13px; border-radius:12px; background:var(--mf-surface-2); }
+#page-gastos .mf-file-chips .uploaded-file-name{ display:block; font:700 12.5px/1.2 'Manrope' !important; color:var(--mf-ink) !important; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#page-gastos .mf-file-chips .uploaded-file-type{ display:block; font:500 11px/1.2 'Manrope' !important; color:var(--mf-text-faint) !important; margin-top:2px; }
+
+#g-totales{ display:none; }
+.mf-periodo-panel .mf-label{ margin:0; }
+.mf-periodo-total{ margin-top:10px; font:800 34px/1 'Manrope'; letter-spacing:-.035em; font-variant-numeric:tabular-nums; color:var(--mf-ink); }
+.mf-periodo-desglose{ margin-top:16px; display:flex; flex-direction:column; gap:10px; font:500 12.5px/1 'Manrope'; }
+.mf-periodo-desglose > div{ display:flex; align-items:center; gap:8px; color:var(--mf-text-muted); }
+.mf-periodo-desglose > div > span:last-child{ margin-left:auto; font-weight:700; color:var(--mf-ink); font-variant-numeric:tabular-nums; }
+.mf-periodo-actions{ margin-top:18px; display:flex; flex-direction:column; gap:8px; }
+.mf-btn-dark{ padding:11px; border:0; border-radius:10px; background:var(--mf-ink-fixed); color:#fff; font:700 12.5px/1 'Manrope'; cursor:pointer; }
+.mf-btn-dark:hover{ opacity:.85; }
+.mf-btn-outline-gastos{ padding:11px; border:1px solid var(--mf-line); border-radius:10px; background:transparent; color:var(--mf-ink); font:600 12.5px/1 'Manrope'; cursor:pointer; }
+.mf-btn-outline-gastos:hover{ background:var(--mf-surface-2); }
+
+.mf-gastos-table-card .mf-table-header-row{ display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+.mf-gastos-sinasignar-badge{ font:700 10.5px/1 'Manrope'; padding:5px 7px; border-radius:6px; background:var(--mf-pink-soft); color:var(--mf-pink-dark); }
+#page-gastos #gastos-controls{ display:flex !important; align-items:center; margin-bottom:0 !important; }
+#page-gastos .mf-seg-filtros{ margin-left:auto; display:flex; gap:3px; padding:3px; border-radius:10px; background:var(--mf-surface-2); }
+#page-gastos .mf-seg-filtros .filtro-btn{ background:transparent; }
+#page-gastos .mf-seg-filtros .filtro-btn.active{ background:var(--mf-surface); }
+#page-gastos .mf-limpiar-btn{ margin-left:8px; }
+
 /* Modal "Dividir gasto compartido" — sacado del stash (ver v6MoveBlocks) */
 #modal-compartido{ font-family:'Manrope',system-ui,sans-serif; }
 
@@ -1314,6 +1385,54 @@ body {
 #page-cuentas .card, #page-ahorros .card{ background:var(--mf-surface); border:none; border-radius:var(--mf-r-card); padding:20px 22px; }
 #page-cuentas .card-title, #page-ahorros .card-title{ font:800 15px/1.2 'Manrope'; color:var(--mf-ink) !important; margin-bottom:14px; }
 #page-cuentas .section-label, #page-ahorros .section-label{ font:700 11px/1 'Manrope'; letter-spacing:.1em; text-transform:uppercase; color:var(--mf-text-faint); margin:24px 0 12px; }
+
+/* Tarjetas de meta en Cuentas — ver "Dos tarjetas de meta" del handoff.
+   Solo lectura (resumen a la vista); el editor completo sigue en
+   Ahorros > Metas. Generadas por v6RenderCuentasMetas(). */
+.mf-goal2-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+@media(max-width:1100px){ .mf-goal2-grid{ grid-template-columns:1fr; } }
+.mf-goal2-card{ position:relative; border-radius:var(--mf-r-card); padding:22px 24px; font-family:'Manrope',system-ui,sans-serif; cursor:pointer; transition:transform .12s, box-shadow .12s; }
+.mf-goal2-card:hover{ transform:translateY(-1px); box-shadow:0 6px 18px rgba(15,32,24,.10); }
+.mf-goal2-dismiss{
+  position:absolute; top:14px; right:14px; width:24px; height:24px; border-radius:7px; border:0;
+  display:flex; align-items:center; justify-content:center; cursor:pointer; opacity:0; transition:opacity .12s, background .12s;
+}
+.mf-goal2-card:hover .mf-goal2-dismiss{ opacity:.7; }
+.mf-goal2-dismiss:hover{ opacity:1 !important; }
+.mf-goal2-card.dark .mf-goal2-dismiss{ background:rgba(255,255,255,.12); color:#fff; }
+.mf-goal2-card.dark .mf-goal2-dismiss:hover{ background:rgba(255,255,255,.22); }
+.mf-goal2-card.light .mf-goal2-dismiss{ background:var(--mf-surface-2); color:var(--mf-text-muted); }
+.mf-goal2-card.light .mf-goal2-dismiss:hover{ background:var(--mf-pink-soft); color:var(--mf-pink-dark); }
+.mf-goal2-ocultas{ margin-top:-6px; margin-bottom:16px; font:500 11.5px/1.4 'Manrope'; color:var(--mf-text-faint); display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.mf-goal2-ocultas button{ background:none; border:0; padding:0; color:var(--mf-green-dark); font:600 11.5px/1 'Manrope'; cursor:pointer; text-decoration:underline; }
+.mf-goal2-add{
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  border-radius:var(--mf-r-card); border:2px dashed var(--mf-line); background:transparent;
+  color:var(--mf-text-muted); font:700 13px/1 'Manrope'; cursor:pointer; min-height:120px; transition:border-color .12s, background .12s, color .12s;
+}
+.mf-goal2-add:hover{ border-color:var(--mf-green); background:var(--mf-green-soft); color:var(--mf-green-dark); }
+.mf-goal2-add i{ font-size:18px; }
+.mf-goal2-card.dark{ background:var(--mf-ink-fixed); color:#fff; }
+.mf-goal2-card.light{ background:var(--mf-surface); color:var(--mf-ink); }
+.mf-goal2-head{ display:flex; align-items:center; gap:8px; }
+.mf-goal2-icon{ width:30px; height:30px; flex:none; border-radius:10px; display:flex; align-items:center; justify-content:center; }
+.mf-goal2-card.dark .mf-goal2-icon{ background:rgba(255,255,255,.12); color:var(--mf-mint); }
+.mf-goal2-card.light .mf-goal2-icon{ background:var(--mf-blue-soft); color:var(--mf-blue); }
+.mf-goal2-title{ font:800 17px/1 'Manrope'; }
+.mf-goal2-plazo{ margin-left:auto; font:700 11px/1 'Manrope'; padding:5px 8px; border-radius:7px; }
+.mf-goal2-card.dark .mf-goal2-plazo{ background:rgba(255,255,255,.12); color:rgba(255,255,255,.75); }
+.mf-goal2-card.light .mf-goal2-plazo{ background:var(--mf-surface-2); color:var(--mf-text-muted); }
+.mf-goal2-amt-row{ margin-top:16px; display:flex; align-items:baseline; gap:8px; font-variant-numeric:tabular-nums; }
+.mf-goal2-amt{ font:800 34px/1 'Manrope'; letter-spacing:-.035em; }
+.mf-goal2-of{ font:500 13px/1 'Manrope'; opacity:.6; }
+.mf-goal2-track{ margin-top:14px; height:9px; border-radius:5px; overflow:hidden; }
+.mf-goal2-card.dark .mf-goal2-track{ background:rgba(255,255,255,.14); }
+.mf-goal2-card.light .mf-goal2-track{ background:var(--mf-surface-2); }
+.mf-goal2-bar{ display:block; height:9px; border-radius:5px; }
+.mf-goal2-card.dark .mf-goal2-bar{ background:var(--mf-mint); }
+.mf-goal2-card.light .mf-goal2-bar{ background:var(--mf-blue); }
+.mf-goal2-stats{ margin-top:10px; display:flex; justify-content:space-between; font:600 12px/1 'Manrope'; opacity:.7; }
+.mf-goal2-sub{ margin-top:12px; font:500 11.5px/1.4 'Manrope'; opacity:.55; }
 #page-cuentas .section-label i, #page-ahorros .section-label i, #page-cuentas .card-title i, #page-ahorros .card-title i{ margin-right:6px; color:var(--mf-green); }
 
 #tabs-ahorros .v6-tabs{ display:inline-flex; flex-wrap:wrap; gap:3px; padding:3px; background:var(--mf-surface-2); border-radius:12px; margin-bottom:18px; }
@@ -1624,14 +1743,22 @@ body {
     </div>
 
     <div class="v6-tab-panel" data-tab="asignador">
-      <div class="unified-upload" onclick="document.getElementById('v6-unified-input').click()">
-        <i class="ph ph-upload-simple" style="display:block;font-size:26px;color:var(--mf-green);margin:0 0 8px;"></i>
-        <h3>Sube tus estados de cuenta</h3>
-        <p>Acepta múltiples archivos. Detecta automáticamente CMR (.xlsx), Bco Chile Nacional (.xls) y Internacional (.xls USD)</p>
-        <p style="font-size:11px;color:var(--mf-green-dark);font-weight:700;">Haz clic aquí para elegir los archivos</p>
-        <input type="file" id="v6-unified-input" multiple accept=".xlsx,.xls" style="display:none" onchange="v6HandleUnifiedFiles(this)">
-        <div id="v6-uploaded-list" class="uploaded-files-list"></div>
+      <div class="mf-gastos-top-grid">
+        <div class="mf-card mf-dropzone-card">
+          <div class="mf-card-title">Sube tus estados de cuenta</div>
+          <p class="mf-dropzone-desc">Sube los tres estados de cuenta juntos. La app reconoce el formato sola — CMR (.xlsx), Bco Chile Nacional y el Internacional en dólares — y sólo te pregunta lo que no puede deducir.</p>
+          <div class="mf-dropzone state-idle" id="v6-dropzone" onclick="document.getElementById('v6-unified-input').click()">
+            <span class="mf-dropzone-icon"><i class="ph ph-upload-simple" id="v6-dropzone-icon"></i></span>
+            <span class="mf-dropzone-title" id="v6-dropzone-title">Suelta los archivos aquí</span>
+            <span class="mf-dropzone-sub" id="v6-dropzone-sub">o haz clic para buscarlos · .xlsx y .xls</span>
+            <span class="mf-dropzone-bar-wrap" id="v6-dropzone-bar-wrap" style="display:none;"><span class="mf-dropzone-bar-fill" id="v6-dropzone-bar-fill" style="width:0%;"></span></span>
+            <input type="file" id="v6-unified-input" multiple accept=".xlsx,.xls" style="display:none" onchange="v6HandleUnifiedFiles(this)" onclick="event.stopPropagation()">
+          </div>
+          <div id="v6-uploaded-list" class="uploaded-files-list mf-file-chips"></div>
+        </div>
+        <div class="mf-card mf-periodo-panel" id="v6-periodo-panel-slot"></div>
       </div>
+      <div id="v6-gastos-table-slot"></div>
       <div id="v6-asignador-mount"></div>
     </div>
 
@@ -1646,6 +1773,7 @@ body {
 </div>
 
 <div class="v6-page" id="page-cuentas">
+  <div id="v6-cuentas-metas-mount"></div>
   <div id="v6-saldos-mount"></div>
   <div id="cuentas-custom-mount"></div>
 </div>
@@ -1888,204 +2016,115 @@ body {
   </div>
 </div>
 
-<!-- SALDOS -->
+<!-- SALDOS — rediseño 1a: tabla en vez de tarjetas apiladas, ver
+     "Saldos de cuentas" en el handoff. Los inputs/ids/onchange/onclick
+     son EXACTAMENTE los mismos que antes (c-*, dep-*, btn-*, listo-*) —
+     recalcular()/confirmarDeposito()/actualizarListoTag() no se tocaron. -->
 <div class="section-label"><i class="ph ph-piggy-bank"></i> Ahorros Actuales</div>
 <style>
-/* ── Ahorros Actuales — layout por fila ──────────────────────── */
-.ahorro-row {
-  padding: 14px 0;
-  border-bottom: 0.5px solid var(--border);
+.mf-saldos-card{ font-family:'Manrope',system-ui,sans-serif; }
+.mf-saldos-header{ display:flex; align-items:baseline; gap:10px; margin-bottom:4px; flex-wrap:wrap; }
+.mf-saldos-hint{ font:500 12.5px/1 'Manrope'; color:var(--mf-text-muted); }
+.mf-saldos-row{ display:grid; grid-template-columns:1.5fr 84px 1fr 1fr 104px; gap:16px; align-items:center; padding:13px 0; border-bottom:1px solid var(--mf-line); }
+.mf-saldos-row:last-of-type{ border-bottom:none; }
+.mf-saldos-hdr{ padding:14px 0 9px; border-bottom:1px solid var(--mf-line); font:700 10px/1 'Manrope'; letter-spacing:.1em; text-transform:uppercase; color:var(--mf-text-faint); }
+.mf-saldos-hdr span:nth-child(3), .mf-saldos-hdr span:nth-child(4){ text-align:right; }
+.mf-saldos-cuenta{ display:flex; align-items:center; gap:10px; min-width:0; }
+.mf-saldos-dot{ width:10px; height:10px; flex:none; border-radius:5px; }
+.mf-saldos-cuenta-info{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+.mf-saldos-nombre{ font:700 14px/1.2 'Manrope'; color:var(--mf-ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mf-saldos-etiqueta{ font:500 11.5px/1.2 'Manrope'; color:var(--mf-text-faint); }
+.mf-saldos-tasa{ font:600 12.5px/1.2 'Manrope'; color:var(--mf-text-muted); font-variant-numeric:tabular-nums; }
+.mf-saldo-input{
+  background:transparent; border:1px solid transparent; border-radius:8px;
+  color:var(--mf-ink); font:700 15px/1.2 'Manrope'; text-align:right;
+  padding:6px 9px; width:100%; box-sizing:border-box; cursor:text; transition:background .12s, border-color .12s;
 }
-.ahorro-row:last-of-type { border-bottom: none; }
-
-.ahorro-info { margin-bottom: 10px; }
-
-.ahorro-controls {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  gap: 8px;
-  align-items: end;
+.mf-saldo-input:hover{ background:var(--mf-surface-2); border-color:rgba(15,32,24,.1); }
+.mf-saldo-input:focus{ outline:none; background:var(--mf-surface); border-color:var(--mf-green); border-width:2px; padding:5px 8px; }
+.mf-saldos-estado{
+  font:700 11px/1 'Manrope'; padding:7px 9px; border-radius:8px; text-align:center;
+  border:0; cursor:pointer; white-space:nowrap; background:var(--mf-surface-2); color:var(--mf-text-faint);
 }
-
-.ahorro-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.ahorro-field-label {
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--muted);
-}
-.ahorro-field .editable {
-  width: 100%;
-}
-.ahorro-confirm {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 6px 14px;
-  border-radius: 8px;
-  border: 0.5px solid var(--border);
-  cursor: pointer;
-  font-family: 'DM Mono', monospace;
-  transition: all .2s;
-  white-space: nowrap;
-  height: 34px;
-}
-.ahorro-confirm.pendiente { background: var(--surface2); color: var(--muted); }
-.ahorro-confirm.listo { background: var(--green-dim); color: var(--green); border-color: var(--green); }
-.ahorro-listo-tag {
-  display: inline-block;
-  font-size: 9px;
-  color: var(--green);
-  background: var(--green-dim);
-  border: 0.5px solid var(--green);
-  border-radius: 4px;
-  padding: 2px 8px;
-  margin-top: 4px;
-  font-family: 'DM Mono', monospace;
-  font-weight: 600;
-}
-.ahorro-total-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
-  padding-top: 14px;
-  margin-top: 6px;
-  border-top: 0.5px solid var(--border);
-}
-.ahorro-total-pair {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-}
-.ahorro-total-pair:first-child { align-items: flex-start; }
-.ahorro-total-pair-label {
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--muted);
-}
-@media(max-width:420px){
-  .ahorro-controls { grid-template-columns: 1fr 1fr; }
-  .ahorro-confirm { grid-column: 1 / -1; height: auto; padding: 8px; }
-  .ahorro-total-row { grid-template-columns: 1fr 1fr; }
-  .ahorro-total-pair:last-child { grid-column: 1 / -1; border-top: 0.5px solid var(--border); padding-top: 8px; align-items: flex-start; }
+.mf-saldos-estado.listo{ background:var(--mf-green-soft); color:var(--mf-green-dark); }
+.mf-saldos-total-row{ display:grid; grid-template-columns:1.5fr 84px 1fr 1fr 104px; gap:16px; padding:16px 0 0; font:800 16px/1 'Manrope'; font-variant-numeric:tabular-nums; color:var(--mf-ink); align-items:baseline; }
+.mf-saldos-link{ background:transparent; border:0; padding:0; cursor:pointer; display:inline-flex; align-items:center; gap:4px; font:600 11px/1 'Manrope'; color:var(--mf-text-faint); }
+.mf-saldos-link:hover{ color:var(--mf-green-dark); }
+.mf-saldos-link i{ font-size:12px; }
+@media(max-width:1100px){
+  .mf-saldos-row, .mf-saldos-hdr, .mf-saldos-total-row{ grid-template-columns:1.3fr 70px 1fr 1fr 90px; gap:10px; }
 }
 </style>
 
-<div class="card" style="margin-bottom:16px;">
-  <div class="card-title"><i class="ph ph-arrow-down"></i> Actualiza aquí cada mes</div>
+<div class="card mf-saldos-card" style="margin-bottom:16px;">
+  <div class="mf-saldos-header">
+    <span class="mf-card-title" style="margin:0;">Saldos de cuentas</span>
+    <span class="mf-saldos-hint">Haz clic en cualquier cifra para editarla</span>
+  </div>
+  <div class="mf-saldos-row mf-saldos-hdr">
+    <span>Cuenta</span><span>Tasa</span><span>Saldo actual</span><span>Depositado</span><span></span>
+  </div>
 
   <!-- MercadoPago -->
-  <div class="ahorro-row">
-    <div class="ahorro-info">
-      <div class="cuenta-left">
-        <div class="cuenta-dot" style="background:#0FA97C;"></div>
-        <div><div class="cuenta-name">MercadoPago <span class="tag tag-auto">auto</span></div><div class="cuenta-dest">4.00% anual</div></div>
-      </div>
-      <div id="listo-mp" style="margin-left:18px;margin-top:2px;"></div>
-    </div>
-    <div class="ahorro-controls">
-      <div class="ahorro-field">
-        <span class="ahorro-field-label">Saldo actual</span>
-        <input class="editable" type="number" id="c-mp" value="" placeholder="0" onchange="recalcular()" style="color:#0FA97C;width:140px;">
-      </div>
-      <div class="ahorro-field">
-        <span class="ahorro-field-label">Deposité este mes</span>
-        <input class="editable" type="number" id="dep-mp" value="0" onchange="recalcularDeposito('mp')" placeholder="0" style="color:var(--green);width:140px;">
-      </div>
-      <button class="ahorro-confirm pendiente" id="btn-mp" onclick="confirmarDeposito('mp')">✓ Listo</button>
-    </div>
+  <div class="mf-saldos-row">
+    <span class="mf-saldos-cuenta">
+      <span class="mf-saldos-dot" style="background:#0FA97C;"></span>
+      <span class="mf-saldos-cuenta-info"><span class="mf-saldos-nombre">MercadoPago</span><span class="mf-saldos-etiqueta">Meta Auto</span></span>
+    </span>
+    <span class="mf-saldos-tasa">4,00%</span>
+    <input class="editable mf-saldo-input" type="number" id="c-mp" value="" placeholder="0" onchange="recalcular()">
+    <input class="editable mf-saldo-input" type="number" id="dep-mp" value="0" onchange="recalcularDeposito('mp')" placeholder="0">
+    <button class="mf-saldos-estado ahorro-confirm pendiente" id="btn-mp" onclick="confirmarDeposito('mp')">✓ Listo</button>
+    <span id="listo-mp" style="display:none;"></span>
   </div>
 
   <!-- BancoEstado -->
-  <div class="ahorro-row">
-    <div class="ahorro-info">
-      <div class="cuenta-left">
-        <div class="cuenta-dot" style="background:#3BE8AE;"></div>
-        <div><div class="cuenta-name">BancoEstado Vivienda <span class="tag tag-viv">vivienda</span></div><div class="cuenta-dest">1.05% anual</div></div>
-      </div>
-      <div id="listo-be" style="margin-left:18px;margin-top:2px;"></div>
-    </div>
-    <div class="ahorro-controls">
-      <div class="ahorro-field">
-        <span class="ahorro-field-label">Saldo actual</span>
-        <input class="editable" type="number" id="c-be" value="" placeholder="0" onchange="recalcular()" style="color:#0B7A59;width:140px;">
-      </div>
-      <div class="ahorro-field">
-        <span class="ahorro-field-label">Deposité este mes</span>
-        <input class="editable" type="number" id="dep-be" value="0" onchange="recalcularDeposito('be')" placeholder="0" style="color:var(--green);width:140px;">
-      </div>
-      <button class="ahorro-confirm pendiente" id="btn-be" onclick="confirmarDeposito('be')">✓ Listo</button>
-    </div>
+  <div class="mf-saldos-row">
+    <span class="mf-saldos-cuenta">
+      <span class="mf-saldos-dot" style="background:#3BE8AE;"></span>
+      <span class="mf-saldos-cuenta-info"><span class="mf-saldos-nombre">BancoEstado Vivienda</span><span class="mf-saldos-etiqueta">Meta Vivienda</span></span>
+    </span>
+    <span class="mf-saldos-tasa">1,05%</span>
+    <input class="editable mf-saldo-input" type="number" id="c-be" value="" placeholder="0" onchange="recalcular()">
+    <input class="editable mf-saldo-input" type="number" id="dep-be" value="0" onchange="recalcularDeposito('be')" placeholder="0">
+    <button class="mf-saldos-estado ahorro-confirm pendiente" id="btn-be" onclick="confirmarDeposito('be')">✓ Listo</button>
+    <span id="listo-be" style="display:none;"></span>
   </div>
 
   <!-- Fintual Reserva -->
-  <div class="ahorro-row">
-    <div class="ahorro-info">
-      <div class="cuenta-left">
-        <div class="cuenta-dot" style="background:#3E5BFF;"></div>
-        <div><div class="cuenta-name">Fintual Reserva <span class="tag tag-res">Reserva/Emergencia</span></div><div class="cuenta-dest">4.17% anual</div></div>
-      </div>
-      <div id="listo-fr" style="margin-left:18px;margin-top:2px;"></div>
-    </div>
-    <div class="ahorro-controls">
-      <div class="ahorro-field">
-        <span class="ahorro-field-label">Saldo actual</span>
-        <input class="editable" type="number" id="c-fr" value="" placeholder="0" onchange="recalcular()" style="color:#3E5BFF;width:140px;">
-      </div>
-      <div class="ahorro-field">
-        <span class="ahorro-field-label">Deposité este mes</span>
-        <input class="editable" type="number" id="dep-fr" value="0" onchange="recalcularDeposito('fr')" placeholder="0" style="color:var(--green);width:140px;">
-      </div>
-      <button class="ahorro-confirm pendiente" id="btn-fr" onclick="confirmarDeposito('fr')">✓ Listo</button>
-    </div>
+  <div class="mf-saldos-row">
+    <span class="mf-saldos-cuenta">
+      <span class="mf-saldos-dot" style="background:#3E5BFF;"></span>
+      <span class="mf-saldos-cuenta-info"><span class="mf-saldos-nombre">Fintual Reserva</span><span class="mf-saldos-etiqueta">Reserva/Emergencia</span></span>
+    </span>
+    <span class="mf-saldos-tasa">4,17%</span>
+    <input class="editable mf-saldo-input" type="number" id="c-fr" value="" placeholder="0" onchange="recalcular()">
+    <input class="editable mf-saldo-input" type="number" id="dep-fr" value="0" onchange="recalcularDeposito('fr')" placeholder="0">
+    <button class="mf-saldos-estado ahorro-confirm pendiente" id="btn-fr" onclick="confirmarDeposito('fr')">✓ Listo</button>
+    <span id="listo-fr" style="display:none;"></span>
   </div>
 
   <!-- Fintual Capital -->
-  <div class="ahorro-row">
-    <div class="ahorro-info">
-      <div class="cuenta-left">
-        <div class="cuenta-dot" style="background:#A9B6FF;"></div>
-        <div><div class="cuenta-name">Fintual Capital Importar <span class="tag tag-imp">importación</span></div><div class="cuenta-dest">—</div></div>
-      </div>
-      <div id="listo-fc" style="margin-left:18px;margin-top:2px;"></div>
-    </div>
-    <div class="ahorro-controls">
-      <div class="ahorro-field">
-        <span class="ahorro-field-label">Saldo actual</span>
-        <input class="editable" type="number" id="c-fc" value="" placeholder="0" onchange="recalcular()" style="color:#5B6FE0;width:140px;">
-      </div>
-      <div class="ahorro-field">
-        <span class="ahorro-field-label">Deposité este mes</span>
-        <input class="editable" type="number" id="dep-fc" value="0" onchange="recalcularDeposito('fc')" placeholder="0" style="color:var(--green);width:140px;">
-      </div>
-      <button class="ahorro-confirm pendiente" id="btn-fc" onclick="confirmarDeposito('fc')">✓ Listo</button>
-    </div>
+  <div class="mf-saldos-row">
+    <span class="mf-saldos-cuenta">
+      <span class="mf-saldos-dot" style="background:#A9B6FF;"></span>
+      <span class="mf-saldos-cuenta-info"><span class="mf-saldos-nombre">Fintual Capital Importar</span><span class="mf-saldos-etiqueta">Importación</span></span>
+    </span>
+    <span class="mf-saldos-tasa">—</span>
+    <input class="editable mf-saldo-input" type="number" id="c-fc" value="" placeholder="0" onchange="recalcular()">
+    <input class="editable mf-saldo-input" type="number" id="dep-fc" value="0" onchange="recalcularDeposito('fc')" placeholder="0">
+    <button class="mf-saldos-estado ahorro-confirm pendiente" id="btn-fc" onclick="confirmarDeposito('fc')">✓ Listo</button>
+    <span id="listo-fc" style="display:none;"></span>
   </div>
-
 
   <!-- Total row -->
-  <div class="ahorro-total-row">
-    <span class="total-label">Total ahorros</span>
-    <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
-      <div class="ahorro-total-pair">
-        <span class="ahorro-total-pair-label">Saldo actual</span>
-        <span class="total-amount" id="totalCuentas">—</span>
-      </div>
-      <div class="ahorro-total-pair">
-        <span class="ahorro-total-pair-label">+ Deposité este mes</span>
-        <span class="total-amount" id="totalDepositos" style="font-size:17px;color:var(--green);">—</span>
-      </div>
-      <div class="ahorro-total-pair" style="border-left:0.5px solid var(--border);padding-left:24px;">
-        <span class="ahorro-total-pair-label">= Nuevo total</span>
-        <span class="total-amount" id="totalProyectado" style="font-size:17px;color:var(--muted);">—</span>
-      </div>
-    </div>
+  <div class="mf-saldos-total-row">
+    <span>Total ahorros</span><span></span>
+    <span id="totalCuentas" style="text-align:right;">—</span>
+    <span id="totalDepositos" style="text-align:right;color:var(--mf-green-dark);">—</span>
+    <span></span>
   </div>
+  <span id="totalProyectado" style="display:none;"></span>
 </div>
 
 <!-- HISTORIAL DE AHORROS -->
@@ -2316,6 +2355,8 @@ function recalcular() {
       v6RenderMetas();
     }
   }
+  // Rediseño 1a: tarjetas de meta (resumen) en Cuentas
+  if (typeof v6RenderCuentasMetas === 'function') v6RenderCuentasMetas();
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -3371,6 +3412,7 @@ function limpiarMes() {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
+  if (typeof v6ResetDropzoneUI === 'function') v6ResetDropzoneUI();
 
   const rows = document.getElementById('gastos-rows');
   if (rows) rows.innerHTML = '';
@@ -3735,8 +3777,8 @@ function confirmarCompartido() {
 
   <!-- TABLA DE TRANSACCIONES -->
   <div id="gastos-tabla" style="display:none;">
-    <div style="display:grid;grid-template-columns:80px 1fr 90px 90px 110px 64px;gap:6px;padding:6px 0;border-bottom:1px solid var(--border);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">
-      <span>Fecha</span><span>Descripción</span><span style="text-align:right;">Monto</span><span style="text-align:center;">Banco</span><span style="text-align:center;">¿De quién?</span>
+    <div style="display:grid;grid-template-columns:70px 1fr 96px 88px 170px 60px;gap:10px;padding:0 0 9px;border-bottom:1px solid var(--mf-line);font:700 10px/1 'Manrope';color:var(--mf-text-faint);text-transform:uppercase;letter-spacing:.1em;">
+      <span>Fecha</span><span>Descripción</span><span style="text-align:right;">Monto</span><span>Banco</span><span>¿De quién?</span>
     </div>
     <div id="gastos-rows"></div>
   </div>
@@ -3767,31 +3809,26 @@ function confirmarCompartido() {
   </div>
 </div>
 
-<!-- RESUMEN CONSOLIDADO -->
+<!-- RESUMEN CONSOLIDADO — no está en el handoff (que solo cubre el asignador),
+     queda como card secundaria debajo de la tabla. El PDF/WhatsApp "general"
+     ya están arriba en el panel "Total del período"; acá solo lo que no se
+     duplica: export .txt y las acciones específicas por persona. -->
 <div id="resumen-section" style="display:none;">
   <div class="section-label"><i class="ph ph-chart-bar"></i> Resumen por persona</div>
   <div class="card">
     <div id="resumen-rows"></div>
     <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;width:100%;margin-bottom:4px;">General</div>
-      <button class="save-btn" onclick="exportarTxt('general')" style="background:var(--purple-dim);color:var(--purple);border-color:var(--purple);">📄 General .txt</button>
-      <button class="save-btn" onclick="exportarPdf('general')" style="background:var(--purple-dim);color:var(--purple);border-color:var(--purple);">📑 General .pdf</button>
+      <div style="font:700 10px/1 'Manrope';letter-spacing:.1em;text-transform:uppercase;color:var(--mf-text-faint);width:100%;margin-bottom:4px;">General</div>
+      <button class="save-btn" onclick="exportarTxt('general')" style="background:var(--mf-surface-2);color:var(--mf-ink);border:1px solid var(--mf-line);">📄 General .txt</button>
 
-      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;width:100%;margin-bottom:4px;margin-top:8px;">Por persona</div>
+      <div style="font:700 10px/1 'Manrope';letter-spacing:.1em;text-transform:uppercase;color:var(--mf-text-faint);width:100%;margin-bottom:4px;margin-top:8px;">Por persona</div>
       <select id="export-persona-sel" class="persona-select" style="width:auto;min-width:140px;">
         <option value="">— elegir persona —</option>
       </select>
-      <button class="save-btn" onclick="exportarTxt('persona')" style="background:var(--blue-dim);color:var(--blue);border-color:var(--blue);">📄 Persona .txt</button>
-      <button class="save-btn" onclick="exportarPdf('persona')" style="background:var(--blue-dim);color:var(--blue);border-color:var(--blue);">📑 Persona .pdf</button>
-
-      <div style="margin-top:12px;border-top:0.5px solid var(--border);padding-top:12px;">
-        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">WhatsApp — adjunta el PDF generado</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-          <button class="save-btn" onclick="compartirWhatsapp('general')" style="background:var(--green-dim);color:var(--green);border-color:var(--green);">💬 General (sin destino)</button>
-          <button class="save-btn" onclick="compartirWhatsapp('persona')" style="background:var(--green-dim);color:var(--green);border-color:var(--green);">💬 Enviar a persona</button>
-        </div>
-        <div style="font-size:10px;color:var(--muted);margin-top:6px;">↳ Descarga el PDF y adjúntalo manualmente en WhatsApp — los navegadores móviles no permiten adjuntar archivos directo desde web.</div>
-      </div>
+      <button class="save-btn" onclick="exportarTxt('persona')" style="background:var(--mf-surface-2);color:var(--mf-ink);border:1px solid var(--mf-line);">📄 Persona .txt</button>
+      <button class="save-btn" onclick="exportarPdf('persona')" style="background:var(--mf-surface-2);color:var(--mf-ink);border:1px solid var(--mf-line);">📑 Persona .pdf</button>
+      <button class="save-btn" onclick="compartirWhatsapp('persona')" style="background:var(--mf-green-soft);color:var(--mf-green-dark);border:1px solid transparent;">💬 Enviar a persona</button>
+      <div style="font:500 11px/1.4 'Manrope';color:var(--mf-text-faint);margin-top:6px;width:100%;">↳ Descarga el PDF y adjúntalo manualmente en WhatsApp — los navegadores móviles no permiten adjuntar archivos directo desde web.</div>
     </div>
   </div>
 </div>
@@ -3820,19 +3857,21 @@ function confirmarCompartido() {
   cursor:pointer;
   transition:all .15s;
 }
+#page-gastos .filtro-btn.active, #page-gastos .filtro-btn:hover { background:var(--mf-surface); color:var(--mf-ink); }
 .filtro-btn.active, .filtro-btn:hover { background:var(--blue-dim); color:var(--blue); border-color:var(--blue); }
 
 .gasto-row {
   padding:10px 0;
-  border-bottom:0.5px solid var(--border);
+  border-bottom:1px solid var(--mf-line);
+  font-family:'Manrope',system-ui,sans-serif;
   font-size:11px;
-  color:var(--text2);
+  color:var(--mf-ink);
 }
 .gasto-row:last-child { border-bottom:none; }
 .gasto-row-main {
   display:grid;
-  grid-template-columns:78px 1fr 88px 68px 120px 60px;
-  gap:6px;
+  grid-template-columns:70px 1fr 96px 88px 170px 60px;
+  gap:10px;
   align-items:center;
 }
 @media(max-width:600px){
@@ -3841,7 +3880,7 @@ function confirmarCompartido() {
     grid-template-rows:auto auto;
     gap:4px;
   }
-  .gasto-row-fecha { grid-column:1; grid-row:1; font-size:9px; color:var(--muted); }
+  .gasto-row-fecha { grid-column:1; grid-row:1; font-size:9px; color:var(--mf-text-faint); }
   .gasto-row-desc { grid-column:1; grid-row:2; }
   .gasto-row-monto { grid-column:2; grid-row:1; text-align:right; font-size:12px; }
   .gasto-row-banco { display:none; }
@@ -3850,26 +3889,37 @@ function confirmarCompartido() {
 }
 
 .persona-select {
-  background:var(--surface2);
-  border:0.5px solid var(--border);
-  border-radius:5px;
-  color:var(--text);
-  font-family:'DM Mono',monospace;
-  font-size:10px;
-  padding:3px 4px;
+  appearance:none; -webkit-appearance:none;
+  background:var(--mf-green-soft);
+  border:1px dashed var(--mf-green);
+  border-radius:9px;
+  color:var(--mf-green-dark);
+  font-family:'Manrope',system-ui,sans-serif;
+  font-weight:600;
+  font-size:12px;
+  padding:7px 10px;
   width:100%;
   cursor:pointer;
 }
-.persona-select:focus { outline:none; border-color:var(--blue); }
-.persona-select.asignado { border-color:var(--green); background:var(--green-dim); }
+.persona-select:focus { outline:2px solid var(--mf-green); outline-offset:1px; }
+.persona-select.asignado { border:1px solid transparent; background:var(--mf-surface-2); color:var(--mf-ink); }
+
+.ignorar-btn{
+  background:var(--mf-surface-2); border:1px solid transparent; border-radius:6px;
+  color:var(--mf-text-muted); font-family:'Manrope',system-ui,sans-serif;
+  font-size:10px; font-weight:600; padding:3px 6px; cursor:pointer;
+}
+.ignorar-btn:hover{ background:var(--mf-surface-2); color:var(--mf-ink); }
+.ignorar-btn.activo{ background:var(--mf-pink-soft); color:var(--mf-pink-dark); }
 
 .resumen-row {
   display:flex;
   align-items:center;
   justify-content:space-between;
   padding:12px 0;
-  border-bottom:0.5px solid var(--border);
-  color:var(--text2);
+  border-bottom:1px solid var(--mf-line);
+  font-family:'Manrope',system-ui,sans-serif;
+  color:var(--mf-ink);
 }
 .resumen-row:last-child { border-bottom:none; }
 </style>
@@ -4051,23 +4101,17 @@ function renderGastos() {
   const grupos = [
     {
       id: 'cmr',
-      label: '💳 CMR (Banco Falabella)',
-      color: 'var(--red)',
-      bgColor: 'var(--red-dim)',
+      label: 'CMR (Banco Falabella)',
       match: g => g.banco === 'CMR'
     },
     {
       id: 'chile-nac',
-      label: '🏦 Banco Chile · Nacional',
-      color: 'var(--blue)',
-      bgColor: 'var(--blue-dim)',
+      label: 'Banco Chile · Nacional',
       match: g => g.banco === 'Bco Chile' && g.moneda !== 'USD'
     },
     {
       id: 'chile-int',
-      label: '🌍 Banco Chile · Internacional (USD)',
-      color: 'var(--purple)',
-      bgColor: 'var(--purple-dim)',
+      label: 'Banco Chile · Internacional (USD)',
       match: g => g.banco === 'Bco Chile' && g.moneda === 'USD'
     }
   ];
@@ -4077,12 +4121,13 @@ function renderGastos() {
     const realIdx = allGastos.indexOf(g);
     const row = document.createElement('div');
     row.className = 'gasto-row';
+    // FIX rediseño 1a: colores planos de banco en vez de pills rojo/azul —
+    // ver README del handoff, la columna BANCO ahí es texto simple.
     const montoStr = g.moneda === 'USD'
-      ? `<span style="color:var(--blue);">$${g.monto.toFixed(2)} USD</span>`
-      : `<span>${fmtNum(g.monto)}</span>`;
-    const bancoBadge = g.banco === 'CMR'
-      ? `<span style="background:var(--red-dim);color:var(--red);padding:2px 6px;border-radius:4px;font-size:9px;">CMR</span>`
-      : `<span style="background:var(--blue-dim);color:var(--blue);padding:2px 6px;border-radius:4px;font-size:9px;">Chile</span>`;
+      ? `<span style="font-weight:700;font-variant-numeric:tabular-nums;">$${g.monto.toFixed(2)} USD</span>`
+      : `<span style="font-weight:700;font-variant-numeric:tabular-nums;">${fmtNum(g.monto)}</span>`;
+    const bancoLabel = g.banco === 'CMR' ? 'CMR' : (g.moneda === 'USD' ? 'Bco Chile USD' : 'Bco Chile');
+    const bancoBadge = `<span style="color:var(--mf-text-muted);font-size:12px;">${bancoLabel}</span>`;
 
     // FIX V31.2: incluir nombres custom usados en otras filas para que
     // queden disponibles en el dropdown después de cualquier re-render.
@@ -4162,20 +4207,19 @@ function renderGastos() {
     header.style.cssText = `
       margin: 18px 0 6px 0;
       padding: 8px 12px;
-      background: ${grupo.bgColor};
-      border-left: 3px solid ${grupo.color};
-      border-radius: 6px;
-      font-family: 'DM Mono', monospace;
-      font-size: 11px;
+      background: var(--mf-surface-2);
+      border-radius: 8px;
+      font-family: 'Manrope', system-ui, sans-serif;
+      font-size: 10px;
       text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: ${grupo.color};
+      letter-spacing: .08em;
+      color: var(--mf-text-muted);
       font-weight: 700;
       display: flex;
       justify-content: space-between;
       align-items: center;
     `;
-    header.innerHTML = `<span>${grupo.label}</span><span style="color:var(--muted);font-size:10px;font-weight:600;">${items.length} mov.</span>`;
+    header.innerHTML = `<span>${grupo.label}</span><span style="color:var(--mf-text-faint);font-size:10px;font-weight:600;">${items.length} mov.</span>`;
     container.appendChild(header);
     items.forEach(g => container.appendChild(buildRow(g)));
   });
@@ -4199,8 +4243,7 @@ window.limpiarAsignadorCompleto = async function() {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
-  const ul = document.getElementById('v6-uploaded-list');
-  if (ul) ul.innerHTML = '';
+  if (typeof v6ResetDropzoneUI === 'function') v6ResetDropzoneUI();
   if (typeof actualizarResumen === 'function') actualizarResumen();
   if (typeof actualizarTotalesPeriodo === 'function') actualizarTotalesPeriodo();
   if (typeof syncTarjetas === 'function') syncTarjetas();
@@ -5731,8 +5774,7 @@ function v6LimpiarMesActualUI() {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
-  const ul = document.getElementById('v6-uploaded-list');
-  if (ul) ul.innerHTML = '';
+  if (typeof v6ResetDropzoneUI === 'function') v6ResetDropzoneUI();
 
   // Resetear checks de gastos fijos
   // FIX V31.2: el markup real usa .fijo-check.pagado y .fijo-row.pagado-row,
@@ -6001,7 +6043,7 @@ function v6RenderAreaChart(containerId, points) {
     const x = n > 1 ? i * stepX : W;
     const anchor = x < 20 ? 'start' : (x > W - 20 ? 'end' : 'middle');
     const short = (points[i].mes||'').split(' ')[0].substr(0,3).toLowerCase();
-    return `<text x="${x.toFixed(1)}" y="${H-6}" font-family="Manrope" font-size="10" font-weight="600" fill="rgba(15,32,24,.35)" text-anchor="${anchor}">${short}</text>`;
+    return `<text x="${x.toFixed(1)}" y="${H-6}" font-family="Manrope" font-size="10" font-weight="600" style="fill:var(--mf-text-faint)" text-anchor="${anchor}">${short}</text>`;
   }).join('');
   cont.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:170px;display:block">
     <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
@@ -6210,7 +6252,7 @@ function v6RenderDashboard() {
         const done = chk && chk.classList.contains('done');
         if (done) doneCount++;
         return `<div class="mf-check-item${done ? ' done' : ''}" onclick="v6ToggleDashCheck(${i})">
-          <i class="${done ? 'ph-fill ph-check-circle' : 'ph ph-circle'}" style="color:${done ? 'var(--mf-green)' : 'rgba(15,32,24,.2)'}"></i>
+          <i class="${done ? 'ph-fill ph-check-circle' : 'ph ph-circle'}" style="color:${done ? 'var(--mf-green)' : 'var(--mf-text-faint)'}"></i>
           <span>${txt ? txt.textContent : 'Tarea ' + (i+1)}</span>
         </div>`;
       }).join('');
@@ -6326,6 +6368,141 @@ function v6RenderAhorros() {
 
   // V23: actualizar también el tab Metas para que refleje los saldos actuales
   if (typeof v6RenderMetas === 'function') v6RenderMetas();
+}
+
+// ═══ Metas — resumen en Cuentas (rediseño 1a) ═══════════════════════
+// Muestra Auto + Vivienda + TODAS las metas custom (window._metasCustom).
+// Editar el monto objetivo, la fecha, o agregar/eliminar una meta se sigue
+// haciendo en Ahorros > Metas (v6RenderMetas / renderMetasCustom) — acá
+// solo se lee la misma data para el resumen; clic en cualquier tarjeta
+// salta directo a ese editor. No duplica cálculos ni estado.
+function v6GoMetas() {
+  v6Go('ahorros');
+  setTimeout(() => {
+    const tab = document.querySelector('#tabs-ahorros .v6-tab:nth-child(3)');
+    if (tab) tab.click();
+  }, 100);
+}
+
+// Ocultar/mostrar las tarjetas fijas (Auto/Vivienda) del resumen en Cuentas.
+// Solo es una preferencia de vista — NO toca auto-meta/viv-meta ni el saldo
+// de las cuentas. Pensado para "ir limpiando" una vez cumplida la meta.
+function v6MetaCardOculta(key) {
+  return localStorage.getItem('fg_v6_meta_oculta_' + key) === '1';
+}
+function v6OcultarMetaCard(key) {
+  if (!confirm('¿Ocultar esta tarjeta del resumen de Cuentas?\n\nLa cuenta y su saldo NO se tocan — solo deja de mostrarse acá. Podés volver a mostrarla cuando quieras.')) return;
+  localStorage.setItem('fg_v6_meta_oculta_' + key, '1');
+  v6RenderCuentasMetas();
+}
+function v6MostrarMetaCard(key) {
+  localStorage.removeItem('fg_v6_meta_oculta_' + key);
+  v6RenderCuentasMetas();
+}
+
+function v6RenderCuentasMetas() {
+  const cont = document.getElementById('v6-cuentas-metas-mount');
+  if (!cont || typeof val !== 'function') return;
+
+  const autoSaldo = val('c-mp') || 0;
+  const vivSaldo = val('c-be') || 0;
+  const autoMeta = val('auto-meta') || 5000000;
+  const vivMeta = val('viv-meta') || 0;
+  const autoPct = autoMeta ? Math.min(100, autoSaldo/autoMeta*100) : 0;
+  const vivPct = vivMeta ? Math.min(100, vivSaldo/vivMeta*100) : 0;
+  const autoFalta = Math.max(0, autoMeta - autoSaldo);
+  const vivFalta = Math.max(0, vivMeta - vivSaldo);
+  const fmtM = (n) => '$' + Math.round(n).toLocaleString('es-CL');
+  const escM = (s) => String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+  const customCards = (window._metasCustom || []).map(m => {
+    const target = m.target || 0;
+    let saldo = 0, fuenteLabel = '';
+    if (m.tracking === 'manual') {
+      saldo = m.saldoManual || 0;
+      fuenteLabel = 'Saldo manual';
+    } else if (typeof getSaldoCuenta === 'function') {
+      saldo = getSaldoCuenta(m.tracking);
+      const cuenta = typeof getPoolCuentas === 'function' ? getPoolCuentas().find(c => c.id === m.tracking) : null;
+      fuenteLabel = cuenta ? cuenta.nombre : 'Cuenta vinculada eliminada';
+    }
+    const pct = target > 0 ? Math.min(100, (saldo/target)*100) : 0;
+    const falta = Math.max(0, target - saldo);
+    const color = m.color || 'var(--mf-blue)';
+    return `
+      <div class="mf-goal2-card light" onclick="v6GoMetas()" title="Editar en Ahorros › Metas">
+        <div class="mf-goal2-head">
+          <span class="mf-goal2-icon" style="background:${color}22;color:${color};"><i class="ph-fill ph-target"></i></span>
+          <span class="mf-goal2-title">${escM(m.nombre)}</span>
+        </div>
+        <div class="mf-goal2-amt-row">
+          <span class="mf-goal2-amt num-sensitive">${fmtM(saldo)}</span>
+          <span class="mf-goal2-of">${target ? 'de ' + fmtM(target) : 'sin meta definida'}</span>
+        </div>
+        <div class="mf-goal2-track"><span class="mf-goal2-bar" style="width:${pct}%;background:${color};"></span></div>
+        <div class="mf-goal2-stats"><span>${target ? pct.toFixed(0) + '% completado' : ''}</span><span>${target ? 'Faltan ' + fmtM(falta) : ''}</span></div>
+        <div class="mf-goal2-sub">${escM(fuenteLabel)}</div>
+      </div>
+    `;
+  }).join('');
+
+  const autoOculta = v6MetaCardOculta('auto');
+  const vivOculta = v6MetaCardOculta('viv');
+  const ocultas = [autoOculta ? 'Plan Auto' : null, vivOculta ? 'Plan Vivienda' : null].filter(Boolean);
+
+  const autoCard = autoOculta ? '' : `
+      <div class="mf-goal2-card dark" onclick="v6GoMetas()" title="Editar en Ahorros › Metas">
+        <button class="mf-goal2-dismiss" onclick="event.stopPropagation(); v6OcultarMetaCard('auto');" title="Ocultar esta tarjeta"><i class="ph ph-x"></i></button>
+        <div class="mf-goal2-head">
+          <span class="mf-goal2-icon"><i class="ph-fill ph-car-profile"></i></span>
+          <span class="mf-goal2-title">Plan Auto</span>
+          <span class="mf-goal2-plazo">Dic 2026</span>
+        </div>
+        <div class="mf-goal2-amt-row">
+          <span class="mf-goal2-amt num-sensitive">${fmtM(autoSaldo)}</span>
+          <span class="mf-goal2-of">de ${fmtM(autoMeta)}</span>
+        </div>
+        <div class="mf-goal2-track"><span class="mf-goal2-bar" style="width:${autoPct}%;"></span></div>
+        <div class="mf-goal2-stats"><span>${autoPct.toFixed(0)}% completado</span><span>Faltan ${fmtM(autoFalta)}</span></div>
+        <div class="mf-goal2-sub">MercadoPago · 4,00% anual</div>
+      </div>`;
+
+  const vivCard = vivOculta ? '' : `
+      <div class="mf-goal2-card light" onclick="v6GoMetas()" title="Editar en Ahorros › Metas">
+        <button class="mf-goal2-dismiss" onclick="event.stopPropagation(); v6OcultarMetaCard('viv');" title="Ocultar esta tarjeta"><i class="ph ph-x"></i></button>
+        <div class="mf-goal2-head">
+          <span class="mf-goal2-icon"><i class="ph-fill ph-house-line"></i></span>
+          <span class="mf-goal2-title">Plan Vivienda</span>
+          <span class="mf-goal2-plazo">${vivMeta ? 'Meta libre' : 'Sin fecha'}</span>
+        </div>
+        <div class="mf-goal2-amt-row">
+          <span class="mf-goal2-amt num-sensitive">${fmtM(vivSaldo)}</span>
+          <span class="mf-goal2-of">${vivMeta ? 'de ' + fmtM(vivMeta) : 'sin meta definida'}</span>
+        </div>
+        <div class="mf-goal2-track"><span class="mf-goal2-bar" style="width:${vivMeta ? vivPct : 0}%;"></span></div>
+        <div class="mf-goal2-stats"><span>${vivMeta ? vivPct.toFixed(0) + '% completado' : 'Aporte ideal $250.000/mes'}</span><span>${vivMeta ? 'Faltan ' + fmtM(vivFalta) : ''}</span></div>
+        <div class="mf-goal2-sub">BancoEstado · 1,05% anual</div>
+      </div>`;
+
+  const ocultasHtml = ocultas.length === 0 ? '' : `
+    <div class="mf-goal2-ocultas">
+      ${ocultas.length} tarjeta${ocultas.length > 1 ? 's' : ''} oculta${ocultas.length > 1 ? 's' : ''} (${escM(ocultas.join(', '))})
+      ${autoOculta ? `<button onclick="v6MostrarMetaCard('auto')">Mostrar Plan Auto</button>` : ''}
+      ${vivOculta ? `<button onclick="v6MostrarMetaCard('viv')">Mostrar Plan Vivienda</button>` : ''}
+    </div>`;
+
+  cont.innerHTML = `
+    <div class="mf-goal2-grid">
+      ${autoCard}
+      ${vivCard}
+      ${customCards}
+      <button class="mf-goal2-add" onclick="event.stopPropagation(); if(typeof openAddMetaModal==='function') openAddMetaModal();">
+        <i class="ph ph-plus-circle"></i> Agregar meta
+      </button>
+    </div>
+    ${ocultasHtml}
+  `;
+  if (typeof v6HideAmounts !== 'undefined' && v6HideAmounts && typeof v6ApplyHideAmounts === 'function') setTimeout(v6ApplyHideAmounts, 50);
 }
 
 // ═══ Metas en Ahorros ═════════════════════════════════════════
@@ -6601,19 +6778,76 @@ async function v6GuardarSnapshotManual() {
 }
 
 // ═══ Asignador unificado ═══════════════════════════════════════
+// Vuelve el dropzone unificado a su estado idle (usado al limpiar el asignador
+// o al limpiar el mes). No toca allGastos ni ningún cálculo.
+function v6ResetDropzoneUI() {
+  const dz = document.getElementById('v6-dropzone');
+  const icon = document.getElementById('v6-dropzone-icon');
+  const title = document.getElementById('v6-dropzone-title');
+  const sub = document.getElementById('v6-dropzone-sub');
+  const barWrap = document.getElementById('v6-dropzone-bar-wrap');
+  if (dz) { dz.classList.remove('state-loading', 'state-done'); dz.classList.add('state-idle'); }
+  if (icon) icon.className = 'ph ph-upload-simple';
+  if (title) title.textContent = 'Suelta los archivos aquí';
+  if (sub) sub.textContent = 'o haz clic para buscarlos · .xlsx y .xls';
+  if (barWrap) barWrap.style.display = 'none';
+  const ul = document.getElementById('v6-uploaded-list');
+  if (ul) ul.innerHTML = '';
+}
+
+// FIX rediseño 1a: el dropzone ahora tiene 3 estados visuales (idle/loading/done)
+// según el handoff. Toda la detección/parseo de abajo NO se tocó — solo se
+// agregó el manejo de estado del dropzone alrededor (setLoading/tick/setDone).
 function v6HandleUnifiedFiles(input) {
   const files = Array.from(input.files);
   const listEl = document.getElementById('v6-uploaded-list');
-  if (!listEl) return;
+  if (!listEl || files.length === 0) return;
+
+  const dz = document.getElementById('v6-dropzone');
+  const icon = document.getElementById('v6-dropzone-icon');
+  const title = document.getElementById('v6-dropzone-title');
+  const sub = document.getElementById('v6-dropzone-sub');
+  const barWrap = document.getElementById('v6-dropzone-bar-wrap');
+  const barFill = document.getElementById('v6-dropzone-bar-fill');
+
+  let pending = files.length;
+  const setLoading = () => {
+    if (!dz) return;
+    dz.classList.remove('state-idle', 'state-done');
+    dz.classList.add('state-loading');
+    if (icon) icon.className = 'ph ph-spinner-gap';
+    if (title) title.textContent = 'Leyendo estados de cuenta…';
+    if (sub) sub.textContent = files.length + (files.length === 1 ? ' archivo en cola' : ' archivos en cola');
+    if (barWrap) barWrap.style.display = 'block';
+    if (barFill) barFill.style.width = '8%';
+  };
+  const setDone = () => {
+    if (!dz) return;
+    dz.classList.remove('state-idle', 'state-loading');
+    dz.classList.add('state-done');
+    if (icon) icon.className = 'ph-fill ph-check-circle';
+    if (barWrap) barWrap.style.display = 'none';
+    const total = (window.allGastos || []).length;
+    const sinAsignar = (window.allGastos || []).filter(g => !g.persona && !g.ignorado).length;
+    if (title) title.textContent = files.length + (files.length === 1 ? ' archivo leído · ' : ' archivos leídos · ') + total + ' movimientos';
+    if (sub) sub.textContent = sinAsignar > 0 ? (sinAsignar + ' movimientos quedaron sin asignar') : 'Todo asignado';
+  };
+  const tick = () => {
+    pending--;
+    if (barFill) barFill.style.width = Math.round(((files.length - Math.max(pending,0)) / files.length) * 100) + '%';
+    if (pending <= 0) setTimeout(setDone, 150);
+  };
+
+  setLoading();
 
   files.forEach(file => {
     const reader = new FileReader();
     reader.onload = function(e) {
-      if (typeof XLSX === 'undefined') {
-        alert('Librería XLSX no cargada. Recarga.');
-        return;
-      }
       try {
+        if (typeof XLSX === 'undefined') {
+          alert('Librería XLSX no cargada. Recarga.');
+          return;
+        }
         const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const sample = XLSX.utils.sheet_to_json(ws, { defval: '', range: 0 });
@@ -6652,13 +6886,20 @@ function v6HandleUnifiedFiles(input) {
         const item = document.createElement('div');
         item.className = 'uploaded-file';
         const tipoLabel = tipo === 'cmr' ? 'CMR ($)' : tipo === 'int' ? 'Bco Chile (USD)' : 'Bco Chile ($)';
-        item.innerHTML = `<div><span class="uploaded-file-name">${file.name}</span> <span class="uploaded-file-type">→ ${tipoLabel}</span></div><span style="color:var(--green);font-weight:700;">✓</span>`;
+        item.innerHTML = `<i class="ph-fill ph-file-arrow-up" style="font-size:17px;color:var(--mf-green);flex:none;"></i>` +
+          `<span style="display:flex;flex-direction:column;gap:2px;min-width:0;">` +
+          `<span class="uploaded-file-name">${file.name}</span>` +
+          `<span class="uploaded-file-type">${tipoLabel} · Cargado</span>` +
+          `</span>`;
         listEl.appendChild(item);
       } catch(err) {
         console.error(err);
         alert('Error: ' + err.message);
+      } finally {
+        tick();
       }
     };
+    reader.onerror = tick;
     reader.readAsArrayBuffer(file);
   });
   input.value = '';
@@ -7616,8 +7857,8 @@ window.v25ShowModal = function(opts) {
         id="v25-modal-input"
         placeholder="${opts.placeholder || ''}"
         autocomplete="off"
-        style="width:100%; background:#F1F5F3; border:2px solid transparent;
-        color:#0F2018; padding:14px; border-radius:10px; box-sizing:border-box;
+        style="width:100%; background:var(--mf-surface-2); border:2px solid transparent;
+        color:var(--mf-ink); padding:14px; border-radius:10px; box-sizing:border-box;
         font-family:'Manrope',system-ui,sans-serif; font-size:20px;
         text-align:center; letter-spacing:8px; margin-bottom:14px;">
     ` : '';
@@ -7626,15 +7867,15 @@ window.v25ShowModal = function(opts) {
 
     const buttonsHTML = `
       <div style="display:flex; gap:8px; justify-content:flex-end;">
-        ${opts.cancelText !== false ? `<button id="v25-modal-cancel" style="background:#F1F5F3;color:rgba(15,32,24,.5);border:none;padding:10px 16px;border-radius:9px;cursor:pointer;font-family:'Manrope',system-ui,sans-serif;font-weight:600;font-size:12px;">${opts.cancelText || 'Cancelar'}</button>` : ''}
+        ${opts.cancelText !== false ? `<button id="v25-modal-cancel" style="background:var(--mf-surface-2);color:var(--mf-text-muted);border:none;padding:10px 16px;border-radius:9px;cursor:pointer;font-family:'Manrope',system-ui,sans-serif;font-weight:600;font-size:12px;">${opts.cancelText || 'Cancelar'}</button>` : ''}
         <button id="v25-modal-ok" style="background:#0FA97C;color:white;border:none;padding:10px 18px;border-radius:9px;cursor:pointer;font-weight:700;font-family:'Manrope',system-ui,sans-serif;font-size:12px;">${opts.okText || 'Aceptar'}</button>
       </div>
     `;
 
     modal.innerHTML = `
-      <div style="background:#FFFFFF; border-radius:16px; padding:24px; max-width:360px; width:100%; box-shadow:0 20px 60px rgba(15,32,24,0.25);">
+      <div style="background:var(--mf-surface); border-radius:16px; padding:24px; max-width:360px; width:100%; box-shadow:0 20px 60px rgba(15,32,24,0.25);">
         <div style="font-family:'Manrope',system-ui,sans-serif; font-weight:800; color:#0FA97C; font-size:14px; margin-bottom:6px; text-transform:uppercase; letter-spacing:1.5px;">Mis Finanzas dice</div>
-        <div style="color:#0F2018; font-size:13px; line-height:1.5; margin-bottom:16px;">${opts.message}</div>
+        <div style="color:var(--mf-ink); font-size:13px; line-height:1.5; margin-bottom:16px;">${opts.message}</div>
         ${inputHTML}
         ${errorHTML}
         ${buttonsHTML}
@@ -8607,9 +8848,12 @@ function v6MoveBlocks() {
     return fragments;
   }
 
-  // === ASIGNADOR === (V31: orden upload → asignador → modo manual → resumen)
-  // Antes: TODO estaba metido dentro de un <details> "Modo manual", lo que
-  // ocultaba la tabla de transacciones hasta que se expandía. Ahora separamos.
+  // === ASIGNADOR === (rediseño 1a: dropzone unificado arriba a la izq. +
+  // panel "Total del período" arriba a la der. + tabla de movimientos abajo,
+  // fusionando lo que antes eran 3 sub-bloques + la pestaña "Resumen".
+  // NO se toca renderGastos/buildRow/actualizarResumen/actualizarTotalesPeriodo:
+  // solo se reubican los elementos que ya generan, por id, a los nuevos
+  // contenedores del layout del handoff.)
   {
     const lbl = findLabel('Asignador de gastos');
     const target = document.getElementById('v6-asignador-mount');
@@ -8618,7 +8862,6 @@ function v6MoveBlocks() {
       blocks.shift(); // quitar el label propio
       blocks.forEach(el => target.appendChild(el));
 
-      // V31: extraer el grid de uploads y el botón Importar a una card separada
       const oldCard = target.querySelector('.card');
       if (oldCard) {
         const upCmr = oldCard.querySelector('#up-cmr');
@@ -8626,11 +8869,8 @@ function v6MoveBlocks() {
         const importInput = oldCard.querySelector('#import-input');
         const importarRow = importInput ? importInput.parentElement : null;
 
-        // Renombrar el titulo de la card original (ahora solo asignador, no uploads)
-        const cardTitle = oldCard.querySelector('.card-title');
-        if (cardTitle) cardTitle.innerHTML = '<i class="ph ph-receipt"></i> Transacciones detectadas — asigna cada gasto';
-
         // Construir card "Modo manual" con los uploads separados + Importar
+        // (fallback si el dropzone unificado de arriba no detecta un archivo)
         const modoManualCard = document.createElement('div');
         modoManualCard.className = 'card';
         modoManualCard.style.marginTop = '16px';
@@ -8638,20 +8878,119 @@ function v6MoveBlocks() {
         modoTitle.className = 'card-title';
         modoTitle.innerHTML = '<i class="ph ph-folder-simple"></i> Modo manual — un archivo por banco';
         const modoDesc = document.createElement('p');
-        modoDesc.style.cssText = 'font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5;';
-        modoDesc.textContent = 'Útil si el detector unificado falla. Sube cada estado de cuenta por separado.';
+        modoDesc.style.cssText = 'font-size:11px;color:var(--mf-text-muted);margin-bottom:14px;line-height:1.5;';
+        modoDesc.textContent = 'Útil si el detector unificado de arriba falla. Sube cada estado de cuenta por separado.';
         modoManualCard.appendChild(modoTitle);
         modoManualCard.appendChild(modoDesc);
         if (uploadGrid) modoManualCard.appendChild(uploadGrid);
         if (importarRow) modoManualCard.appendChild(importarRow);
-
-        // Insertar modo manual DESPUÉS de la card de asignador
         oldCard.parentNode.appendChild(modoManualCard);
+
+        // Reubicar controles + tabla en la card "Asignar movimientos" del handoff
+        const gastosControls = oldCard.querySelector('#gastos-controls');
+        const gastosTabla = oldCard.querySelector('#gastos-tabla');
+        const tableSlot = document.getElementById('v6-gastos-table-slot');
+        if (gastosControls && gastosTabla && tableSlot) {
+          const tableCard = document.createElement('div');
+          tableCard.className = 'card mf-gastos-table-card';
+
+          const header = document.createElement('div');
+          header.className = 'mf-table-header-row';
+          const h3 = document.createElement('span');
+          h3.className = 'mf-card-title';
+          h3.style.margin = '0';
+          h3.textContent = 'Asignar movimientos';
+          header.appendChild(h3);
+
+          // gastos-count sigue vivo (oculto) porque renderGastos() escribe en su textContent
+          const countSpan = gastosControls.querySelector('#gastos-count');
+          const sinAsignarSpan = gastosControls.querySelector('#gastos-sin-asignar');
+          if (sinAsignarSpan) {
+            sinAsignarSpan.classList.add('mf-gastos-sinasignar-badge');
+            sinAsignarSpan.style.color = '';
+            header.appendChild(sinAsignarSpan);
+          }
+          if (countSpan) countSpan.style.display = 'none';
+
+          const seg = document.createElement('div');
+          seg.className = 'mf-seg-filtros';
+          let limpiarBtn = null;
+          Array.from(gastosControls.querySelectorAll('.filtro-btn')).forEach(btn => {
+            if (btn.textContent.includes('Limpiar')) { limpiarBtn = btn; return; }
+            seg.appendChild(btn);
+          });
+          header.appendChild(seg);
+          if (limpiarBtn) {
+            limpiarBtn.classList.add('mf-limpiar-btn');
+            limpiarBtn.innerHTML = '<i class="ph ph-trash"></i>';
+            limpiarBtn.title = 'Borrar todas las transacciones del asignador';
+            limpiarBtn.style.cssText = '';
+            header.appendChild(limpiarBtn);
+          }
+
+          gastosControls.innerHTML = '';
+          if (countSpan) gastosControls.appendChild(countSpan);
+          gastosControls.appendChild(header);
+
+          tableCard.appendChild(gastosControls);
+          tableCard.appendChild(gastosTabla);
+          tableSlot.appendChild(tableCard);
+        }
+
+        // Reubicar "Total del período" (g-totales) al panel de la derecha
+        const gTotales = oldCard.querySelector('#g-totales');
+        const periodoSlot = document.getElementById('v6-periodo-panel-slot');
+        if (gTotales && periodoSlot) {
+          const grand = gTotales.querySelector('#tot-grand-periodo');
+          const cmr = gTotales.querySelector('#tot-cmr-periodo');
+          const chile = gTotales.querySelector('#tot-chile-periodo');
+          const usd = gTotales.querySelector('#tot-usd-periodo');
+
+          gTotales.removeAttribute('style');
+          gTotales.innerHTML = '';
+          gTotales.className = 'mf-card mf-periodo-panel';
+          [grand, cmr, chile, usd].forEach(el => { if (el) el.removeAttribute('style'); });
+
+          const label = document.createElement('div');
+          label.className = 'mf-label';
+          label.textContent = 'TOTAL DEL PERÍODO';
+          gTotales.appendChild(label);
+          if (grand) { grand.className = 'mf-periodo-total'; gTotales.appendChild(grand); }
+
+          const desglose = document.createElement('div');
+          desglose.className = 'mf-periodo-desglose';
+          const addRow = (txt, el) => {
+            if (!el) return;
+            const r = document.createElement('div');
+            const l = document.createElement('span');
+            l.textContent = txt;
+            r.appendChild(l);
+            r.appendChild(el);
+            desglose.appendChild(r);
+          };
+          addRow('CMR', cmr);
+          addRow('Bco Chile', chile);
+          addRow('Bco Chile USD', usd);
+          gTotales.appendChild(desglose);
+
+          const actions = document.createElement('div');
+          actions.className = 'mf-periodo-actions';
+          actions.innerHTML =
+            '<button class="mf-btn-dark" onclick="if(typeof exportarPdf===\'function\')exportarPdf(\'general\')"><i class="ph ph-file-pdf"></i> Resumen del mes en PDF</button>' +
+            '<button class="mf-btn-outline-gastos" onclick="if(typeof compartirWhatsapp===\'function\')compartirWhatsapp(\'general\')"><i class="ph-fill ph-whatsapp-logo"></i> Enviar por WhatsApp</button>';
+          gTotales.appendChild(actions);
+
+          periodoSlot.parentNode.replaceChild(gTotales, periodoSlot);
+        }
+
+        // Lo que quedó de oldCard ya no tiene contenido útil (todo migrado)
+        oldCard.remove();
       }
     }
   }
 
-  // === RESUMEN === (V31: mover al final del tab Asignador, no a su tab separado)
+  // === RESUMEN === (queda como card secundaria "Resumen por persona" al
+  // final del tab Asignador — el handoff no la cubre, no se fusiona)
   {
     const resumen = stash.querySelector('#resumen-section');
     const target = document.getElementById('v6-asignador-mount');
@@ -9502,6 +9841,10 @@ function v6MoveBlocks() {
     return [...hardcoded, ...custom];
   }
 
+  // Expuestas globalmente: v6RenderCuentasMetas() (rediseño 1a, vive fuera
+  // de este closure) las necesita para listar también las metas custom.
+  window.getPoolCuentas = getPoolCuentas;
+
   function getSaldoCuenta(id) {
     if (['mp','be','fr','fc'].includes(id)) {
       const el = document.getElementById('c-'+id);
@@ -9510,6 +9853,7 @@ function v6MoveBlocks() {
     const c = (window._cuentasCustom || []).find(x => x.id === id);
     return c ? (c.saldo || 0) : 0;
   }
+  window.getSaldoCuenta = getSaldoCuenta;
 
   // Render: cuentas custom (V31.2: unificadas dentro de la card "Ahorros Actuales")
   window.renderCuentasCustom = function() {
@@ -9527,47 +9871,42 @@ function v6MoveBlocks() {
     if (oldMount) oldMount.innerHTML = '';
 
     const arr = window._cuentasCustom || [];
+    // Rediseño 1a: insertar ANTES de la fila de totales, no al final de la
+    // card (si no, las cuentas custom quedaban colgando debajo del total).
+    const totalRow = ahorrosCard.querySelector('.mf-saldos-total-row');
 
-    // Inyectar una fila por cada cuenta custom (mismo formato que las hardcoded)
+    // Inyectar una fila por cada cuenta custom (mismo grid que las hardcoded,
+    // ver .mf-saldos-row — rediseño 1a). Las acciones extra (retirar/editar/
+    // eliminar, que las cuentas duras no tienen) van en una sub-fila angosta.
     arr.forEach(c => {
       const colorStr = c.color || CUSTOM_COLORS[0];
       const row = document.createElement('div');
-      row.className = 'ahorro-row cta-custom-injected';
+      row.className = 'mf-saldos-row cta-custom-injected';
       row.dataset.customId = c.id;
       row.innerHTML = `
-        <div class="ahorro-info">
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <span style="width:10px;height:10px;border-radius:50%;background:${colorStr};display:inline-block;"></span>
-            <span style="font-family:'Syne',sans-serif;font-weight:700;color:var(--text);font-size:14px;">${escHtml(c.nombre)}</span>
-            ${c.tag ? `<span style="font-size:11px;color:var(--muted);">${escHtml(c.tag)}</span>` : ''}
-          </div>
-        </div>
-        <div class="ahorro-controls">
-          <div class="ahorro-field">
-            <span class="ahorro-field-label">Saldo actual</span>
-            <input class="editable" type="number" id="cc-saldo-${c.id}" value="${c.saldo || 0}" onchange="onCuentaCustomSaldoChange('${c.id}', this.value)" style="color:${colorStr};width:140px;">
-          </div>
-          <div class="ahorro-field">
-            <span class="ahorro-field-label">Deposité este mes</span>
-            <input class="editable" type="number" id="cc-dep-${c.id}" value="0" placeholder="0" style="color:var(--green);width:140px;">
-          </div>
-          <button class="ahorro-confirm pendiente" id="cc-btn-${c.id}" onclick="confirmarDepositoCustom('${c.id}')">✓ Listo</button>
-        </div>
-        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-          <button class="retiro-link" onclick="openRetiroModal('${c.id}')">⬇ Retirar</button>
-          <button class="retiro-link" onclick="openEditCuentaModal('${c.id}')" style="border-style:solid;">✏ Editar</button>
-          <button class="retiro-link" onclick="eliminarCuentaCustom('${c.id}')" style="border-style:solid;">🗑 Eliminar</button>
+        <span class="mf-saldos-cuenta">
+          <span class="mf-saldos-dot" style="background:${colorStr};"></span>
+          <span class="mf-saldos-cuenta-info"><span class="mf-saldos-nombre">${escHtml(c.nombre)}</span><span class="mf-saldos-etiqueta">${c.tag ? escHtml(c.tag) : 'Cuenta agregada'}</span></span>
+        </span>
+        <span class="mf-saldos-tasa">—</span>
+        <input class="editable mf-saldo-input" type="number" id="cc-saldo-${c.id}" value="${c.saldo || 0}" onchange="onCuentaCustomSaldoChange('${c.id}', this.value)">
+        <input class="editable mf-saldo-input" type="number" id="cc-dep-${c.id}" value="0" placeholder="0">
+        <button class="mf-saldos-estado ahorro-confirm pendiente" id="cc-btn-${c.id}" onclick="confirmarDepositoCustom('${c.id}')">✓ Listo</button>
+        <div class="mf-saldos-custom-actions" style="grid-column:1/-1;display:flex;gap:14px;margin-top:-4px;">
+          <button class="mf-saldos-link" onclick="openRetiroModal('${c.id}')"><i class="ph ph-arrow-line-down"></i> Retirar</button>
+          <button class="mf-saldos-link" onclick="openEditCuentaModal('${c.id}')"><i class="ph ph-pencil-simple"></i> Editar</button>
+          <button class="mf-saldos-link" onclick="eliminarCuentaCustom('${c.id}')"><i class="ph ph-trash"></i> Eliminar</button>
         </div>
       `;
-      ahorrosCard.appendChild(row);
+      if (totalRow) ahorrosCard.insertBefore(row, totalRow); else ahorrosCard.appendChild(row);
     });
 
-    // Botón "+ Agregar cuenta" al final de la misma card
+    // Botón "+ Agregar cuenta" justo antes del total
     const btnWrap = document.createElement('div');
     btnWrap.className = 'cta-custom-injected';
-    btnWrap.style.cssText = 'margin-top:18px;padding-top:14px;border-top:1px dashed var(--border);text-align:center;';
+    btnWrap.style.cssText = 'margin-top:6px;padding-top:14px;border-top:1px dashed var(--mf-line);text-align:center;';
     btnWrap.innerHTML = `<button class="custom-add-btn" onclick="openAddCuentaModal()">+ Agregar cuenta</button>`;
-    ahorrosCard.appendChild(btnWrap);
+    if (totalRow) ahorrosCard.insertBefore(btnWrap, totalRow); else ahorrosCard.appendChild(btnWrap);
 
     if (typeof v6HideAmounts !== 'undefined' && v6HideAmounts && typeof v6ApplyHideAmounts === 'function') {
       setTimeout(v6ApplyHideAmounts, 50);
@@ -9859,6 +10198,7 @@ function v6MoveBlocks() {
     closeAddMetaModal();
     renderMetasCustom();
     if (typeof v6RenderDashboard === 'function') v6RenderDashboard();
+    if (typeof v6RenderCuentasMetas === 'function') v6RenderCuentasMetas();
     if (typeof guardar === 'function') await guardar();
   };
 
@@ -9869,6 +10209,7 @@ function v6MoveBlocks() {
     window._metasCustom = (window._metasCustom || []).filter(x => x.id !== id);
     renderMetasCustom();
     if (typeof v6RenderDashboard === 'function') v6RenderDashboard();
+    if (typeof v6RenderCuentasMetas === 'function') v6RenderCuentasMetas();
     if (typeof guardar === 'function') await guardar();
   };
 
