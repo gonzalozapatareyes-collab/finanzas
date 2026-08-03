@@ -1,0 +1,23 @@
+{
+  "name": "finanzas",
+  "version": "1.0.0",
+  "description": "",
+  "main": "sw.js",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gonzalozapatareyes-collab/finanzas.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/gonzalozapatareyes-collab/finanzas/issues"
+  },
+  "homepage": "https://github.com/gonzalozapatareyes-collab/finanzas#readme",
+  "devDependencies": {
+    "jsdom": "^30.0.1"
+  }
+}
