@@ -10,7 +10,7 @@ sync con Google Drive vía OAuth, hosteada en GitHub Pages.
 - Trabajar siempre en **pesos chilenos** (formato `$1.234.567`, sin decimales).
 - No eres asesor financiero certificado: entrega información y escenarios
   claros, no recomendaciones categóricas.
-- Antes de cualquier commit: correr `npm test` y que pasen los 8 tests.
+- Antes de cualquier commit: correr `npm test` y que pasen todos los tests.
   Si un cambio rompe un test, no es "ajustar el test" por defecto — primero
   hay que entender si el test detectó un bug real.
 

@@ -220,15 +220,15 @@
 </style>
 
 <style>
-.modal-part-row { display:grid; grid-template-columns:1fr 110px 90px 28px; gap:8px; align-items:center; margin-bottom:8px; }
-.modal-select { background:var(--surface2); border:0.5px solid var(--border); border-radius:6px; color:var(--text); font-family:'DM Mono',monospace; font-size:11px; padding:5px 7px; width:100%; }
-.modal-input { background:var(--surface2); border:0.5px solid var(--border); border-radius:6px; color:var(--text); font-family:'Syne',sans-serif; font-weight:700; font-size:12px; text-align:right; padding:5px 7px; width:100%; -moz-appearance:textfield; }
+.modal-part-row { display:grid; grid-template-columns:1fr 90px 70px 24px; gap:10px; align-items:center; margin-bottom:8px; font-family:'Manrope',system-ui,sans-serif; }
+.modal-select { background:var(--mf-surface-2, var(--surface2)); border:1px solid transparent; border-radius:9px; color:var(--mf-ink, var(--text)); font-family:'Manrope',system-ui,sans-serif; font-weight:600; font-size:12.5px; padding:8px 9px; width:100%; }
+.modal-input { background:var(--mf-surface-2, var(--surface2)); border:1px solid transparent; border-radius:9px; color:var(--mf-ink, var(--text)); font-family:'Manrope',system-ui,sans-serif; font-weight:700; font-size:12.5px; text-align:right; padding:8px 9px; width:100%; -moz-appearance:textfield; }
 .modal-input::-webkit-outer-spin-button, .modal-input::-webkit-inner-spin-button { -webkit-appearance:none; }
-.modal-input:focus, .modal-select:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 2px var(--blue-dim); }
-.modal-remove { background:transparent; border:none; color:var(--muted); font-size:14px; cursor:pointer; padding:0; line-height:1; }
-.modal-remove:hover { color:var(--red); }
-.modal-mode-btn { background:var(--surface2); border:0.5px solid var(--border); color:var(--muted); border-radius:5px; padding:3px 10px; font-size:10px; font-family:'DM Mono',monospace; cursor:pointer; }
-.modal-mode-btn.active { background:var(--blue-dim); border-color:var(--blue); color:var(--blue); }
+.modal-input:focus, .modal-select:focus { outline:none; border-color:var(--mf-green, var(--blue)); background:var(--mf-surface, var(--surface)); }
+.modal-remove { background:transparent; border:none; color:var(--mf-text-faint, var(--muted)); font-size:14px; cursor:pointer; padding:0; line-height:1; }
+.modal-remove:hover { color:var(--mf-pink-dark, var(--red)); }
+.modal-mode-btn { background:var(--mf-surface-2, var(--surface2)); border:0; color:var(--mf-text-muted, var(--muted)); border-radius:6px; padding:4px 9px; font-size:11px; font-weight:600; font-family:'Manrope',system-ui,sans-serif; cursor:pointer; }
+.modal-mode-btn.active { background:var(--mf-surface, #fff); color:var(--mf-ink, var(--blue)); box-shadow:0 1px 3px rgba(15,32,24,.12); }
 </style>
 
 <!-- ═══ GOOGLE DRIVE SYNC ═══════════════════════════════════════════ -->
@@ -1535,6 +1535,10 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
 #page-deudores .mf-deu-cobrar:hover{ background:var(--mf-green-soft); border-color:var(--mf-green); color:var(--mf-green-dark); }
 #page-deudores .mf-deu-cobrar:disabled{ cursor:default; opacity:.6; }
 
+#page-deudores .mf-deu-pendientes-head{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+#page-deudores .mf-deu-toggle-form-btn{ margin-left:auto; display:inline-flex; align-items:center; gap:6px; padding:9px 14px; border:0; border-radius:10px; background:var(--mf-green); color:#fff; font:700 12.5px/1 'Manrope'; cursor:pointer; }
+#page-deudores .mf-deu-toggle-form-btn:hover{ background:var(--mf-green-dark); }
+#page-deudores .mf-deu-form-wrap{ padding:16px; margin-bottom:14px; border-radius:12px; background:var(--mf-surface-2); }
 #page-deudores .mf-deu-form{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 #page-deudores .mf-deu-input{ background:var(--mf-surface-2); border:1px solid transparent; border-radius:9px; color:var(--mf-ink); font:500 13px/1 'Manrope'; padding:10px 12px; box-sizing:border-box; width:100%; }
 #page-deudores .mf-deu-input:focus{ outline:none; border-color:var(--mf-green); background:var(--mf-surface); }
@@ -2189,11 +2193,18 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
       <span style="text-align:right;">Pago</span>
     </div>
 
-    <div class="tarjeta-row" id="tr-pappaola">
-      <span style="font-size:12px;">Papa/Paola</span>
-      <input class="t-input" type="number" value="0" onchange="calcTarjeta('pappaola')" id="bc-pappaola">
-      <input class="t-input" type="number" value="0" onchange="calcTarjeta('pappaola')" id="cmr-pappaola">
-      <span class="t-total" id="tot-pappaola">—</span>
+    <div class="tarjeta-row" id="tr-papa">
+      <span style="font-size:12px;">Papá</span>
+      <input class="t-input" type="number" value="0" onchange="calcTarjeta('papa')" id="bc-papa">
+      <input class="t-input" type="number" value="0" onchange="calcTarjeta('papa')" id="cmr-papa">
+      <span class="t-total" id="tot-papa">—</span>
+      <span style="text-align:right;"><span class="badge badge-no" onclick="togglePago(this)">No</span></span>
+    </div>
+    <div class="tarjeta-row" id="tr-paola">
+      <span style="font-size:12px;">Paola</span>
+      <input class="t-input" type="number" value="0" onchange="calcTarjeta('paola')" id="bc-paola">
+      <input class="t-input" type="number" value="0" onchange="calcTarjeta('paola')" id="cmr-paola">
+      <span class="t-total" id="tot-paola">—</span>
       <span style="text-align:right;"><span class="badge badge-no" onclick="togglePago(this)">No</span></span>
     </div>
     <div class="tarjeta-row" id="tr-yo">
@@ -2270,7 +2281,7 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
 </div>
 
 <script>
-const PERSONAS = ['pappaola','yo','vania','paula','aldo','mama','rorro','luis'];
+const PERSONAS = ['papa','paola','yo','vania','paula','aldo','mama','rorro','luis'];
 
 function fmt(n) {
   if (!n || n === 0) return '—';
@@ -3418,7 +3429,7 @@ function limpiarMes() {
   if (rows) rows.innerHTML = '';
 
   // ── Reset tabla tarjetas ─────────────────────────────────────
-  const PERSONAS_LIST = ['pappaola','yo','vania','paula','aldo','mama','rorro','luis'];
+  const PERSONAS_LIST = ['papa','paola','yo','vania','paula','aldo','mama','rorro','luis'];
   PERSONAS_LIST.forEach(p => {
     const bc  = document.getElementById('bc-'  + p);
     const cmr = document.getElementById('cmr-' + p);
@@ -3492,14 +3503,14 @@ function abrirModalCompartido(idx) {
   const g = allGastos[idx];
 
   // Collect all known names
-  const conocidos = ['Yo','Papa/Paola','Vania','Paula','Aldo','Mamá','Rorro Bulla','Luis'];
+  const conocidos = ['Yo','Papá','Paola','Vania','Paula','Aldo','Mamá','Rorro Bulla','Luis'];
   const custom = [...new Set(allGastos.filter(g=>g.persona && !conocidos.includes(g.persona) && g.persona !== 'Compartido' && g.persona !== 'Otro').map(g=>g.persona))];
   modalPersonasDisponibles = [...conocidos, ...custom];
 
   // Show gasto info
   document.getElementById('modal-gasto-info').innerHTML =
-    `<span style="color:var(--text);font-weight:600;">${g._label||g.desc}</span><br>` +
-    `<span style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--yellow);">${fmtNum(g.monto)}</span>` +
+    `<span style="color:var(--mf-ink);font-weight:600;">${g._label||g.desc}</span><br>` +
+    `<span style="font-family:'Manrope',system-ui,sans-serif;font-size:15px;font-weight:800;color:var(--mf-ink);">${fmtNum(g.monto)}</span>` +
     ` &nbsp;·&nbsp; ${g.banco} &nbsp;·&nbsp; ${g.fecha}`;
 
   // Mode toggle
@@ -3520,13 +3531,13 @@ function renderModalParticipantes(montoTotal, existentes) {
 
   // Header row
   container.innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 110px 90px 28px;gap:8px;margin-bottom:6px;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">
+    <div style="display:grid;grid-template-columns:1fr 90px 70px 24px;gap:10px;margin-bottom:8px;font:700 10px/1 'Manrope';color:var(--mf-text-faint);text-transform:uppercase;letter-spacing:.08em;">
       <span>Persona</span>
       <span style="text-align:right;">
         <button class="modal-mode-btn ${modalMode==='monto'?'active':''}" onclick="setModalMode('monto')">$</button>
         <button class="modal-mode-btn ${modalMode==='pct'?'active':''}" onclick="setModalMode('pct')">%</button>
       </span>
-      <span style="text-align:right;color:var(--muted);font-size:9px;">Calculado</span>
+      <span style="text-align:right;">Calculado</span>
       <span></span>
     </div>
   `;
@@ -3556,8 +3567,8 @@ function renderModalParticipantes(montoTotal, existentes) {
         ${opts}
         <option value="__nuevo__" ${p.nombre && !modalPersonasDisponibles.includes(p.nombre)?'selected':''}>+ Nombre nuevo...</option>
       </select>
-      <input class="modal-input" type="number" id="mval-${i}" value="${valDisplay}" placeholder="${valPlaceholder}" oninput="recalcModal()" style="color:var(--${modalMode==='pct'?'blue':'yellow'});">
-      <span id="mcalc-${i}" style="text-align:right;font-family:'Inter',sans-serif;font-weight:700;font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted);">${calc}</span>
+      <input class="modal-input" type="number" id="mval-${i}" value="${valDisplay}" placeholder="${valPlaceholder}" oninput="recalcModal()">
+      <span id="mcalc-${i}" style="text-align:right;font-family:'Manrope',system-ui,sans-serif;font-weight:700;font-variant-numeric:tabular-nums;font-size:12.5px;color:var(--mf-text-faint);">${calc}</span>
       <button class="modal-remove" onclick="quitarParticipante(${i})">✕</button>
     `;
 
@@ -3644,7 +3655,7 @@ function recalcModal() {
       totalAsignado += v;
     }
     calcEl.textContent = v > 0 ? fmtNum(montoCalc) : '—';
-    calcEl.style.color = v > 0 ? 'var(--text)' : 'var(--muted)';
+    calcEl.style.color = v > 0 ? 'var(--mf-ink)' : 'var(--mf-text-faint)';
   });
 
   // Show difference warning
@@ -3930,7 +3941,7 @@ const sheetScript = document.createElement('script');
 sheetScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
 document.head.appendChild(sheetScript);
 
-const PERSONAS_LIST = ['— sin asignar —','Yo','Papa/Paola','Vania','Paula','Aldo','Mamá','Rorro Bulla','Luis','Compartido','Otro'];
+const PERSONAS_LIST = ['— sin asignar —','Yo','Papá','Paola','Vania','Paula','Aldo','Mamá','Rorro Bulla','Luis','Compartido','Otro'];
 // FIX V31.2: usar window.allGastos para que esté sincronizado con el resto
 // del código (carga de archivos, persistencia Drive, limpieza, etc.).
 // Antes era `let allGastos = []` lo que creaba una variable local del script
@@ -5023,6 +5034,10 @@ function buildGruposExport() {
 // ── WHATSAPP ─────────────────────────────────────────────────────
 // Números por persona predeterminada (formato internacional sin +)
 const WA_NUMEROS = {
+  // FIX: Papá/Paola separados — mismo número placeholder hasta que se
+  // configuren los reales (pendiente: pantalla de contactos editable).
+  'Papá':       '56967191274',
+  'Paola':      '56967191274',
   'Papa/Paola': '56967191274',
   'Hayle':      '56936846239',
   'Aldo':       '56973426022',
@@ -5209,9 +5224,17 @@ function setCuota(idx, field, value) {
 }
 
 // ─── PERSONA → TARJETA ROW MAPPING ───────────────────────────────
+// FIX: Papá y Paola se separaron en dos personas. Los gastos viejos que
+// quedaron asignados a "Papa/Paola" (antes de la separación) NO se funden
+// en la fila de Papá — quedan como su propia fila "custom" (mismo mecanismo
+// que ya usan "Compartido"/nombres libres), para no duplicar el monto: el
+// dashboard ya trata "Papa/Paola" como persona no-predefinida al no estar
+// en PRED_NOMBRES, así que acá tiene que comportarse igual o el total se
+// cuenta dos veces (una en la fila de Papá, otra como "custom").
 const PERSONA_TO_ROW = {
   'Yo':          'yo',
-  'Papa/Paola':  'pappaola',
+  'Papá':        'papa',
+  'Paola':       'paola',
   'Vania':       'vania',
   'Paula':       'paula',
   'Aldo':        'aldo',
@@ -5242,12 +5265,24 @@ function syncTarjetas() {
     else totales[g.persona].chile += g.monto;
   });
 
-  // Update existing rows
+  // Update existing rows.
+  // FIX: si en el futuro dos nombres de PERSONA_TO_ROW llegaran a apuntar
+  // a la misma fila, hay que SUMAR sus totales, no pisarlos con el último
+  // que se procese (bug real detectado al separar Papá/Paola: si el legado
+  // "Papa/Paola" también mapeaba a 'papa', el orden de iteración pisaba el
+  // total real de Papá con el del legado). Hoy cada nombre tiene su propia
+  // fila y esto es solo una salvaguarda.
+  const porRow = {};
   Object.entries(PERSONA_TO_ROW).forEach(([nombre, rowId]) => {
+    const t = totales[nombre] || {cmr:0, chile:0};
+    if (!porRow[rowId]) porRow[rowId] = {cmr:0, chile:0};
+    porRow[rowId].cmr += t.cmr;
+    porRow[rowId].chile += t.chile;
+  });
+  Object.entries(porRow).forEach(([rowId, t]) => {
     const bcEl  = document.getElementById('bc-'  + rowId);
     const cmrEl = document.getElementById('cmr-' + rowId);
     if (!bcEl || !cmrEl) return;
-    const t = totales[nombre] || {cmr:0, chile:0};
     bcEl.value  = t.chile;
     cmrEl.value = t.cmr;
     calcTarjeta(rowId);
@@ -5317,24 +5352,27 @@ function detectMonth(gastos) {
 </script>
 
 <!-- MODAL COMPARTIDO -->
-<div id="modal-compartido" style="display:none;position:fixed;inset:0;background:rgba(26,29,35,0.5);z-index:9999;align-items:center;justify-content:center;padding:20px;">
-  <div style="background:var(--surface);border:0.5px solid var(--border);border-radius:16px;padding:24px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(26,29,35,0.12);">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-      <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--text);">Dividir gasto compartido</div>
-      <button onclick="cerrarModal()" style="background:transparent;border:none;color:var(--muted);font-size:18px;cursor:pointer;">✕</button>
+<!-- Modal "Dividir gasto compartido" — rediseño 1a. La lógica ($/%, agregar/
+     quitar persona, nombre nuevo, recalcModal) no se tocó, solo el markup
+     visual. Se saca al <body> por v6MoveBlocks. -->
+<div id="modal-compartido" style="display:none;position:fixed;inset:0;background:rgba(15,32,24,.35);z-index:9999;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--mf-surface);border-radius:18px;padding:24px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px rgba(15,32,24,.25);font-family:'Manrope',system-ui,sans-serif;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+      <div style="font:800 18px/1.2 'Manrope';color:var(--mf-ink);">Dividir gasto compartido</div>
+      <button onclick="cerrarModal()" style="margin-left:auto;background:transparent;border:none;color:var(--mf-text-faint);font-size:18px;cursor:pointer;line-height:1;">✕</button>
     </div>
-    <div id="modal-gasto-info" style="background:var(--surface2);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:var(--text2);border:0.5px solid var(--border);"></div>
+    <div id="modal-gasto-info" style="background:var(--mf-surface-2);border-radius:12px;padding:14px 16px;margin-bottom:16px;font:600 13px/1.3 'Manrope';color:var(--mf-text-muted);"></div>
 
-    <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:10px;">Participantes</div>
+    <div style="font:700 11px/1 'Manrope';letter-spacing:.1em;text-transform:uppercase;color:var(--mf-text-faint);margin-bottom:10px;">Participantes</div>
     <div id="modal-participantes"></div>
 
-    <button onclick="agregarParticipante()" style="background:var(--surface2);border:0.5px dashed var(--border);border-radius:8px;color:var(--muted);font-size:11px;padding:8px 14px;cursor:pointer;width:100%;margin-top:8px;font-family:'DM Mono',monospace;">+ Agregar persona</button>
+    <button onclick="agregarParticipante()" style="background:transparent;border:1px dashed var(--mf-line);border-radius:9px;color:var(--mf-text-muted);font:600 12px/1 'Manrope';padding:9px 14px;cursor:pointer;width:100%;margin-top:8px;">+ Agregar persona</button>
 
-    <div id="modal-aviso" style="display:none;margin-top:12px;background:var(--yellow-dim);border:0.5px solid var(--yellow);border-radius:6px;padding:8px 12px;font-size:11px;color:var(--yellow);"></div>
+    <div id="modal-aviso" style="display:none;margin-top:12px;background:var(--mf-amber-soft);border-radius:9px;padding:9px 12px;font:600 11.5px/1.3 'Manrope';color:var(--mf-amber);"></div>
 
     <div style="display:flex;gap:10px;margin-top:20px;">
-      <button onclick="confirmarCompartido()" style="flex:1;background:var(--green-dim);color:var(--green);border:0.5px solid var(--green);border-radius:8px;padding:10px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;font-weight:600;">✓ Confirmar división</button>
-      <button onclick="cerrarModal()" style="background:var(--surface2);color:var(--muted);border:0.5px solid var(--border);border-radius:8px;padding:10px 16px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;">Cancelar</button>
+      <button onclick="confirmarCompartido()" style="flex:1;background:var(--mf-green);color:#fff;border:0;border-radius:10px;padding:12px;font:700 13px/1 'Manrope';cursor:pointer;">Confirmar división</button>
+      <button onclick="cerrarModal()" style="background:transparent;color:var(--mf-ink);border:1px solid var(--mf-line);border-radius:10px;padding:12px 18px;font:600 13px/1 'Manrope';cursor:pointer;">Cancelar</button>
     </div>
   </div>
 </div>
@@ -5755,7 +5793,7 @@ function v6LimpiarMesActualUI() {
   });
 
   // Limpiar tarjetas
-  const PERSONAS_LIST = ['pappaola','yo','vania','paula','aldo','mama','rorro','luis'];
+  const PERSONAS_LIST = ['papa','paola','yo','vania','paula','aldo','mama','rorro','luis'];
   PERSONAS_LIST.forEach(p => {
     const bc = document.getElementById('bc-' + p);
     const cmr = document.getElementById('cmr-' + p);
@@ -6124,9 +6162,9 @@ function v6RenderDashboard() {
   const depMesAcumulado = ['mp','be','fr','fc'].reduce((s,k) => {
     return s + ((window._acumuladoMes && window._acumuladoMes[k]) || 0);
   }, 0);
-  const PERSONAS = ['pappaola','yo','vania','paula','aldo','mama','rorro','luis'];
+  const PERSONAS = ['papa','paola','yo','vania','paula','aldo','mama','rorro','luis'];
   const PERSONAS_LABELS = {
-    pappaola: 'Papá/Paola', yo: 'Yo', vania: 'Vania',
+    papa: 'Papá', paola: 'Paola', yo: 'Yo', vania: 'Vania',
     paula: 'Paula', aldo: 'Aldo', mama: 'Mamá',
     rorro: 'Rorro', luis: 'Luis'
   };
@@ -6137,7 +6175,7 @@ function v6RenderDashboard() {
   const totTCPredef = PERSONAS.reduce((s,p) => s + (val('bc-'+p)||0) + (val('cmr-'+p)||0), 0);
   // FIX V31.2: incluir personas custom (las que se asignaron via "Otro" en el asignador)
   // leyendo directamente desde allGastos, ya que no tienen inputs bc-/cmr- en la matriz.
-  const PRED_NOMBRES = ['Yo','Papa/Paola','Vania','Paula','Aldo','Mamá','Rorro Bulla','Luis'];
+  const PRED_NOMBRES = ['Yo','Papá','Paola','Vania','Paula','Aldo','Mamá','Rorro Bulla','Luis'];
   const totalesCustom = {};
   (window.allGastos || []).filter(g => g.persona && !g.ignorado && g.moneda === '$').forEach(g => {
     if (g.persona === 'Compartido' && g._compartidoParts && g._compartidoParts.length > 0) {
@@ -7035,7 +7073,7 @@ window.v6SyncMatrizFromAsignador = function() {
   if (typeof window.allGastos === 'undefined' || !window.allGastos) return;
 
   // Resetear todas las celdas de matriz a 0
-  const PERSONAS = ['pappaola','yo','vania','paula','aldo','mama','rorro','luis'];
+  const PERSONAS = ['papa','paola','yo','vania','paula','aldo','mama','rorro','luis'];
   const acumulado = {};
   PERSONAS.forEach(p => {
     acumulado[p] = { bc: 0, cmr: 0 };
@@ -7168,21 +7206,38 @@ window.v6RenderDeudoresPropio = function() {
       </div>
     </div>
     <div class="card">
-      <div class="card-title">Pendientes</div>
-      <div id="v6-deudores-list-propio">${listaHTML}</div>
-    </div>
-    <div class="card" style="margin-top:16px;">
-      <div class="card-title">Agregar nuevo deudor</div>
-      <div class="mf-deu-form">
-        <input id="v6-deu-nombre" placeholder="Nombre" class="mf-deu-input">
-        <input id="v6-deu-monto" type="number" placeholder="Monto ($)" class="mf-deu-input">
-        <input id="v6-deu-titulo" placeholder="Concepto (ej: cena, deuda...)" class="mf-deu-input mf-deu-input-wide">
-        <input id="v6-deu-desde" type="date" title="Desde cuándo" class="mf-deu-input mf-deu-input-wide">
+      <div class="mf-deu-pendientes-head">
+        <span class="card-title" style="margin:0;">Pendientes</span>
+        <button class="mf-deu-toggle-form-btn" onclick="v6ToggleDeudorForm()"><i class="ph ph-plus"></i> Agregar deudor</button>
       </div>
-      <button class="mf-deu-add-btn" onclick="v6AgregarDeudorPropio()">+ Agregar deudor</button>
+      <div id="v6-deu-form-wrap" class="mf-deu-form-wrap" style="display:${window._v6DeudorFormOpen ? 'block' : 'none'};">
+        <div class="mf-deu-form">
+          <input id="v6-deu-nombre" placeholder="Nombre" class="mf-deu-input">
+          <input id="v6-deu-monto" type="number" placeholder="Monto ($)" class="mf-deu-input">
+          <input id="v6-deu-titulo" placeholder="Concepto (ej: cena, deuda...)" class="mf-deu-input mf-deu-input-wide">
+          <input id="v6-deu-desde" type="date" title="Desde cuándo" class="mf-deu-input mf-deu-input-wide">
+        </div>
+        <button class="mf-deu-add-btn" onclick="v6AgregarDeudorPropio()">+ Agregar deudor</button>
+      </div>
+      <div id="v6-deudores-list-propio">${listaHTML}</div>
     </div>
   `;
   if (v6HideAmounts) setTimeout(v6ApplyHideAmounts, 50);
+};
+
+// FIX rediseño 1a: el form de "agregar deudor" pasa a ser desplegable desde
+// el botón del header (como el handoff), en vez de una card siempre visible.
+// Solo es un flag de UI (window._v6DeudorFormOpen) — no toca _deudores.
+window.v6ToggleDeudorForm = function() {
+  window._v6DeudorFormOpen = !window._v6DeudorFormOpen;
+  const wrap = document.getElementById('v6-deu-form-wrap');
+  if (wrap) {
+    wrap.style.display = window._v6DeudorFormOpen ? 'block' : 'none';
+    if (window._v6DeudorFormOpen) {
+      const nombreEl = document.getElementById('v6-deu-nombre');
+      if (nombreEl) setTimeout(() => nombreEl.focus(), 50);
+    }
+  }
 };
 
 window.v6ToggleDeudorCobrado = function(idx) {
@@ -8636,7 +8691,7 @@ window.v17GenerarReportePDF = async function() {
     });
     return total;
   })();
-  const totalTC = ['pappaola','yo','vania','paula','aldo','mama','rorro','luis']
+  const totalTC = ['papa','paola','yo','vania','paula','aldo','mama','rorro','luis']
     .reduce((s,p) => s + val('bc-'+p) + val('cmr-'+p), 0);
   const deudores = (window._deudores || []).filter(d => !d.cobrado);
   const totalDeudores = deudores.reduce((s,d) => s + (d.monto||0), 0);

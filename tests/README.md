@@ -22,6 +22,11 @@ npm test
   "Historial mensual" (`v6RenderAhorros`), no solo en el dashboard.
 - **no-cripto.test.js** — que la cuenta cripto (eliminada) no vuelva a
   aparecer por accidente en el código ni en el DOM.
+- **papa-paola.test.js** — que Papá y Paola (separados de la persona
+  combinada "Papa/Paola") tengan filas independientes en `syncTarjetas()`
+  sin pisarse entre sí, y que los gastos históricos ya asignados al viejo
+  "Papa/Paola" sigan contando en el total general exactamente una vez
+  (ni se pierden, ni se funden con la fila nueva de Papá).
 
 ## Cuándo correrlos
 
