@@ -3,18 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mis Finanzas</title>
+<title>Misfi</title>
 <!-- V21: PWA tags -->
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
-<meta name="theme-color" content="#D16D3E">
+<meta name="theme-color" content="#10B981">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Mis Finanzas">
+<meta name="apple-mobile-web-app-title" content="Misfi">
 <meta name="mobile-web-app-capable" content="yes">
 
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
 <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
 <style>
@@ -1137,6 +1137,8 @@ body {
      primarios oscuros) siempre debe leerse oscura, aunque --mf-ink se
      invierta en modo oscuro para el texto normal. */
   --mf-ink-fixed:#0F2018;
+  /* Marca Misfi — ver design_handoff_logo_misfi/README.md */
+  --misfi-green:#10B981;
 }
 /* ═══ Modo oscuro real para la dirección 1a ═══════════════════════
    Antes solo se ponía negro el fondo de <body> (vars viejas de temas
@@ -1150,6 +1152,7 @@ html[data-theme="dark"]{
   --mf-blue:#7086FF; --mf-blue-soft:rgba(112,134,255,.18);
   --mf-pink:#FF7690; --mf-pink-soft:rgba(255,92,122,.16); --mf-pink-dark:#FF9DB1;
   --mf-amber:#E0A542; --mf-amber-soft:rgba(224,165,66,.16);
+  --misfi-green:#34D399;
 }
 :focus-visible{ outline:2px solid var(--mf-green); outline-offset:2px; }
 
@@ -1162,9 +1165,15 @@ html, body, #main-area{ background:var(--mf-bg); }
 /* Sidebar + header: chrome compartido por toda la app, se restylea entero */
 #sidebar{ background:var(--mf-surface); border-right:1px solid var(--mf-line); font-family:'Manrope',system-ui,sans-serif; }
 #sidebar-header{ border-bottom:none; padding:18px 14px 14px; }
-#sidebar-logo{ display:flex; align-items:center; gap:9px; margin-bottom:14px; background:none; -webkit-text-fill-color:initial; }
-.mf-logo-badge{ width:30px; height:30px; flex:none; border-radius:9px; background:var(--mf-green); color:#fff; display:flex; align-items:center; justify-content:center; font:800 13px/1 'Manrope'; }
-.mf-logo-word{ font:800 15px/1.1 'Manrope'; letter-spacing:-.02em; color:var(--mf-ink); }
+/* Logo Misfi — ver design_handoff_logo_misfi/README.md. Lockup horizontal:
+   marca 34px + nombre Quicksand 600 23px. --misfi-green es un verde propio
+   de la marca (#10B981), un poco distinto del --mf-green del resto de la
+   app (#0FA97C) — a propósito, el handoff pide reproducir el logo exacto,
+   no repintar toda la app con este verde. */
+#sidebar-logo{ display:flex; align-items:center; gap:10px; margin-bottom:14px; background:none; -webkit-text-fill-color:initial; }
+.mf-logo-badge{ width:34px; height:34px; flex:none; border-radius:10px; background:var(--misfi-green); color:#fff; display:flex; align-items:center; justify-content:center; }
+.mf-logo-badge svg{ width:68%; height:68%; display:block; }
+.mf-logo-word{ font-family:'Quicksand',sans-serif; font-weight:600; font-size:23px; letter-spacing:-.01em; color:var(--mf-ink); }
 #sidebar-clock{ font-family:'Manrope',system-ui,sans-serif; color:var(--mf-text-muted); font-size:12px; font-weight:600; padding:0 8px; }
 #sidebar-clock-date{ color:var(--mf-text-faint); font-size:11px; padding:0 8px; }
 #sidebar-sync{ color:var(--mf-green-dark); padding:0 8px; margin-top:8px; }
@@ -1596,7 +1605,7 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
 <div id="app-wrapper">
 <aside id="sidebar">
   <div id="sidebar-header">
-    <div id="sidebar-logo"><span class="mf-logo-badge">MF</span><span class="mf-logo-word">Mis Finanzas</span></div>
+    <div id="sidebar-logo"><span class="mf-logo-badge"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="24" height="24" aria-hidden="true"><rect x="18" y="38" width="84" height="56" rx="14" fill="none" stroke="currentColor" stroke-width="11"></rect><rect x="32" y="52" width="56" height="10" rx="5" fill="currentColor"></rect></svg></span><span class="mf-logo-word">Misfi</span></div>
     <div id="sidebar-clock">--:--:--</div>
     <div id="sidebar-clock-date">cargando…</div>
     <div id="sidebar-sync">
@@ -1937,7 +1946,7 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
   <div class="card">
     <div class="v6-section-label" style="margin-top:0;"><i class="ph ph-info"></i> Acerca de</div>
     <p style="font-size:12px;color:var(--mf-text-muted);line-height:1.6;">
-      <strong>Mis Finanzas v31.4</strong><br>
+      <strong>Misfi v31.4</strong><br>
       Modo seguro 🔒 · Asignador agrupado · ⬇ Retiros · ➕ Cuentas/metas custom · Fix doble conteo MP · 💬 Chat asistente con burbujas, markdown, consultas de saldos y detección de fechas<br><br>
       <em>Toda tu data del JSON original está 100% preservada.</em>
     </p>
@@ -1953,7 +1962,7 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
 
 <div class="header">
   <div class="header-left">
-    <h1>Mis Finanzas</h1>
+    <h1>Misfi</h1>
     <span class="mes-badge" id="header-mes"></span>
   </div>
   <div class="header-actions">
@@ -4807,7 +4816,7 @@ function generarPdfConJsPDF(entries, personaFiltro, mes, modo) {
     doc.setPage(i);
     setFont(7, 'normal');
     setTxt(...C.muted);
-    doc.text(`Mis Finanzas · ${mes}`, ML, PAGE_H - 8);
+    doc.text(`Misfi · ${mes}`, ML, PAGE_H - 8);
     const pg = `Pág. ${i} / ${pageCount}`;
     doc.text(pg, W - MR - doc.getTextWidth(pg), PAGE_H - 8);
     hLine(ML, PAGE_H - 11, W - MR, C.border, 0.2);
@@ -7819,7 +7828,7 @@ window.v24ShowLockScreen = function(onUnlock) {
   lock.innerHTML = `
     <div style="text-align:center; max-width: 320px; padding: 20px;">
       <div style="font-size: 72px; margin-bottom: 20px;">🔒</div>
-      <h1 style="font-family: 'Syne', sans-serif; font-size: 26px; background: linear-gradient(135deg,#D16D3E,#D09A27); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px;">Mis Finanzas</h1>
+      <h1 style="font-family: 'Syne', sans-serif; font-size: 26px; background: linear-gradient(135deg,#10B981,#34D399); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px;">Misfi</h1>
       <p style="color: #9A8878; font-size: 13px; margin-bottom: 30px;">Ingresa tu PIN para continuar</p>
       <input type="password" id="v24-pin-input" inputmode="numeric" maxlength="6" placeholder="••••" autocomplete="off"
         style="width: 200px; text-align: center; background: #352920; border: 2px solid #4A382C;
@@ -7929,7 +7938,7 @@ window.v25ShowModal = function(opts) {
 
     modal.innerHTML = `
       <div style="background:var(--mf-surface); border-radius:16px; padding:24px; max-width:360px; width:100%; box-shadow:0 20px 60px rgba(15,32,24,0.25);">
-        <div style="font-family:'Manrope',system-ui,sans-serif; font-weight:800; color:#0FA97C; font-size:14px; margin-bottom:6px; text-transform:uppercase; letter-spacing:1.5px;">Mis Finanzas dice</div>
+        <div style="font-family:'Manrope',system-ui,sans-serif; font-weight:800; color:#0FA97C; font-size:14px; margin-bottom:6px; text-transform:uppercase; letter-spacing:1.5px;">Misfi dice</div>
         <div style="color:var(--mf-ink); font-size:13px; line-height:1.5; margin-bottom:16px;">${opts.message}</div>
         ${inputHTML}
         ${errorHTML}
@@ -8330,13 +8339,13 @@ window.v28RegisterBiometric = async function() {
       publicKey: {
         challenge: challenge,
         rp: {
-          name: 'Mis Finanzas',
+          name: 'Misfi',
           id: window.location.hostname
         },
         user: {
           id: userId,
-          name: window._driveUserEmail || 'usuario@mis-finanzas',
-          displayName: 'Mis Finanzas'
+          name: window._driveUserEmail || 'usuario@misfi',
+          displayName: 'Misfi'
         },
         pubKeyCredParams: [
           { alg: -7, type: 'public-key' },   // ES256
@@ -8452,7 +8461,7 @@ window.v24ShowLockScreen = function(onUnlock) {
   lock.innerHTML = `
     <div style="text-align:center; max-width: 320px; padding: 20px;">
       <div style="font-size: 72px; margin-bottom: 20px;">🔒</div>
-      <h1 style="font-family: 'Syne', sans-serif; font-size: 26px; background: linear-gradient(135deg,#D16D3E,#D09A27); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px;">Mis Finanzas</h1>
+      <h1 style="font-family: 'Syne', sans-serif; font-size: 26px; background: linear-gradient(135deg,#10B981,#34D399); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px;">Misfi</h1>
       <p style="color: #9A8878; font-size: 13px; margin-bottom: 30px;">${bioActive ? 'Usa biometría o tu PIN' : 'Ingresa tu PIN para continuar'}</p>
       ${bioHTML}
       <input type="password" id="v24-pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off"
@@ -8707,7 +8716,7 @@ window.v17GenerarReportePDF = async function() {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
-  doc.text('Mis Finanzas', 15, 14);
+  doc.text('Misfi', 15, 14);
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
   doc.text('Reporte mensual · ' + mesNombre, 15, 22);
@@ -8859,7 +8868,7 @@ window.v17GenerarReportePDF = async function() {
   doc.setTextColor(...MUTED);
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
-  doc.text('Generado automáticamente por Mis Finanzas · ' + now.toLocaleString('es-CL'), 15, 290);
+  doc.text('Generado automáticamente por Misfi · ' + now.toLocaleString('es-CL'), 15, 290);
   doc.text('Página 1 de 1', 175, 290);
 
   // Guardar
@@ -9190,7 +9199,7 @@ function v6MoveBlocks() {
   window.addEventListener('appinstalled', () => {
     console.log('✅ PWA: app instalada');
     if (typeof v6ShowToast === 'function') {
-      v6ShowToast('🎉 Mis Finanzas instalada como app', 'success');
+      v6ShowToast('🎉 Misfi instalada como app', 'success');
     }
   });
 

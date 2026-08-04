@@ -1,13 +1,13 @@
 {
-  "name": "Mis Finanzas",
-  "short_name": "Mis Finanzas",
+  "name": "Misfi",
+  "short_name": "Misfi",
   "description": "Tu app personal de finanzas",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#1F1814",
-  "theme_color": "#D16D3E",
+  "background_color": "#0B120E",
+  "theme_color": "#10B981",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },

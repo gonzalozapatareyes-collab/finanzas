@@ -1,5 +1,5 @@
-// Service Worker v30 - Mis Finanzas
-const CACHE_NAME = 'mis-finanzas-v30';
+// Service Worker - Misfi (antes "Mis Finanzas")
+const CACHE_NAME = 'misfi-v1';
 const APP_FILES = [
   './', './index.html', './manifest.json',
   './icon-192.png', './icon-512.png',
