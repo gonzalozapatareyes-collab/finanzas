@@ -1272,6 +1272,79 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
   .mf-dash-row-1, .mf-dash-row-2{ grid-template-columns:1fr; }
 }
 
+/* ═══ Layer mobile (rediseño 1a) ══════════════════════════════════
+   <900px: el sidebar desaparece entero (no off-canvas) y se reemplaza
+   por una tab bar inferior de 5 pestañas, ver README del handoff móvil.
+   v6Go() ya quedó extendido para resaltar la pestaña activa acá abajo. */
+#mf-tabbar{ display:none; }
+
+@media (max-width:899px){
+  #sidebar, #mobile-toggle, #sidebar-overlay{ display:none !important; }
+  #main-area{ max-width:100vw; }
+  #page-content{ padding:18px 18px 84px; }
+  #page-header{ padding:14px 18px; }
+  #page-header-left h1{ font-size:21px; }
+
+  #mf-tabbar{
+    display:flex; position:fixed; left:0; right:0; bottom:0; z-index:200;
+    background:var(--mf-surface); border-top:1px solid var(--mf-line);
+    padding:9px 8px calc(9px + env(safe-area-inset-bottom,0px));
+  }
+  .mf-tabbar-item{
+    flex:1; min-width:0; min-height:44px; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:4px; border:0; background:transparent;
+    cursor:pointer; color:var(--mf-text-faint); font-family:'Manrope',system-ui,sans-serif;
+  }
+  .mf-tabbar-item i{ font-size:21px; }
+  .mf-tabbar-item span{ font:600 10px/1 'Manrope'; }
+  .mf-tabbar-item.active{ color:var(--mf-green-dark); }
+
+  /* Dashboard: se eliminan los desgloses largos (ver Cuentas para el
+     detalle completo); orden queda saludo -> total -> meta -> mini -> checklist. */
+  #page-dashboard{ padding:18px 18px 84px; gap:12px; }
+  .mf-dash-row-1{ gap:12px; }
+  .mf-dash-col-right{ gap:12px; }
+  .mf-hero-amount{ font-size:38px; }
+  .mf-card, .mf-card-dark{ padding:18px 18px 12px 18px; border-radius:18px; }
+  .mf-dash-row-2{ display:flex; flex-direction:column; gap:12px; }
+  .mf-dash-row-2 > .mf-card:nth-child(1),
+  .mf-dash-row-2 > .mf-card:nth-child(2){ display:none; }
+
+  /* Gastos: tabla de escritorio no cabe -> pila de tarjetas de a una. */
+  #v6-gastos-table-slot{ display:none; }
+  .mf-gastos-top-grid{ margin-bottom:12px; }
+}
+#v6-gastos-mobile-asignar{ display:none; }
+@media (max-width:899px){
+  #v6-gastos-mobile-asignar{ display:block; margin-bottom:16px; }
+}
+.mf-asigmov-card{ background:var(--mf-surface); border-radius:16px; padding:16px; }
+.mf-asigmov-desc{ font:700 15px/1.25 'Manrope'; color:var(--mf-ink); }
+.mf-asigmov-meta{ margin-top:4px; font:500 11.5px/1.2 'Manrope'; color:var(--mf-text-faint); }
+.mf-asigmov-monto{ margin-top:10px; font:800 28px/1 'Manrope'; font-variant-numeric:tabular-nums; color:var(--mf-ink); }
+.mf-asigmov-label{ margin-top:14px; padding:4px 2px 0; font:700 10px/1 'Manrope'; letter-spacing:.12em; text-transform:uppercase; color:var(--mf-text-faint); }
+.mf-asigmov-chips{ margin-top:10px; display:flex; flex-wrap:wrap; gap:8px; }
+.mf-asigmov-chip{ min-height:44px; padding:0 14px; border:0; border-radius:14px; background:var(--mf-surface); color:var(--mf-ink); font:600 13px/1 'Manrope'; cursor:pointer; }
+.mf-asigmov-chip:hover{ background:var(--mf-green-soft); color:var(--mf-green-dark); }
+.mf-asigmov-split{ margin-top:14px; width:100%; display:flex; align-items:center; justify-content:center; gap:8px; min-height:46px; border-radius:14px; border:1px solid var(--mf-line); background:transparent; font:600 13px/1 'Manrope'; color:var(--mf-ink); cursor:pointer; }
+.mf-asigmov-footer{ margin-top:12px; display:flex; align-items:center; justify-content:space-between; font:600 11.5px/1 'Manrope'; color:var(--mf-text-faint); }
+.mf-asigmov-skip{ display:flex; align-items:center; gap:5px; border:0; background:transparent; color:var(--mf-text-muted); font:600 11.5px/1 'Manrope'; cursor:pointer; padding:8px; }
+.mf-asigmov-empty{ display:flex; align-items:center; gap:8px; padding:16px 18px; border-radius:16px; background:var(--mf-green-soft); color:var(--mf-green-dark); font:600 13px/1.3 'Manrope'; margin-bottom:16px; }
+.mf-asigmov-empty i{ font-size:18px; }
+
+/* Página "Más" (solo mobile) */
+#page-mas{ font-family:'Manrope',system-ui,sans-serif; }
+.mf-mas-list{ display:flex; flex-direction:column; gap:10px; }
+.mf-mas-item{ display:flex; align-items:center; gap:12px; width:100%; min-height:56px; text-align:left; border:0; cursor:pointer; background:var(--mf-surface); border-radius:16px; padding:0 16px; }
+.mf-mas-icon{ width:34px; height:34px; flex:none; border-radius:11px; background:var(--mf-green-soft); color:var(--mf-green-dark); display:flex; align-items:center; justify-content:center; font-size:17px; }
+.mf-mas-info{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.mf-mas-label{ font:700 14px/1.2 'Manrope'; color:var(--mf-ink); }
+.mf-mas-sub{ font:500 11.5px/1.2 'Manrope'; color:var(--mf-text-faint); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mf-mas-badge{ flex:none; font:800 9px/1 'Manrope'; letter-spacing:.08em; padding:5px 6px; border-radius:6px; }
+.mf-mas-badge.amber{ background:var(--mf-amber-soft); color:var(--mf-amber); }
+.mf-mas-badge.pink{ width:20px; height:20px; border-radius:10px; background:var(--mf-pink); color:#fff; align-items:center; justify-content:center; padding:0; }
+.mf-mas-chevron{ flex:none; font-size:15px; color:var(--mf-text-faint); }
+
 /* ═══ Gastos — rediseño 1a ═══════════════════════════════════
    Alcance: shell de tabs, dropzone, gastos fijos, matriz de tarjetas,
    badges de pago y contenedor de resumen. Las FILAS individuales de
@@ -1361,6 +1434,26 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
 #page-gastos .mf-file-chips .uploaded-file-type{ display:block; font:500 11px/1.2 'Manrope' !important; color:var(--mf-text-faint) !important; margin-top:2px; }
 
 #g-totales{ display:none; }
+
+/* Modal "Dividir gasto compartido" — en <900px pasa a bottom sheet
+   (ver README del handoff móvil). La lógica (confirmarCompartido, etc.)
+   no se toca — solo se movieron los estilos de inline a clases para
+   poder sobreescribirlos limpio en la media query de abajo. */
+.mf-modal-overlay{ position:fixed; inset:0; background:rgba(15,32,24,.35); z-index:9999; align-items:center; justify-content:center; padding:20px; }
+.mf-modal-box{ background:var(--mf-surface); border-radius:18px; padding:24px; width:100%; max-width:480px; max-height:90vh; overflow-y:auto; box-shadow:0 24px 60px rgba(15,32,24,.25); font-family:'Manrope',system-ui,sans-serif; }
+.mf-modal-handle{ display:none; }
+.mf-modal-actions{ display:flex; gap:10px; margin-top:20px; }
+.mf-modal-confirm{ flex:1; background:var(--mf-green); color:#fff; border:0; border-radius:10px; padding:12px; font:700 13px/1 'Manrope'; cursor:pointer; }
+.mf-modal-confirm:hover{ background:var(--mf-green-dark); }
+.mf-modal-cancel{ background:transparent; color:var(--mf-ink); border:1px solid var(--mf-line); border-radius:10px; padding:12px 18px; font:600 13px/1 'Manrope'; cursor:pointer; }
+@media(max-width:899px){
+  .mf-modal-overlay{ align-items:flex-end; padding:0; }
+  .mf-modal-box{ max-width:100%; max-height:85vh; border-radius:24px 24px 0 0; padding:10px 20px 28px; }
+  .mf-modal-handle{ display:block; width:38px; height:4px; border-radius:2px; background:rgba(15,32,24,.15); margin:0 auto 16px; }
+  .mf-modal-actions{ flex-direction:column; gap:8px; margin-top:18px; }
+  .mf-modal-confirm{ min-height:50px; }
+  .mf-modal-cancel{ border:0; min-height:46px; color:var(--mf-text-muted); }
+}
 .mf-periodo-panel .mf-label{ margin:0; }
 .mf-periodo-total{ margin-top:10px; font:800 34px/1 'Manrope'; letter-spacing:-.035em; font-variant-numeric:tabular-nums; color:var(--mf-ink); }
 .mf-periodo-desglose{ margin-top:16px; display:flex; flex-direction:column; gap:10px; font:500 12.5px/1 'Manrope'; }
@@ -1557,11 +1650,16 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
 
 @media (max-width:640px){
   #page-deudores .mf-deu-summary{ grid-template-columns:1fr; }
-  #page-deudores .mf-deu-row{ grid-template-columns:1fr auto; grid-template-areas:"info monto" "dias cobrar"; row-gap:8px; }
+  #page-deudores .mf-deu-row{
+    grid-template-columns:auto 1fr auto; column-gap:10px; row-gap:6px;
+    grid-template-areas:"avatar info monto" "avatar dias cobrar";
+    background:var(--mf-surface); border-radius:16px; padding:14px 16px; margin-bottom:10px; border-bottom:none;
+  }
+  #page-deudores .mf-deu-avatar{ grid-area:avatar; margin-right:0; align-self:start; }
   #page-deudores .mf-deu-info{ grid-area:info; }
-  #page-deudores .mf-deu-monto{ grid-area:monto; }
+  #page-deudores .mf-deu-monto{ grid-area:monto; justify-self:end; }
   #page-deudores .mf-deu-dias{ grid-area:dias; justify-self:start; }
-  #page-deudores .mf-deu-cobrar{ grid-area:cobrar; justify-self:end; }
+  #page-deudores .mf-deu-cobrar{ grid-area:cobrar; justify-self:end; align-self:end; }
 }
 
 /* ═══ Notas + Insights + Histórico + Config — rediseño 1a ═════
@@ -1601,6 +1699,27 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
 <body>
 <button id="mobile-toggle" onclick="v6ToggleSidebar()">☰</button>
 <div id="sidebar-overlay" onclick="v6ToggleSidebar()"></div>
+
+<!-- Rediseño 1a — tab bar inferior, reemplaza el sidebar en <900px (ver
+     media query en mf-dashboard-styles). Usa v6Go() tal cual, mismas
+     páginas de siempre — solo agrega el resaltado de la pestaña activa. -->
+<nav id="mf-tabbar">
+  <button class="mf-tabbar-item" data-page="dashboard" onclick="v6Go('dashboard')">
+    <i class="ph-fill ph-house"></i><span>Inicio</span>
+  </button>
+  <button class="mf-tabbar-item" data-page="gastos" onclick="v6Go('gastos')">
+    <i class="ph ph-receipt"></i><span>Gastos</span>
+  </button>
+  <button class="mf-tabbar-item" data-page="cuentas" onclick="v6Go('cuentas')">
+    <i class="ph ph-piggy-bank"></i><span>Ahorros</span>
+  </button>
+  <button class="mf-tabbar-item" data-page="deudores" onclick="v6Go('deudores')">
+    <i class="ph ph-users-three"></i><span>Deudores</span>
+  </button>
+  <button class="mf-tabbar-item" data-page="mas" onclick="v6Go('mas')">
+    <i class="ph ph-dots-three-outline"></i><span>Más</span>
+  </button>
+</nav>
 
 <div id="app-wrapper">
 <aside id="sidebar">
@@ -1772,6 +1891,10 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
         <div class="mf-card mf-periodo-panel" id="v6-periodo-panel-slot"></div>
       </div>
       <div id="v6-gastos-table-slot"></div>
+      <!-- Rediseño 1a — solo mobile (<900px): pila de tarjetas de a un
+           movimiento por vez, ver v6RenderAsignadorMobile(). La tabla de
+           escritorio NO se adapta (no cabe), por eso esta vista aparte. -->
+      <div id="v6-gastos-mobile-asignar"></div>
       <div id="v6-asignador-mount"></div>
     </div>
 
@@ -1953,6 +2076,46 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
   </div>
 </div>
 
+<!-- Rediseño 1a — solo visible en mobile (<900px), ver mf-tabbar. Lista de
+     todo lo que no entra en la tab bar de 5 pestañas: son las mismas
+     páginas/tabs de siempre, solo se navega distinto. -->
+<div class="v6-page" id="page-mas">
+  <div class="mf-mas-list">
+    <button class="mf-mas-item" onclick="v6Go('inversiones')">
+      <span class="mf-mas-icon"><i class="ph ph-trend-up"></i></span>
+      <span class="mf-mas-info"><span class="mf-mas-label">Inversiones</span><span class="mf-mas-sub">Portafolio y rentabilidad</span></span>
+      <span class="mf-mas-badge amber">NEW</span>
+      <i class="ph ph-caret-right mf-mas-chevron"></i>
+    </button>
+    <button class="mf-mas-item" onclick="v6Go('insights')">
+      <span class="mf-mas-icon"><i class="ph ph-lightbulb"></i></span>
+      <span class="mf-mas-info"><span class="mf-mas-label">Insights</span><span class="mf-mas-sub">Análisis automático del mes</span></span>
+      <span class="mf-mas-badge pink" id="mas-insights-badge" style="display:none;"></span>
+      <i class="ph ph-caret-right mf-mas-chevron"></i>
+    </button>
+    <button class="mf-mas-item" onclick="v6Go('gastos'); setTimeout(() => { const t = document.querySelector('#tabs-gastos .v6-tab:nth-child(1)'); if (t) t.click(); }, 100);">
+      <span class="mf-mas-icon"><i class="ph ph-repeat"></i></span>
+      <span class="mf-mas-info"><span class="mf-mas-label">Gastos fijos</span><span class="mf-mas-sub">Suscripciones y pagos recurrentes</span></span>
+      <i class="ph ph-caret-right mf-mas-chevron"></i>
+    </button>
+    <button class="mf-mas-item" onclick="v6Go('historico')">
+      <span class="mf-mas-icon"><i class="ph ph-calendar-blank"></i></span>
+      <span class="mf-mas-info"><span class="mf-mas-label">Histórico</span><span class="mf-mas-sub">Meses cerrados y snapshots</span></span>
+      <i class="ph ph-caret-right mf-mas-chevron"></i>
+    </button>
+    <button class="mf-mas-item" onclick="v6Go('notas')">
+      <span class="mf-mas-icon"><i class="ph ph-note-pencil"></i></span>
+      <span class="mf-mas-info"><span class="mf-mas-label">Notas</span><span class="mf-mas-sub">Bitácora financiera</span></span>
+      <i class="ph ph-caret-right mf-mas-chevron"></i>
+    </button>
+    <button class="mf-mas-item" onclick="v6Go('config')">
+      <span class="mf-mas-icon"><i class="ph ph-gear"></i></span>
+      <span class="mf-mas-info"><span class="mf-mas-label">Configuración</span><span class="mf-mas-sub">Drive, backup y reportes</span></span>
+      <i class="ph ph-caret-right mf-mas-chevron"></i>
+    </button>
+  </div>
+</div>
+
   </div>
 </main>
 </div>
@@ -2048,6 +2211,7 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
 .mf-saldos-nombre{ font:700 14px/1.2 'Manrope'; color:var(--mf-ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .mf-saldos-etiqueta{ font:500 11.5px/1.2 'Manrope'; color:var(--mf-text-faint); }
 .mf-saldos-tasa{ font:600 12.5px/1.2 'Manrope'; color:var(--mf-text-muted); font-variant-numeric:tabular-nums; }
+.mf-saldo-cell{ display:contents; }
 .mf-saldo-input{
   background:transparent; border:1px solid transparent; border-radius:8px;
   color:var(--mf-ink); font:700 15px/1.2 'Manrope'; text-align:right;
@@ -2067,6 +2231,35 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
 @media(max-width:1100px){
   .mf-saldos-row, .mf-saldos-hdr, .mf-saldos-total-row{ grid-template-columns:1.3fr 70px 1fr 1fr 90px; gap:10px; }
 }
+@media(max-width:899px){
+  /* Cuentas: cada fila pasa a tarjeta blanca (dot+nombre+estado arriba,
+     saldo/depositado abajo) — el grid apretado de 5 columnas no entra. */
+  .mf-saldos-tasa{ display:none; }
+  .mf-saldos-row{
+    display:grid; grid-template-columns:1fr 1fr; grid-template-areas:"cuenta estado" "saldo dep";
+    row-gap:10px; column-gap:10px; align-items:start; background:var(--mf-surface); border:none;
+    border-radius:16px; padding:14px 16px; margin-bottom:10px;
+  }
+  .mf-saldos-estado{ justify-self:end; }
+  /* Selector compuesto a propósito: más específico que ".mf-saldos-row"
+     de arriba, para que gane pase lo que pase el orden en el archivo
+     (el header real tiene AMBAS clases: class="mf-saldos-row mf-saldos-hdr"). */
+  .mf-saldos-row.mf-saldos-hdr{ display:none; }
+  .mf-saldos-cuenta{ grid-area:cuenta; min-width:0; }
+  .mf-saldos-estado{ grid-area:estado; }
+  .mf-saldo-cell{ display:flex; flex-direction:column; gap:3px; min-width:0; }
+  .mf-saldo-cell .mf-saldo-input{ min-width:0; }
+  .mf-saldo-cell::before{ content:attr(data-label); font:700 9.5px/1 'Manrope'; letter-spacing:.1em; text-transform:uppercase; color:var(--mf-text-faint); }
+  .mf-saldo-cell:first-of-type{ grid-area:saldo; }
+  .mf-saldo-cell:last-of-type{ grid-area:dep; align-items:flex-end; }
+  .mf-saldo-cell:last-of-type .mf-saldo-input{ text-align:right; }
+  .mf-saldos-custom-actions{ margin-top:0 !important; }
+  /* "⬇ Retirar" se inyecta por JS (injectRetiroButtons) también en las
+     4 cuentas duras, no solo en las custom — sin área propia se solapaba
+     con "estado". Lo mandamos a su propia fila abajo. */
+  .mf-saldos-row .retiro-link{ grid-column:1/-1; justify-self:start; margin:0; }
+  .mf-saldos-total-row{ display:flex; justify-content:space-between; background:var(--mf-surface); border-radius:16px; padding:14px 16px; }
+}
 </style>
 
 <div class="card mf-saldos-card" style="margin-bottom:16px;">
@@ -2085,8 +2278,8 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
       <span class="mf-saldos-cuenta-info"><span class="mf-saldos-nombre">MercadoPago</span><span class="mf-saldos-etiqueta">Meta Auto</span></span>
     </span>
     <span class="mf-saldos-tasa">4,00%</span>
-    <input class="editable mf-saldo-input" type="number" id="c-mp" value="" placeholder="0" onchange="recalcular()">
-    <input class="editable mf-saldo-input" type="number" id="dep-mp" value="0" onchange="recalcularDeposito('mp')" placeholder="0">
+    <span class="mf-saldo-cell" data-label="Saldo actual"><input class="editable mf-saldo-input" type="number" id="c-mp" value="" placeholder="0" onchange="recalcular()"></span>
+    <span class="mf-saldo-cell" data-label="Depositado"><input class="editable mf-saldo-input" type="number" id="dep-mp" value="0" onchange="recalcularDeposito('mp')" placeholder="0"></span>
     <button class="mf-saldos-estado ahorro-confirm pendiente" id="btn-mp" onclick="confirmarDeposito('mp')">✓ Listo</button>
     <span id="listo-mp" style="display:none;"></span>
   </div>
@@ -2098,8 +2291,8 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
       <span class="mf-saldos-cuenta-info"><span class="mf-saldos-nombre">BancoEstado Vivienda</span><span class="mf-saldos-etiqueta">Meta Vivienda</span></span>
     </span>
     <span class="mf-saldos-tasa">1,05%</span>
-    <input class="editable mf-saldo-input" type="number" id="c-be" value="" placeholder="0" onchange="recalcular()">
-    <input class="editable mf-saldo-input" type="number" id="dep-be" value="0" onchange="recalcularDeposito('be')" placeholder="0">
+    <span class="mf-saldo-cell" data-label="Saldo actual"><input class="editable mf-saldo-input" type="number" id="c-be" value="" placeholder="0" onchange="recalcular()"></span>
+    <span class="mf-saldo-cell" data-label="Depositado"><input class="editable mf-saldo-input" type="number" id="dep-be" value="0" onchange="recalcularDeposito('be')" placeholder="0"></span>
     <button class="mf-saldos-estado ahorro-confirm pendiente" id="btn-be" onclick="confirmarDeposito('be')">✓ Listo</button>
     <span id="listo-be" style="display:none;"></span>
   </div>
@@ -2111,8 +2304,8 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
       <span class="mf-saldos-cuenta-info"><span class="mf-saldos-nombre">Fintual Reserva</span><span class="mf-saldos-etiqueta">Reserva/Emergencia</span></span>
     </span>
     <span class="mf-saldos-tasa">4,17%</span>
-    <input class="editable mf-saldo-input" type="number" id="c-fr" value="" placeholder="0" onchange="recalcular()">
-    <input class="editable mf-saldo-input" type="number" id="dep-fr" value="0" onchange="recalcularDeposito('fr')" placeholder="0">
+    <span class="mf-saldo-cell" data-label="Saldo actual"><input class="editable mf-saldo-input" type="number" id="c-fr" value="" placeholder="0" onchange="recalcular()"></span>
+    <span class="mf-saldo-cell" data-label="Depositado"><input class="editable mf-saldo-input" type="number" id="dep-fr" value="0" onchange="recalcularDeposito('fr')" placeholder="0"></span>
     <button class="mf-saldos-estado ahorro-confirm pendiente" id="btn-fr" onclick="confirmarDeposito('fr')">✓ Listo</button>
     <span id="listo-fr" style="display:none;"></span>
   </div>
@@ -2124,8 +2317,8 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
       <span class="mf-saldos-cuenta-info"><span class="mf-saldos-nombre">Fintual Capital Importar</span><span class="mf-saldos-etiqueta">Importación</span></span>
     </span>
     <span class="mf-saldos-tasa">—</span>
-    <input class="editable mf-saldo-input" type="number" id="c-fc" value="" placeholder="0" onchange="recalcular()">
-    <input class="editable mf-saldo-input" type="number" id="dep-fc" value="0" onchange="recalcularDeposito('fc')" placeholder="0">
+    <span class="mf-saldo-cell" data-label="Saldo actual"><input class="editable mf-saldo-input" type="number" id="c-fc" value="" placeholder="0" onchange="recalcular()"></span>
+    <span class="mf-saldo-cell" data-label="Depositado"><input class="editable mf-saldo-input" type="number" id="dep-fc" value="0" onchange="recalcularDeposito('fc')" placeholder="0"></span>
     <button class="mf-saldos-estado ahorro-confirm pendiente" id="btn-fc" onclick="confirmarDeposito('fc')">✓ Listo</button>
     <span id="listo-fc" style="display:none;"></span>
   </div>
@@ -4246,7 +4439,75 @@ function renderGastos() {
 
   actualizarResumen();
   actualizarTotalesPeriodo();
+  if (typeof v6RenderAsignadorMobile === 'function') v6RenderAsignadorMobile();
 }
+
+// ═══ Asignador móvil — pila de tarjetas (rediseño 1a) ════════════════
+// La tabla de escritorio no se adapta a pantallas chicas (handoff móvil,
+// "Asignar de a uno"). Esta vista reusa asignar()/abrirModalCompartido()
+// tal cual — no duplica ningún cálculo, solo arma el layout de una tarjeta
+// por vez. Solo visible en <900px (ver CSS .mf-asigmov-*).
+window._v6MobileSkipped = window._v6MobileSkipped || new Set();
+
+function v6RenderAsignadorMobile() {
+  const cont = document.getElementById('v6-gastos-mobile-asignar');
+  if (!cont || typeof allGastos === 'undefined') return;
+
+  if (allGastos.length === 0) { cont.innerHTML = ''; return; }
+
+  const skipped = window._v6MobileSkipped;
+  const pendientesTotal = allGastos.filter(g => !g.persona && !g.ignorado).length;
+  const pendientes = allGastos
+    .map((g, i) => ({ g, i }))
+    .filter(x => !x.g.persona && !x.g.ignorado && !skipped.has(x.i));
+
+  if (pendientes.length === 0) {
+    cont.innerHTML = `<div class="mf-asigmov-empty"><i class="ph-fill ph-check-circle"></i>` +
+      (pendientesTotal > 0 ? 'Saltaste todos los pendientes por ahora.' : 'Todo asignado.') + `</div>`;
+    return;
+  }
+
+  const { g, i } = pendientes[0];
+  const posicion = pendientesTotal - pendientes.length + 1;
+  const montoStr = g.moneda === 'USD' ? '$' + g.monto.toFixed(2) + ' USD' : fmtNum(g.monto);
+
+  const customPersonasUsadas = [...new Set(
+    allGastos.map(x => x.persona).filter(p => p && !PERSONAS_LIST.includes(p))
+  )];
+  const nombres = PERSONAS_LIST
+    .filter(p => p !== '— sin asignar —' && p !== 'Compartido' && p !== 'Otro')
+    .concat(customPersonasUsadas);
+
+  const chipsHtml = nombres.map(n =>
+    `<button class="mf-asigmov-chip" onclick="v6AsignarMobile(${i}, ${JSON.stringify(n)})">${n}</button>`
+  ).join('');
+
+  cont.innerHTML = `
+    <div class="mf-asigmov-card">
+      <div class="mf-asigmov-desc">${g._label || g.desc}</div>
+      <div class="mf-asigmov-meta">${g.fecha} · ${g.banco}</div>
+      <div class="mf-asigmov-monto">${montoStr}</div>
+    </div>
+    <div class="mf-asigmov-label">¿De quién es?</div>
+    <div class="mf-asigmov-chips">${chipsHtml}</div>
+    <button class="mf-asigmov-split" onclick="abrirModalCompartido(${i})"><i class="ph ph-arrows-split"></i> Dividir entre varios</button>
+    <div class="mf-asigmov-footer">
+      <span>${posicion} de ${pendientesTotal}</span>
+      <button class="mf-asigmov-skip" onclick="v6SaltarAsignadorMobile(${i})">Saltar <i class="ph ph-arrow-right"></i></button>
+    </div>
+  `;
+}
+
+window.v6AsignarMobile = function(idx, nombre) {
+  const fakeSel = { value: nombre, classList: { toggle(){} } };
+  asignar(idx, fakeSel);
+  renderGastos();
+};
+
+window.v6SaltarAsignadorMobile = function(idx) {
+  window._v6MobileSkipped.add(idx);
+  v6RenderAsignadorMobile();
+};
 
 // V31.2: limpia todas las transacciones del asignador TC en un click
 window.limpiarAsignadorCompleto = async function() {
@@ -4264,6 +4525,8 @@ window.limpiarAsignadorCompleto = async function() {
     if (el) el.style.display = 'none';
   });
   if (typeof v6ResetDropzoneUI === 'function') v6ResetDropzoneUI();
+  window._v6MobileSkipped = new Set();
+  if (typeof v6RenderAsignadorMobile === 'function') v6RenderAsignadorMobile();
   if (typeof actualizarResumen === 'function') actualizarResumen();
   if (typeof actualizarTotalesPeriodo === 'function') actualizarTotalesPeriodo();
   if (typeof syncTarjetas === 'function') syncTarjetas();
@@ -5364,8 +5627,9 @@ function detectMonth(gastos) {
 <!-- Modal "Dividir gasto compartido" — rediseño 1a. La lógica ($/%, agregar/
      quitar persona, nombre nuevo, recalcModal) no se tocó, solo el markup
      visual. Se saca al <body> por v6MoveBlocks. -->
-<div id="modal-compartido" style="display:none;position:fixed;inset:0;background:rgba(15,32,24,.35);z-index:9999;align-items:center;justify-content:center;padding:20px;">
-  <div style="background:var(--mf-surface);border-radius:18px;padding:24px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px rgba(15,32,24,.25);font-family:'Manrope',system-ui,sans-serif;">
+<div id="modal-compartido" class="mf-modal-overlay" style="display:none;">
+  <div class="mf-modal-box">
+    <span class="mf-modal-handle"></span>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
       <div style="font:800 18px/1.2 'Manrope';color:var(--mf-ink);">Dividir gasto compartido</div>
       <button onclick="cerrarModal()" style="margin-left:auto;background:transparent;border:none;color:var(--mf-text-faint);font-size:18px;cursor:pointer;line-height:1;">✕</button>
@@ -5379,9 +5643,9 @@ function detectMonth(gastos) {
 
     <div id="modal-aviso" style="display:none;margin-top:12px;background:var(--mf-amber-soft);border-radius:9px;padding:9px 12px;font:600 11.5px/1.3 'Manrope';color:var(--mf-amber);"></div>
 
-    <div style="display:flex;gap:10px;margin-top:20px;">
-      <button onclick="confirmarCompartido()" style="flex:1;background:var(--mf-green);color:#fff;border:0;border-radius:10px;padding:12px;font:700 13px/1 'Manrope';cursor:pointer;">Confirmar división</button>
-      <button onclick="cerrarModal()" style="background:transparent;color:var(--mf-ink);border:1px solid var(--mf-line);border-radius:10px;padding:12px 18px;font:600 13px/1 'Manrope';cursor:pointer;">Cancelar</button>
+    <div class="mf-modal-actions">
+      <button class="mf-modal-confirm" onclick="confirmarCompartido()">Confirmar división</button>
+      <button class="mf-modal-cancel" onclick="cerrarModal()">Cancelar</button>
     </div>
   </div>
 </div>
@@ -5505,7 +5769,8 @@ const V6_PAGES = {
   inversiones: { title: 'Inversiones', subtitle: 'Tu portafolio de acciones y ETFs' },
   deudores: { title: 'Deudores', subtitle: 'Personas que me deben' },
   historico: { title: 'Histórico', subtitle: 'Snapshots de meses pasados' },
-  config: { title: 'Configuración', subtitle: 'Drive, tema y backup' }
+  config: { title: 'Configuración', subtitle: 'Drive, tema y backup' },
+  mas: { title: 'Más', subtitle: 'Todo lo demás' }
 };
 
 function v6Go(pageId, navEl) {
@@ -5525,6 +5790,16 @@ function v6Go(pageId, navEl) {
     const ic = activeNav.querySelector('.nav-icon');
     if (ic) { ic.classList.remove('ph'); ic.classList.add('ph-fill'); }
   }
+
+  // Rediseño 1a: tab bar inferior (mobile) — Cuentas/Ahorros comparten la
+  // pestaña "Ahorros" de la barra, igual que el handoff.
+  const tabbarPageId = (pageId === 'ahorros') ? 'cuentas' : pageId;
+  document.querySelectorAll('.mf-tabbar-item').forEach(b => {
+    const active = b.dataset.page === tabbarPageId;
+    b.classList.toggle('active', active);
+    const ic = b.querySelector('i');
+    if (ic) { ic.classList.toggle('ph-fill', active); ic.classList.toggle('ph', !active); }
+  });
 
   const info = V6_PAGES[pageId];
   if (info) {
@@ -7647,6 +7922,12 @@ window.v17RenderInsights = function() {
     } else {
       badge.style.display = 'none';
     }
+  }
+  // Rediseño 1a: mismo badge, versión mobile en la página "Más"
+  const masBadge = document.getElementById('mas-insights-badge');
+  if (masBadge) {
+    if (alertas > 0) { masBadge.textContent = alertas; masBadge.style.display = 'flex'; }
+    else { masBadge.style.display = 'none'; }
   }
 
   if (insights.length === 0) {
@@ -9953,8 +10234,8 @@ function v6MoveBlocks() {
           <span class="mf-saldos-cuenta-info"><span class="mf-saldos-nombre">${escHtml(c.nombre)}</span><span class="mf-saldos-etiqueta">${c.tag ? escHtml(c.tag) : 'Cuenta agregada'}</span></span>
         </span>
         <span class="mf-saldos-tasa">—</span>
-        <input class="editable mf-saldo-input" type="number" id="cc-saldo-${c.id}" value="${c.saldo || 0}" onchange="onCuentaCustomSaldoChange('${c.id}', this.value)">
-        <input class="editable mf-saldo-input" type="number" id="cc-dep-${c.id}" value="0" placeholder="0">
+        <span class="mf-saldo-cell" data-label="Saldo actual"><input class="editable mf-saldo-input" type="number" id="cc-saldo-${c.id}" value="${c.saldo || 0}" onchange="onCuentaCustomSaldoChange('${c.id}', this.value)"></span>
+        <span class="mf-saldo-cell" data-label="Depositado"><input class="editable mf-saldo-input" type="number" id="cc-dep-${c.id}" value="0" placeholder="0"></span>
         <button class="mf-saldos-estado ahorro-confirm pendiente" id="cc-btn-${c.id}" onclick="confirmarDepositoCustom('${c.id}')">✓ Listo</button>
         <div class="mf-saldos-custom-actions" style="grid-column:1/-1;display:flex;gap:14px;margin-top:-4px;">
           <button class="mf-saldos-link" onclick="openRetiroModal('${c.id}')"><i class="ph ph-arrow-line-down"></i> Retirar</button>
