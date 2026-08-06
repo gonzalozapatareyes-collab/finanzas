@@ -27,6 +27,12 @@ npm test
   sin pisarse entre sí, y que los gastos históricos ya asignados al viejo
   "Papa/Paola" sigan contando en el total general exactamente una vez
   (ni se pierden, ni se funden con la fila nueva de Papá).
+- **guardar-concurrencia.test.js** — que `guardar()` encole las escrituras
+  a Drive en vez de dispararlas en paralelo. Cubre el bug real donde una
+  cuenta custom (APV Jubilación) se veía guardada en pantalla pero
+  desaparecía al refrescar: dos guardados casi simultáneos competían, y el
+  más viejo podía "llegar" después y pisar al más nuevo sin ningún error
+  visible.
 
 ## Cuándo correrlos
 

@@ -5748,6 +5748,13 @@ window.guardar = async function() {
   const dataNoRecibida = !window._v6_drive_data_received;
   if (deudoresVacios && dataNoRecibida) {
     console.warn('🛡️ Guard: BLOQUEANDO guardado prematuro con deudores=[]. Esperando data de Drive.');
+    // FIX: antes esto fallaba en silencio — si Drive todavía no terminó de
+    // cargar y el usuario ya está editando, el cambio se pierde sin aviso.
+    // Ahora al menos se lo mostramos, para que sepa que tiene que reintentar
+    // (típicamente basta con tocar "Guardar" de nuevo unos segundos después).
+    if (typeof v6ShowToast === 'function') {
+      v6ShowToast('⚠️ Todavía cargando tus datos de Drive — este cambio no se guardó, reintenta en unos segundos', 'error');
+    }
     return Promise.resolve();  // abortar sin error
   }
   window._v6_guardado_count++;
@@ -5755,6 +5762,43 @@ window.guardar = async function() {
   if (typeof _v6_origGuardar_guard === 'function') {
     return _v6_origGuardar_guard.apply(this, arguments);
   }
+};
+
+// ═══ FIX: serializar guardar() para que nunca haya dos escrituras a
+// Drive en paralelo ═══════════════════════════════════════════════
+// Bug real detectado: cada acción (depositar, agregar cuenta, depositar
+// de nuevo) dispara su propio guardar() independiente. driveGuardar()
+// hace un PATCH simple sin control de versión — si dos guardados quedan
+// en vuelo al mismo tiempo, el que responda MÁS TARDE gana, aunque tenga
+// datos más viejos, y así se puede perder un cambio recién hecho (ej:
+// una cuenta custom recién creada) sin ningún error visible.
+// Solución: si ya hay un guardado en curso, la nueva llamada no dispara
+// otro PATCH en paralelo — solo marca "hace falta guardar de nuevo" y
+// espera a que termine el actual. Al terminar, si quedó marcado, se
+// dispara UN guardado más, que en ese momento lee el estado más fresco
+// (_buildData() se llama recién en ese instante). Así los guardados
+// quedan en fila, nunca se pisan, y ninguno se pierde.
+const _v6_origGuardar_queue = window.guardar;
+window._v6_save_inflight = null;
+window._v6_save_pending = false;
+window.guardar = function() {
+  if (window._v6_save_inflight) {
+    window._v6_save_pending = true;
+    return window._v6_save_inflight;
+  }
+  const run = (async () => {
+    try {
+      return await _v6_origGuardar_queue.apply(this, arguments);
+    } finally {
+      window._v6_save_inflight = null;
+      if (window._v6_save_pending) {
+        window._v6_save_pending = false;
+        guardar();
+      }
+    }
+  })();
+  window._v6_save_inflight = run;
+  return run;
 };
 </script>
 
