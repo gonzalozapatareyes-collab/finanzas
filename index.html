@@ -5736,7 +5736,11 @@ window._aplicarDatos = function(d) {
     console.log('🔒 Guard: data de Drive recibida (deudores: ' + (d.deudores || []).length + ')');
   }
   if (typeof _v6_origAplicarDatos_guard === 'function') {
-    return _v6_origAplicarDatos_guard.apply(this, arguments);
+    try {
+      return _v6_origAplicarDatos_guard.apply(this, arguments);
+    } catch (e) {
+      console.error('_aplicarDatos (guard) falló, sigue la cadena de restauración igual:', e);
+    }
   }
 };
 
@@ -7350,15 +7354,25 @@ window.addEventListener('DOMContentLoaded', () => {
 // CRÍTICO: hook al _aplicarDatos para que después de que llegue data de Drive, refresquemos todo
 const _v6_origAplicarDatos = window._aplicarDatos;
 window._aplicarDatos = function(d) {
-  if (typeof _v6_origAplicarDatos === 'function') _v6_origAplicarDatos.call(this, d);
+  if (typeof _v6_origAplicarDatos === 'function') {
+    try {
+      _v6_origAplicarDatos.call(this, d);
+    } catch (e) {
+      console.error('_aplicarDatos (orig) falló, sigue la cadena de restauración igual:', e);
+    }
+  }
   // Dispara render INMEDIATAMENTE (no setTimeout) y luego con delay también
   const refreshAll = () => {
-    if (typeof recalcular === 'function') recalcular();
-    if (typeof v6RenderDeudoresPropio === 'function') v6RenderDeudoresPropio();
-    if (typeof renderDeudores === 'function') renderDeudores();
-    v6RenderDashboard();
-    v6SyncMatrizFromAsignador();
-    if (v6HideAmounts) v6ApplyHideAmounts();
+    try {
+      if (typeof recalcular === 'function') recalcular();
+      if (typeof v6RenderDeudoresPropio === 'function') v6RenderDeudoresPropio();
+      if (typeof renderDeudores === 'function') renderDeudores();
+      v6RenderDashboard();
+      v6SyncMatrizFromAsignador();
+      if (v6HideAmounts) v6ApplyHideAmounts();
+    } catch (e) {
+      console.error('refreshAll (post _aplicarDatos) falló:', e);
+    }
   };
   refreshAll();
   setTimeout(refreshAll, 200);
@@ -7417,50 +7431,73 @@ window.addEventListener('load', () => {
 window.v6SyncMatrizFromAsignador = function() {
   if (typeof window.allGastos === 'undefined' || !window.allGastos) return;
 
-  // Resetear todas las celdas de matriz a 0
-  const PERSONAS = ['papa','paola','yo','vania','paula','aldo','mama','rorro','luis'];
-  const acumulado = {};
-  PERSONAS.forEach(p => {
-    acumulado[p] = { bc: 0, cmr: 0 };
-  });
+  // FIX bug real: esta función quedaba en medio de la cadena de
+  // _aplicarDatos (la llama el hook de la línea ~7360). Si tira una
+  // excepción sin capturar, corta esa cadena a la mitad y los hooks que
+  // venían DESPUÉS (restaurar cuentasCustom, metasCustom, notas...) nunca
+  // llegan a correr — aunque el archivo de Drive sí tenía los datos bien
+  // guardados. Por eso una cuenta custom podía "desaparecer" al recargar
+  // sin ningún guardado fallido de por medio. Todo el cuerpo va en
+  // try/catch para que esta función JAMÁS pueda romper esa cadena.
+  try {
+    // Resetear todas las celdas de matriz a 0
+    const PERSONAS = ['papa','paola','yo','vania','paula','aldo','mama','rorro','luis'];
+    const acumulado = {};
+    PERSONAS.forEach(p => {
+      acumulado[p] = { bc: 0, cmr: 0 };
+    });
 
-  // Custom personas
-  const customP = window._customPersonas || {};
-  Object.keys(customP).forEach(k => {
-    acumulado[k] = { bc: 0, cmr: 0 };
-  });
+    // Custom personas
+    const customP = window._customPersonas || {};
+    Object.keys(customP).forEach(k => {
+      acumulado[k] = { bc: 0, cmr: 0 };
+    });
 
-  // Sumar de los gastos asignados
-  window.allGastos.forEach(g => {
-    if (g._ignorado) return;
-    if (!g.persona || g.persona === '' || g.persona === '_ignorar') return;
+    // FIX: g.persona es el NOMBRE mostrado ("Papá", "Vania"...), no el id
+    // de fila de la matriz ("papa", "vania"...) — hay que pasarlo por
+    // PERSONA_TO_ROW igual que hace syncTarjetas(). Antes esto guardaba
+    // el acumulado bajo la clave "Papá" tal cual, y más abajo se llamaba
+    // calcTarjeta('Papá') sin que existiera ningún input bc-Papá/cmr-Papá
+    // en el DOM — reventaba con "Cannot read properties of null".
+    const normalizarPersona = (p) => (typeof PERSONA_TO_ROW !== 'undefined' && PERSONA_TO_ROW[p]) ? PERSONA_TO_ROW[p] : p;
 
-    // Si es compartido, dividir entre las personas
-    if (g.persona === '_compartido' && g._compartidoParts) {
-      Object.entries(g._compartidoParts).forEach(([persona, monto]) => {
-        if (!acumulado[persona]) acumulado[persona] = { bc: 0, cmr: 0 };
-        const banco = (g.banco || '').toLowerCase();
-        if (banco.includes('cmr')) acumulado[persona].cmr += monto;
-        else acumulado[persona].bc += monto;
-      });
-      return;
-    }
+    // Sumar de los gastos asignados
+    window.allGastos.forEach(g => {
+      if (g._ignorado) return;
+      if (!g.persona || g.persona === '' || g.persona === '_ignorar') return;
 
-    if (!acumulado[g.persona]) acumulado[g.persona] = { bc: 0, cmr: 0 };
-    const banco = (g.banco || '').toLowerCase();
-    if (banco.includes('cmr')) acumulado[g.persona].cmr += (g.monto || 0);
-    else acumulado[g.persona].bc += (g.monto || 0);
-  });
+      // Si es compartido, dividir entre las personas
+      if (g.persona === '_compartido' && g._compartidoParts) {
+        Object.entries(g._compartidoParts).forEach(([personaRaw, monto]) => {
+          const persona = normalizarPersona(personaRaw);
+          if (!acumulado[persona]) acumulado[persona] = { bc: 0, cmr: 0 };
+          const banco = (g.banco || '').toLowerCase();
+          if (banco.includes('cmr')) acumulado[persona].cmr += monto;
+          else acumulado[persona].bc += monto;
+        });
+        return;
+      }
 
-  // Aplicar a la matriz (inputs bc-X y cmr-X)
-  Object.entries(acumulado).forEach(([persona, vals]) => {
-    const bcInp = document.getElementById('bc-' + persona);
-    const cmrInp = document.getElementById('cmr-' + persona);
-    if (bcInp) bcInp.value = vals.bc;
-    if (cmrInp) cmrInp.value = vals.cmr;
-    if (typeof calcTarjeta === 'function') calcTarjeta(persona);
-  });
-  v6RenderDashboard();
+      const persona = normalizarPersona(g.persona);
+      if (!acumulado[persona]) acumulado[persona] = { bc: 0, cmr: 0 };
+      const banco = (g.banco || '').toLowerCase();
+      if (banco.includes('cmr')) acumulado[persona].cmr += (g.monto || 0);
+      else acumulado[persona].bc += (g.monto || 0);
+    });
+
+    // Aplicar a la matriz (inputs bc-X y cmr-X) — solo si existen de
+    // verdad en el DOM; si no, se salta esa persona en vez de reventar.
+    Object.entries(acumulado).forEach(([persona, vals]) => {
+      const bcInp = document.getElementById('bc-' + persona);
+      const cmrInp = document.getElementById('cmr-' + persona);
+      if (bcInp) bcInp.value = vals.bc;
+      if (cmrInp) cmrInp.value = vals.cmr;
+      if ((bcInp || cmrInp) && typeof calcTarjeta === 'function') calcTarjeta(persona);
+    });
+    v6RenderDashboard();
+  } catch (e) {
+    console.error('v6SyncMatrizFromAsignador falló (no debería cortar la restauración de datos):', e);
+  }
 };
 
 // Escuchar cambios en el asignador para resincronizar
@@ -8108,7 +8145,12 @@ if (typeof _v19_origBuildData === 'function') {
 const _v19_origAplicarDatos = window._aplicarDatos;
 if (typeof _v19_origAplicarDatos === 'function') {
   window._aplicarDatos = function(d) {
-    const result = _v19_origAplicarDatos.apply(this, arguments);
+    let result;
+    try {
+      result = _v19_origAplicarDatos.apply(this, arguments);
+    } catch (e) {
+      console.error('_aplicarDatos (orig, pre-V19) falló, sigue la cadena de restauración igual:', e);
+    }
     if (d && d.acumuladoMes) {
       window._acumuladoMes = d.acumuladoMes;
       console.log('📥 V19: acumuladoMes restaurado desde Drive');
@@ -10636,7 +10678,12 @@ function v6MoveBlocks() {
   const _v31c_origAplicarDatos = window._aplicarDatos;
   if (typeof _v31c_origAplicarDatos === 'function') {
     window._aplicarDatos = function(d) {
-      const result = _v31c_origAplicarDatos.apply(this, arguments);
+      let result;
+      try {
+        result = _v31c_origAplicarDatos.apply(this, arguments);
+      } catch (e) {
+        console.error('_aplicarDatos (orig, pre-cuentasCustom) falló, sigue la cadena de restauración igual:', e);
+      }
       if (d && Array.isArray(d.cuentasCustom)) window._cuentasCustom = d.cuentasCustom;
       if (d && Array.isArray(d.metasCustom)) window._metasCustom = d.metasCustom;
       setTimeout(() => {
@@ -11879,7 +11926,12 @@ function v6MoveBlocks() {
   const _v31n_origAplicarDatos = window._aplicarDatos;
   if (typeof _v31n_origAplicarDatos === 'function') {
     window._aplicarDatos = function(d) {
-      const result = _v31n_origAplicarDatos.apply(this, arguments);
+      let result;
+      try {
+        result = _v31n_origAplicarDatos.apply(this, arguments);
+      } catch (e) {
+        console.error('_aplicarDatos (orig, pre-notas) falló, sigue la cadena de restauración igual:', e);
+      }
       if (d && Array.isArray(d.notas)) window._notas = d.notas;
       if (d && Array.isArray(d.chatLog)) window._chatLog = d.chatLog;
       setTimeout(() => {

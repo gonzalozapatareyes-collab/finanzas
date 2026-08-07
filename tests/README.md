@@ -34,6 +34,14 @@ npm test
   real donde una cuenta custom (APV Jubilación) se veía guardada en
   pantalla — con el aviso de "Guardado en Drive" y todo — pero
   desaparecía al refrescar.
+- **aplicar-datos-resiliente.test.js** — que si una de las ~5 capas de
+  `_aplicarDatos` (ver arquitectura arriba) revienta con una excepción,
+  las capas posteriores igual se ejecuten — en particular la que restaura
+  `window._cuentasCustom`. Cubre la causa raíz real del mismo bug de "APV
+  Jubilación desaparece al refrescar": no era un problema de guardado en
+  Drive (el dato SÍ llegaba a Drive), sino que `v6SyncMatrizFromAsignador()`
+  tiraba una excepción no capturada al restaurar, cortando la cadena de
+  `_aplicarDatos` antes de llegar a la capa de cuentasCustom.
 
 ## Cuándo correrlos
 
