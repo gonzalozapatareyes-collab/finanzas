@@ -69,3 +69,63 @@ test('guardar() encola escrituras a Drive: una más vieja y lenta no puede pisar
     'lo que queda guardado en Drive al final debe incluir la cuenta nueva — la escritura vieja y lenta no puede pisarla'
   );
 });
+
+// Regresión de un defecto en la primera versión del fix: el guardado de
+// "seguimiento" (el que se encola cuando llega un cambio mientras otro
+// guardado ya está en curso) se disparaba fire-and-forget, sin que nadie
+// lo esperara. Eso significaba que un `await guardar()` podía resolverse
+// (y el botón mostrar "Guardado en Drive") ANTES de que ese guardado de
+// seguimiento — el que realmente tenía el cambio nuevo — terminara de
+// escribirse. Si el usuario cerraba la pestaña en esa ventana, el cambio
+// se perdía igual, pese al aviso de "guardado".
+test('guardar() no debe avisar que terminó hasta que el guardado que incluye ese cambio realmente terminó', async (t) => {
+  const { window } = loadApp();
+  t.after(() => window.close());
+
+  window._deudores = [{ nombre: 'Test', monto: 1000, cobrado: false }];
+  window._v6_drive_data_received = true;
+  window.eval('driveAccessToken = "fake-token"; driveFileId = "fake-file-id";');
+
+  let serverState = null;
+  let resolveFirst, resolveSecond;
+  const firstGate = new Promise((res) => { resolveFirst = res; });
+  const secondGate = new Promise((res) => { resolveSecond = res; });
+  let callCount = 0;
+
+  window.fetch = async (url, opts) => {
+    callCount++;
+    const n = callCount;
+    const bodyText = await opts.body.text();
+    if (n === 1) await firstGate;
+    if (n === 2) await secondGate;
+    serverState = bodyText;
+    return { ok: true, status: 200, json: async () => ({}) };
+  };
+
+  window._cuentasCustom = [];
+  const p1 = window.guardar(); // la escritura vieja, sin la cuenta nueva
+
+  window._cuentasCustom = [{ id: 'x1', nombre: 'APV Jubilación', saldo: 170000 }];
+  const p2 = window.guardar(); // debe encolarse como "seguimiento" del primero
+
+  let p2Resolved = false;
+  p2.then(() => { p2Resolved = true; });
+
+  resolveFirst();
+  await p1;
+  // Recién terminó la primera escritura. La segunda (con la cuenta nueva)
+  // sigue bloqueada a propósito en secondGate — todavía NO debería estar
+  // "avisada" como terminada.
+  await new Promise((r) => setTimeout(r, 10));
+  assert.equal(p2Resolved, false, 'guardar() no debería avisar que terminó mientras el guardado de seguimiento sigue en camino');
+
+  resolveSecond();
+  await p2;
+
+  assert.equal(callCount, 2);
+  const finalState = JSON.parse(serverState);
+  assert.ok(
+    (finalState.cuentasCustom || []).some((c) => c.nombre === 'APV Jubilación'),
+    'para cuando guardar() avisa que terminó, la cuenta nueva ya debe estar escrita en Drive de verdad'
+  );
+});

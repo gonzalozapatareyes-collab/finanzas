@@ -28,11 +28,12 @@ npm test
   "Papa/Paola" sigan contando en el total general exactamente una vez
   (ni se pierden, ni se funden con la fila nueva de Papá).
 - **guardar-concurrencia.test.js** — que `guardar()` encole las escrituras
-  a Drive en vez de dispararlas en paralelo. Cubre el bug real donde una
-  cuenta custom (APV Jubilación) se veía guardada en pantalla pero
-  desaparecía al refrescar: dos guardados casi simultáneos competían, y el
-  más viejo podía "llegar" después y pisar al más nuevo sin ningún error
-  visible.
+  a Drive en vez de dispararlas en paralelo, y que además NO avise que
+  terminó hasta que el guardado que de verdad incluye el cambio más
+  reciente haya terminado (no solo el primero de la cola). Cubre el bug
+  real donde una cuenta custom (APV Jubilación) se veía guardada en
+  pantalla — con el aviso de "Guardado en Drive" y todo — pero
+  desaparecía al refrescar.
 
 ## Cuándo correrlos
 

@@ -5772,34 +5772,51 @@ window.guardar = async function() {
 // en vuelo al mismo tiempo, el que responda MÁS TARDE gana, aunque tenga
 // datos más viejos, y así se puede perder un cambio recién hecho (ej:
 // una cuenta custom recién creada) sin ningún error visible.
-// Solución: si ya hay un guardado en curso, la nueva llamada no dispara
-// otro PATCH en paralelo — solo marca "hace falta guardar de nuevo" y
-// espera a que termine el actual. Al terminar, si quedó marcado, se
-// dispara UN guardado más, que en ese momento lee el estado más fresco
-// (_buildData() se llama recién en ese instante). Así los guardados
-// quedan en fila, nunca se pisan, y ninguno se pierde.
-const _v6_origGuardar_queue = window.guardar;
+//
+// FIX v2: la primera versión de este arreglo encolaba un guardado de
+// seguimiento pero lo disparaba "al pasar" (fire-and-forget), sin que
+// nadie lo esperara — el botón podía mostrar "Guardado en Drive" del
+// guardado ANTERIOR mientras el de seguimiento (con el cambio más
+// reciente) todavía seguía en camino. Si se cerraba la pestaña en esa
+// ventana, igual se perdía el último cambio pese al aviso de "guardado".
+// Ahora cada llamada a guardar(), al esperarla (await), NO se resuelve
+// hasta que un guardado que sí incluya ese cambio (o uno más nuevo)
+// termine de verdad — nunca antes.
 window._v6_save_inflight = null;
-window._v6_save_pending = false;
-window.guardar = function() {
-  if (window._v6_save_inflight) {
-    window._v6_save_pending = true;
-    return window._v6_save_inflight;
-  }
-  const run = (async () => {
-    try {
-      return await _v6_origGuardar_queue.apply(this, arguments);
-    } finally {
-      window._v6_save_inflight = null;
-      if (window._v6_save_pending) {
-        window._v6_save_pending = false;
-        guardar();
+window._v6_save_followup = null;
+(function() {
+  const realGuardar = window.guardar; // el guardar() con el guard de deudores ya puesto
+  function runSaveNow() {
+    const run = (async () => {
+      try {
+        return await realGuardar.apply(this, arguments);
+      } finally {
+        if (window._v6_save_inflight === run) window._v6_save_inflight = null;
       }
+    })();
+    window._v6_save_inflight = run;
+    return run;
+  }
+  window.guardar = function() {
+    if (!window._v6_save_inflight) {
+      return runSaveNow.apply(this, arguments);
     }
-  })();
-  window._v6_save_inflight = run;
-  return run;
-};
+    // Ya hay un guardado en curso: en vez de asumir que alcanza a
+    // incluir este cambio, encolamos UN guardado de seguimiento que sí
+    // lo va a incluir (_buildData() se llama recién cuando corre, así
+    // que captura el estado más fresco). Si llegan más llamadas mientras
+    // ese seguimiento todavía está pendiente, todas comparten la misma
+    // promesa — no hace falta apilar más de uno.
+    if (!window._v6_save_followup) {
+      const inflightAtQueueTime = window._v6_save_inflight;
+      window._v6_save_followup = inflightAtQueueTime.then(() => {
+        window._v6_save_followup = null;
+        return runSaveNow();
+      });
+    }
+    return window._v6_save_followup;
+  };
+})();
 </script>
 
 <script id="v6-script">
