@@ -2310,6 +2310,17 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
      (la fila ya crece con el resto de campos), así que dejamos que el
      nombre pase a una segunda línea en vez de truncarlo. */
   .mf-saldos-nombre{ white-space:normal; overflow:visible; text-overflow:clip; line-height:1.25; }
+
+  /* FIX: fila "Persona / Bco Chile / CMR / Total / Pago" en Gastos > Matriz
+     personas quedaba ilegible en mobile — el grid de 5 columnas (calibrado
+     para desktop, 84px+70px fijos para Total/Pago) le dejaba a los dos
+     inputs de monto ~40px de ancho real, con el header "Bco Chile"
+     partiéndose en dos líneas encima. Le damos más aire a los inputs y
+     menos a las columnas fijas (los montos que se pagan son cortos, no
+     necesitan 84/70px), y el header ya no se envuelve. */
+  #page-gastos .tarjeta-row{ grid-template-columns:0.85fr 1fr 1fr 68px 40px; gap:6px; }
+  #page-gastos .tarjeta-row.hdr span{ white-space:nowrap; font-size:9px; }
+  #page-gastos .t-input{ font-size:13px; padding:7px 5px; }
 }
 </style>
 
@@ -2440,7 +2451,7 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
     <div class="card-title"><i class="ph ph-credit-card"></i> Tarjetas de crédito — <span id="tarjetas-mes">Mayo</span></div>
     <div class="tarjeta-row hdr">
       <span>Persona</span>
-      <span style="text-align:right;">Bco Chile</span>
+      <span style="text-align:right;">B. Chile</span>
       <span style="text-align:right;">CMR</span>
       <span style="text-align:right;">Total</span>
       <span style="text-align:right;">Pago</span>
