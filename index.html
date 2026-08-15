@@ -2321,6 +2321,22 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
   #page-gastos .tarjeta-row{ grid-template-columns:0.85fr 1fr 1fr 68px 40px; gap:6px; }
   #page-gastos .tarjeta-row.hdr span{ white-space:nowrap; font-size:9px; }
   #page-gastos .t-input{ font-size:13px; padding:7px 5px; }
+
+  /* FIX: el botón "subir arriba" (#fab-top) y el botón flotante de notas/chat
+     (.notas-fab) quedaban prácticamente en el mismo punto (bottom:110/right:14
+     vs bottom:92/right:20, calculado en una regla mobile vieja de la época
+     "V20" que nunca se actualizó cuando se agregó el chat) — se tapaban entre
+     sí. Se centra "subir" horizontalmente, arriba del tabbar y lejos del
+     chat, y se lo hace más discreto (más chico, sin color sólido) ya que es
+     una acción secundaria. */
+  #fab-top{
+    left:50%; right:auto; bottom:82px; width:34px; height:34px; font-size:15px;
+    background:var(--mf-surface); color:var(--mf-text-muted);
+    border:1px solid var(--mf-line); box-shadow:0 2px 8px rgba(15,32,24,.12);
+    transform:translate(-50%,20px);
+  }
+  #fab-top.visible{ transform:translate(-50%,0); }
+  #fab-top:hover{ background:var(--mf-surface-2); color:var(--mf-ink); transform:translate(-50%,-2px); }
 }
 </style>
 
