@@ -1322,7 +1322,15 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
 
   /* Dashboard: se eliminan los desgloses largos (ver Cuentas para el
      detalle completo); orden queda saludo -> total -> meta -> mini -> checklist. */
-  #page-dashboard{ padding:18px 18px 84px; gap:12px; }
+  /* FIX layout mobile (2da vuelta): el margin negativo de #page-dashboard
+     (regla base, arriba) está calibrado para cancelar el padding de
+     #page-content en DESKTOP (-28px horizontal). En mobile #page-content
+     baja su padding a 18px, pero este margin se quedaba en -28px sin
+     actualizarse — 10px de más por lado que hacían que el Dashboard (y
+     solo el Dashboard, es el único que usa este truco de margin negativo
+     para el fondo full-bleed) se saliera del viewport y arrastrara a toda
+     la página a poder scrollear de lado, tapando el tabbar de abajo. */
+  #page-dashboard{ padding:18px 18px 84px; margin:-18px -18px -84px; gap:12px; }
   .mf-dash-row-1{ gap:12px; }
   .mf-dash-col-right{ gap:12px; }
   .mf-hero-amount{ font-size:38px; }
