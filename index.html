@@ -1320,8 +1320,12 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
   .mf-tabbar-item span{ font:600 10px/1 'Manrope'; }
   .mf-tabbar-item.active{ color:var(--mf-green-dark); }
 
-  /* Dashboard: se eliminan los desgloses largos (ver Cuentas para el
-     detalle completo); orden queda saludo -> total -> meta -> mini -> checklist. */
+  /* Dashboard: se eliminaban los desgloses largos (ver Cuentas para el
+     detalle completo). FIX: Gonzalo pidió recuperar "Dónde está tu plata"
+     en mobile (lo llamaba "el gráfico de torta") — vuelve a mostrarse.
+     "Tarjetas por persona" se mantiene oculto por ahora para no alargar
+     demasiado el Dashboard; orden queda saludo -> total -> meta -> mini ->
+     dónde está tu plata -> checklist. */
   /* FIX layout mobile (2da vuelta): el margin negativo de #page-dashboard
      (regla base, arriba) está calibrado para cancelar el padding de
      #page-content en DESKTOP (-28px horizontal). En mobile #page-content
@@ -1336,7 +1340,6 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
   .mf-hero-amount{ font-size:38px; }
   .mf-card, .mf-card-dark{ padding:18px 18px 12px 18px; border-radius:18px; }
   .mf-dash-row-2{ display:flex; flex-direction:column; gap:12px; }
-  .mf-dash-row-2 > .mf-card:nth-child(1),
   .mf-dash-row-2 > .mf-card:nth-child(2){ display:none; }
 
   /* Gastos: tabla de escritorio no cabe -> pila de tarjetas de a una. */
