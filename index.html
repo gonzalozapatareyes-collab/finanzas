@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Misfi</title>
 <!-- V21: PWA tags -->
 <link rel="manifest" href="./manifest.json">
@@ -1224,6 +1224,16 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
 .mf-hero-chip-label{ font:500 13px/1 'Manrope'; color:var(--mf-text-muted); }
 .dashboard-hero-sub{ margin-top:9px; font:500 12px/1.4 'Manrope'; color:var(--mf-text-muted); opacity:1; }
 .mf-evolucion{ margin-top:16px; min-height:120px; }
+/* Comparación vs mes anterior (reemplaza al gráfico de área plano) */
+.mf-comp-mes{ display:flex; align-items:center; gap:12px; padding:14px 16px; border-radius:14px; background:var(--mf-surface-2); }
+.mf-comp-mes-icon{ width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+.mf-comp-mes.up .mf-comp-mes-icon{ background:var(--mf-green-soft); color:var(--mf-green-dark); }
+.mf-comp-mes.down .mf-comp-mes-icon{ background:var(--mf-pink-soft); color:var(--mf-pink-dark); }
+.mf-comp-mes-info{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+.mf-comp-mes-delta{ font:800 18px/1.2 'Manrope'; color:var(--mf-ink); }
+.mf-comp-mes.up .mf-comp-mes-delta{ color:var(--mf-green-dark); }
+.mf-comp-mes.down .mf-comp-mes-delta{ color:var(--mf-pink-dark); }
+.mf-comp-mes-label{ font:500 12px/1.3 'Manrope'; color:var(--mf-text-muted); }
 
 .mf-meta-name{ margin-top:11px; font:800 19px/1 'Manrope'; }
 .mf-meta-row{ margin-top:12px; display:flex; align-items:baseline; gap:7px; flex-wrap:wrap; font-variant-numeric:tabular-nums; }
@@ -1282,7 +1292,18 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
   #sidebar, #mobile-toggle, #sidebar-overlay{ display:none !important; }
   #main-area{ max-width:100vw; }
   #page-content{ padding:18px 18px 84px; }
-  #page-header{ padding:14px 18px; }
+  /* FIX layout mobile: la app corre instalada como PWA standalone (ver
+     manifest.json), o sea sin barra de navegador — la pantalla completa es
+     el viewport de la app. El <meta viewport> no tenía "viewport-fit=cover",
+     así que TODOS los env(safe-area-inset-*) de este archivo (incluido el
+     que ya usaba #mf-tabbar más abajo) siempre valían 0px, sin importar el
+     notch/barra de gestos del teléfono. Resultado: el header podía quedar
+     parcialmente tapado por la barra de estado arriba, y el tabbar por la
+     barra de gestos de Android abajo — dependiendo de cómo el navegador
+     recalculaba el viewport visible al hacer scroll. Con viewport-fit=cover
+     + este padding-top, el header reserva el espacio real de la barra de
+     estado en vez de asumir 0. */
+  #page-header{ padding:calc(14px + env(safe-area-inset-top,0px)) 18px 14px; }
   #page-header-left h1{ font-size:21px; }
 
   #mf-tabbar{
@@ -1361,7 +1382,16 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
 #page-gastos .card-title i, #page-gastos .section-label i{ margin-right:6px; color:var(--mf-green); }
 #page-gastos .section-label{ font:700 11px/1 'Manrope'; letter-spacing:.1em; text-transform:uppercase; color:var(--mf-text-faint); margin:24px 0 12px; }
 
-#tabs-gastos .v6-tabs{ display:inline-flex; gap:3px; padding:3px; background:var(--mf-surface-2); border-radius:12px; margin-bottom:18px; }
+/* FIX layout mobile: era display:inline-flex, que se dimensiona al ancho de
+   TODO su contenido sin importar el viewport — con 4 tabs ("Gastos fijos",
+   "Asignador TC", "Matriz personas", "Resumen") eso se pasaba del ancho de
+   pantalla en mobile y hacía que la PÁGINA ENTERA pudiera scrollear
+   horizontalmente (el header, las cards, todo se corría al costado), y de
+   paso el tabbar inferior fijo quedaba tapado por contenido que ya no
+   calzaba. display:flex (bloque, ancho del contenedor) + el overflow-x:auto
+   que ya tenía la clase base .v6-tabs hacen que solo ESTA fila de tabs
+   scrollee de lado, no la página completa. */
+#tabs-gastos .v6-tabs{ display:flex; max-width:100%; gap:3px; padding:3px; background:var(--mf-surface-2); border-radius:12px; margin-bottom:18px; }
 #tabs-gastos .v6-tab{ display:inline-flex; align-items:center; gap:6px; border:0; background:transparent; cursor:pointer; padding:9px 14px; border-radius:9px; font:600 12.5px/1 'Manrope'; color:var(--mf-text-muted); }
 #tabs-gastos .v6-tab.active{ background:var(--mf-surface); color:var(--mf-ink); box-shadow:0 1px 3px rgba(15,32,24,.12); }
 
@@ -1537,7 +1567,9 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
 .mf-goal2-sub{ margin-top:12px; font:500 11.5px/1.4 'Manrope'; opacity:.55; }
 #page-cuentas .section-label i, #page-ahorros .section-label i, #page-cuentas .card-title i, #page-ahorros .card-title i{ margin-right:6px; color:var(--mf-green); }
 
-#tabs-ahorros .v6-tabs{ display:inline-flex; flex-wrap:wrap; gap:3px; padding:3px; background:var(--mf-surface-2); border-radius:12px; margin-bottom:18px; }
+/* FIX layout mobile: mismo bug que #tabs-gastos .v6-tabs de arriba (ver
+   comentario ahí) — inline-flex no respeta el ancho del viewport. */
+#tabs-ahorros .v6-tabs{ display:flex; max-width:100%; flex-wrap:wrap; gap:3px; padding:3px; background:var(--mf-surface-2); border-radius:12px; margin-bottom:18px; }
 #tabs-ahorros .v6-tab{ display:inline-flex; align-items:center; gap:6px; border:0; background:transparent; cursor:pointer; padding:9px 14px; border-radius:9px; font:600 12.5px/1 'Manrope'; color:var(--mf-text-muted); }
 #tabs-ahorros .v6-tab.active{ background:var(--mf-surface); color:var(--mf-ink); box-shadow:0 1px 3px rgba(15,32,24,.12); }
 
@@ -1679,8 +1711,14 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
 #page-insights .mf-tip-card{ border-left:3px solid var(--mf-amber) !important; background:var(--mf-amber-soft) !important; }
 #page-insights .insight-title, #page-historico .insight-title{ font:600 11px/1.3 'Manrope' !important; color:var(--mf-text-muted) !important; }
 #page-insights .insight-value, #page-historico .insight-value{ font:800 16px/1.3 'Manrope' !important; color:var(--mf-ink) !important; }
-#page-historico .insight-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin-bottom:16px; }
-#page-historico .insight-box{ background:var(--mf-surface); border:1px solid var(--mf-line) !important; border-radius:12px; padding:14px 16px; }
+#page-historico .insight-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:8px; margin-bottom:0; }
+#page-historico .insight-box{ background:var(--mf-surface); border:1px solid var(--mf-line) !important; border-radius:10px; padding:8px 10px; }
+#page-historico .insight-title{ font-size:10px !important; }
+#page-historico .insight-value{ font-size:14px !important; }
+/* FIX: cards de Histórico más compactas (pedido de Gonzalo — se veían muy
+   espaciadas). Prevalece sobre la regla compartida de arriba por venir
+   después en el stylesheet (misma especificidad, gana la última). */
+#page-historico .v6-hist-card{ padding:14px 16px; margin-bottom:10px; }
 
 /* Config */
 #page-config .icon-btn.primary{ margin-top:4px; }
@@ -2259,6 +2297,11 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
      con "estado". Lo mandamos a su propia fila abajo. */
   .mf-saldos-row .retiro-link{ grid-column:1/-1; justify-self:start; margin:0; }
   .mf-saldos-total-row{ display:flex; justify-content:space-between; background:var(--mf-surface); border-radius:16px; padding:14px 16px; }
+  /* FIX: nombres de cuenta largos ("BancoEstado Vivienda") se cortaban con
+     "…" en mobile y quedaban ilegibles. Acá hay espacio de sobra en alto
+     (la fila ya crece con el resto de campos), así que dejamos que el
+     nombre pase a una segunda línea en vez de truncarlo. */
+  .mf-saldos-nombre{ white-space:normal; overflow:visible; text-overflow:clip; line-height:1.25; }
 }
 </style>
 
@@ -2915,21 +2958,19 @@ function loadFijos() {
 // ══════════════════════════════════════════════════════════════════
 const DEUDORES_KEY = 'finanzas_gonzalo_deudores_v1';
 window._deudores = window._deudores || [];
+// FIX deudor fantasma: limpiar de una vez la key legacy huérfana (ver
+// loadDeudores) para que un deudor viejo eliminado no quede congelado ahí.
+try { localStorage.removeItem(DEUDORES_KEY); } catch(e) {}
 
 function loadDeudores() {
-  // V18 FIX: si window._deudores ya tiene data (vino de Drive), NO sobrescribir con localStorage
-  if (window._deudores && window._deudores.length > 0) {
-    console.log('🛡️ V18: loadDeudores NO sobrescribe data en memoria (' + window._deudores.length + ' deudores)');
-    renderDeudores();
-    return;
-  }
-  // Solo cargar de localStorage si memoria está vacía Y Drive aún no respondió
-  if (!window._v6_drive_data_received) {
-    try { _deudores = JSON.parse(localStorage.getItem(DEUDORES_KEY) || '[]'); } catch(e) { _deudores = []; }
-    console.log('📦 V18: loadDeudores leyó de localStorage (' + _deudores.length + ' deudores)');
-  } else {
-    console.log('🛡️ V18: loadDeudores skip - Drive ya respondió');
-  }
+  // FIX deudor fantasma: este fallback a localStorage[DEUDORES_KEY] quedó
+  // huérfano desde el rediseño v6 — la UI actual (v6AgregarDeudorPropio /
+  // v6ToggleDeudorCobrado) nunca vuelve a escribir esa key, así que podía
+  // quedar con un deudor viejo/eliminado congelado ahí para siempre. Si esta
+  // función corría antes de que Drive respondiera, resucitaba ese fantasma
+  // en memoria y el guard V17 de _aplicarDatos (que protege memoria sobre
+  // un Drive vacío) lo terminaba re-guardando en Drive. Los deudores viven
+  // en Drive (ver _buildData/_aplicarDatos) — no hace falta este fallback.
   renderDeudores();
 }
 
@@ -6445,6 +6486,36 @@ function v6RenderAreaChart(containerId, points) {
   </svg>`;
 }
 
+// ═══ Comparación vs mes anterior — Dashboard 1a ════════════════
+// FIX: reemplaza al gráfico de área (v6RenderAreaChart). Con 1-3 puntos de
+// dato el sparkline no mostraba variación real y encima se veía mal en
+// mobile (pedido de Gonzalo). En su lugar, comparamos el patrimonio actual
+// contra el mes anterior directamente — el dato que de verdad importa.
+function v6RenderComparacionMes(containerId, points) {
+  const cont = document.getElementById(containerId);
+  if (!cont) return;
+  if (!points || points.length < 2) {
+    cont.innerHTML = '<div class="v6-empty"><p>Todavía no hay un mes anterior para comparar.</p></div>';
+    return;
+  }
+  const actual = points[points.length - 1];
+  const anterior = points[points.length - 2];
+  const delta = (actual.saldo || 0) - (anterior.saldo || 0);
+  const pct = anterior.saldo ? (delta / anterior.saldo * 100) : null;
+  const subio = delta >= 0;
+  const signo = subio ? '+' : '−';
+  const icono = subio ? 'ph-trend-up' : 'ph-trend-down';
+  const pctTxt = pct === null ? '' : ` (${signo}${Math.abs(pct).toFixed(1)}%)`;
+  cont.innerHTML = `
+    <div class="mf-comp-mes ${subio ? 'up' : 'down'}">
+      <span class="mf-comp-mes-icon"><i class="ph-fill ${icono}"></i></span>
+      <div class="mf-comp-mes-info">
+        <span class="mf-comp-mes-delta num-sensitive">${signo}$${Math.abs(delta).toLocaleString('es-CL')}${pctTxt}</span>
+        <span class="mf-comp-mes-label">vs ${anterior.mes || 'mes anterior'}</span>
+      </div>
+    </div>`;
+}
+
 // ═══ Barra segmentada "Dónde está tu plata" — Dashboard 1a ════
 function v6RenderSegmentedBar(containerId, items) {
   const cont = document.getElementById(containerId);
@@ -6587,8 +6658,8 @@ function v6RenderDashboard() {
     setBarWidth('v6-dash-meta-bar', 0);
   }
 
-  // Evolución mensual (gráfico de área)
-  v6RenderAreaChart('v6-dash-evolucion', v6GetEvolucionMensual());
+  // Comparación vs mes anterior (antes: gráfico de área plano, ver v6RenderComparacionMes)
+  v6RenderComparacionMes('v6-dash-evolucion', v6GetEvolucionMensual());
 
   // "Dónde está tu plata" (barra segmentada + leyenda)
   // FIX V31.2: cada slice = saldo + dep pendiente, SIN acumulado (que ya está
@@ -7017,27 +7088,51 @@ function v6RenderHistorico() {
     </div>`;
     return;
   }
-  const html = snaps.slice().reverse().map((s, revIdx) => {
-    const realIdx = snaps.length - 1 - revIdx;
+  // FIX orden temporal: antes se usaba snaps.slice().reverse(), que asume
+  // que el array siempre queda en orden de inserción == orden cronológico.
+  // Eso se rompe con "Recuperar mes manualmente" (v6GuardarSnapshotManual),
+  // que le pone ts:Date.now() al guardar SIN importar qué mes representa —
+  // un mes viejo recuperado hoy quedaba al final del array y saltaba arriba
+  // de todo tras el reverse(), aunque representara un mes anterior. Ahora
+  // se ordena por la fecha real que dice "mes" (ej. "Julio 2026"), no por
+  // cuándo se guardó el snapshot.
+  const V6_MESES_ORDEN = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const v6MesKey = (mesTexto) => {
+    const partes = String(mesTexto||'').trim().toLowerCase().split(/\s+/);
+    const idx = V6_MESES_ORDEN.indexOf(partes[0]);
+    const anio = parseInt(partes[1], 10);
+    if (idx === -1 || isNaN(anio)) return null; // formato inesperado: no reordenar por fecha
+    return anio * 12 + idx;
+  };
+  const snapsOrdenados = snaps.map((s, i) => ({ s, i, key: v6MesKey(s.mes) }))
+    .sort((a, b) => {
+      // Si alguno no se pudo parsear, cae al final en su orden original
+      // (misma lógica de respaldo que el reverse() de antes).
+      if (a.key === null && b.key === null) return b.i - a.i;
+      if (a.key === null) return 1;
+      if (b.key === null) return -1;
+      return b.key - a.key;
+    });
+  const html = snapsOrdenados.map(({ s, i: realIdx }) => {
     const totalSaldo = Object.values(s.cuentas || {}).reduce((a,b) => a+(b||0), 0);
     const totalDep = Object.values(s.depositos || {}).reduce((a,b) => a+(b.monto||0), 0);
     const totalTC = Object.values(s.tarjetaMontos || {}).reduce((a,b) => a+(b||0), 0);
     const numFijos = Object.values(s.fijosPagados || {}).filter(v => v).length;
     const totalFijos = Object.keys(s.fijosPagados || {}).length;
-    return `<div class="card" style="border-left:3px solid var(--mf-green);">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
-        <h3 style="font-family:'Manrope',system-ui,sans-serif;font-weight:800;color:var(--mf-ink);margin:0;">${s.mes}</h3>
-        <button onclick="v6EliminarSnapshot(${realIdx})" style="background:var(--mf-pink-soft);color:var(--mf-pink-dark);border:none;border-radius:8px;padding:5px 11px;cursor:pointer;font-size:11px;font-family:'Manrope',system-ui,sans-serif;font-weight:600;">Eliminar</button>
+    return `<div class="card v6-hist-card" style="border-left:3px solid var(--mf-green);">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+        <h3 style="font-family:'Manrope',system-ui,sans-serif;font-size:15px;font-weight:800;color:var(--mf-ink);margin:0;">${s.mes}</h3>
+        <button onclick="v6EliminarSnapshot(${realIdx})" style="background:var(--mf-pink-soft);color:var(--mf-pink-dark);border:none;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:11px;font-family:'Manrope',system-ui,sans-serif;font-weight:600;">Eliminar</button>
       </div>
-      <div class="insight-grid" style="margin-bottom:12px;">
+      <div class="insight-grid">
         <div class="insight-box"><div class="insight-title">Patrimonio</div><div class="insight-value num-sensitive">$${totalSaldo.toLocaleString('es-CL')}</div></div>
         <div class="insight-box"><div class="insight-title">Depositado</div><div class="insight-value num-sensitive" style="color:var(--mf-green-dark);">$${totalDep.toLocaleString('es-CL')}</div></div>
         <div class="insight-box"><div class="insight-title">TC Total</div><div class="insight-value num-sensitive">$${totalTC.toLocaleString('es-CL')}</div></div>
         <div class="insight-box"><div class="insight-title">Fijos pagados</div><div class="insight-value">${numFijos}/${totalFijos}</div></div>
       </div>
-      <details style="margin-top:8px;">
+      <details style="margin-top:6px;">
         <summary style="cursor:pointer;color:var(--mf-text-muted);font-size:12px;font-weight:600;font-family:'Manrope',system-ui,sans-serif;">▸ Ver desglose</summary>
-        <div style="margin-top:10px;padding:12px;background:var(--mf-surface-2);border-radius:10px;font-size:12px;line-height:1.6;font-family:'Manrope',system-ui,sans-serif;color:var(--mf-ink);">
+        <div style="margin-top:8px;padding:10px;background:var(--mf-surface-2);border-radius:10px;font-size:12px;line-height:1.6;font-family:'Manrope',system-ui,sans-serif;color:var(--mf-ink);">
           <strong style="color:var(--mf-green-dark);">Cuentas:</strong><br>
           ${Object.entries(s.cuentas||{}).map(([k,v]) => `&nbsp;&nbsp;• ${k.toUpperCase()}: <span class="num-sensitive">$${(v||0).toLocaleString('es-CL')}</span>`).join('<br>')}
           <br><br>
