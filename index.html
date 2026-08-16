@@ -6198,6 +6198,19 @@ function v6SaveSnapshots(arr) {
   try { localStorage.setItem(V6_SNAPSHOTS_KEY, JSON.stringify(arr)); } catch(e) {}
 }
 
+// Convierte "Julio 2026" en un número comparable (año*12+mes) para poder
+// ordenar cronológicamente. Compartido por v6RenderHistorico y
+// v6GetEvolucionMensual — antes cada uno tenía su propia copia local,
+// justo el patrón de "más de una ruta de cálculo" que ya causó bugs acá.
+const V6_MESES_ORDEN = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function v6ParseMesKey(mesTexto) {
+  const partes = String(mesTexto||'').trim().toLowerCase().split(/\s+/);
+  const idx = V6_MESES_ORDEN.indexOf(partes[0]);
+  const anio = parseInt(partes[1], 10);
+  if (idx === -1 || isNaN(anio)) return null; // formato inesperado: no reordenar por fecha
+  return anio * 12 + idx;
+}
+
 function v6GetMesActualKey() {
   const d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
@@ -6482,11 +6495,34 @@ function v6RenderHBars(containerId, items) {
 // FIX rediseño 1a: antes v6RenderAhorros calculaba esto inline; se extrae
 // a función única para que Dashboard use exactamente los mismos puntos
 // y no diverjan (mismo patrón de bug que el fix de cuentas custom en historial).
+//
+// FIX (2da vuelta, ago 2026): esto leía window._historialAhorros, que se
+// actualiza cada vez que tocas "✓ Listo" DURANTE el mes (guardarSnapshotHistorial,
+// llamada desde confirmarDeposito) — un valor a mitad de mes que nunca se
+// vuelve a sincronizar con el cierre real. Ni v6CerrarMesManual ni
+// v6CheckAutoSnapshot tocan _historialAhorros al cerrar el mes, así que
+// queda congelado en lo que sea que valía la última vez que confirmaste un
+// depósito, que casi nunca coincide con el saldo final del mes. Resultado
+// real: Gonzalo vio "vs Julio 2026" comparando contra un número de Julio
+// que no era el de cierre. v6_snapshots (la misma fuente que usa la página
+// Histórico, ver v6RenderHistorico) sí queda congelado con el valor real
+// al cerrar — así que los meses YA CERRADOS salen de ahí. Solo el mes en
+// curso (que todavía no tiene snapshot) se sigue calculando en vivo.
 function v6GetEvolucionMensual() {
-  const hist = window._historialAhorros || [];
-  const allMonths = hist.map(h => ({
-    mes: h.mes, saldo: h.saldoTotal, deposito: h.totalDeposito, ts: h.ts
-  }));
+  const snaps = (typeof v6GetSnapshots === 'function') ? v6GetSnapshots() : [];
+  const allMonths = snaps
+    .map(s => {
+      const saldo = Object.values(s.cuentas || {}).reduce((a,b) => a + (b||0), 0)
+        + (Array.isArray(s.cuentasCustom) ? s.cuentasCustom.reduce((a,c) => a + (c.saldo||0), 0) : 0);
+      const deposito = Object.values(s.depositos || {}).reduce((a,b) => a + (b.monto||0), 0);
+      return { mes: s.mes, saldo, deposito, ts: s.ts, _key: v6ParseMesKey(s.mes) };
+    })
+    .sort((a, b) => {
+      if (a._key === null && b._key === null) return (a.ts||0) - (b.ts||0);
+      if (a._key === null) return 1;
+      if (b._key === null) return -1;
+      return a._key - b._key;
+    });
   if (typeof val === 'function') {
     const mes = v6GetMesActualNombre();
     const customSaldoLive = (window._cuentasCustom || []).reduce((s,c) => s + (c.saldo||0), 0);
@@ -6501,7 +6537,7 @@ function v6GetEvolucionMensual() {
       const acum = (window._acumuladoMes && window._acumuladoMes[k]) || 0;
       return s + vIn + acum;
     }, 0);
-    if (!hist.find(h => h.mes === mes)) {
+    if (!allMonths.find(h => h.mes === mes)) {
       allMonths.push({ mes, saldo: total, deposito: totDep, ts: Date.now(), _esActual: true });
     }
   }
@@ -7222,15 +7258,7 @@ function v6RenderHistorico() {
   // de todo tras el reverse(), aunque representara un mes anterior. Ahora
   // se ordena por la fecha real que dice "mes" (ej. "Julio 2026"), no por
   // cuándo se guardó el snapshot.
-  const V6_MESES_ORDEN = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  const v6MesKey = (mesTexto) => {
-    const partes = String(mesTexto||'').trim().toLowerCase().split(/\s+/);
-    const idx = V6_MESES_ORDEN.indexOf(partes[0]);
-    const anio = parseInt(partes[1], 10);
-    if (idx === -1 || isNaN(anio)) return null; // formato inesperado: no reordenar por fecha
-    return anio * 12 + idx;
-  };
-  const snapsOrdenados = snaps.map((s, i) => ({ s, i, key: v6MesKey(s.mes) }))
+  const snapsOrdenados = snaps.map((s, i) => ({ s, i, key: v6ParseMesKey(s.mes) }))
     .sort((a, b) => {
       // Si alguno no se pudo parsear, cae al final en su orden original
       // (misma lógica de respaldo que el reverse() de antes).
