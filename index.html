@@ -1850,10 +1850,6 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
       <div class="mf-hero-click" onclick="v6Go('ahorros')" title="Ir a Ahorros">
         <div class="mf-label">Total ahorrado</div>
         <div class="mf-hero-amount num-sensitive" id="v6-dash-hero">$ —</div>
-        <div class="mf-hero-chip-row">
-          <span class="mf-chip"><i class="ph-fill ph-arrow-up-right"></i><span class="num-sensitive" id="v6-dash-dep">+$ —</span></span>
-          <span class="mf-hero-chip-label">depositado este mes</span>
-        </div>
         <div class="dashboard-hero-sub"><span class="v14-mobile-hide">Tus 5 cuentas consolidadas · </span>clic para ver detalle →</div>
       </div>
       <div id="v6-dash-evolucion" class="mf-evolucion"></div>
@@ -2079,6 +2075,12 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
     </div>
     <button class="icon-btn" style="width:auto;padding:0 14px;height:36px;" onclick="v6AbrirRecuperarSnapshot()"><i class="ph ph-bandaids"></i> Recuperar mes manualmente</button>
     <button class="icon-btn primary" style="width:auto;padding:0 14px;height:36px;" onclick="v6CerrarMesManual()"><i class="ph ph-calendar-check"></i> Cerrar mes ahora</button>
+    <!-- FIX puntual (una sola vez): Junio y Julio 2026 quedaron con Fintual
+         Reserva/Capital en $0 por un bug guardando el cierre de mes.
+         Gonzalo confirmó que no ha movido esas cuentas en meses, así que
+         corrige ambos snapshots al saldo actual. Sacar este botón después
+         de que lo use una vez. -->
+    <button class="icon-btn" style="width:auto;padding:0 14px;height:36px;color:var(--mf-pink-dark);" onclick="v6FixFintualJunioJulio()"><i class="ph ph-wrench"></i> Reparar Fintual Jun/Jul</button>
   </div>
   <div id="v6-recuperar-form" style="display:none;"></div>
   <div id="v6-historico-list"></div>
@@ -6728,10 +6730,6 @@ function v6RenderDashboard() {
   const setEl = (id, txt) => { const e = document.getElementById(id); if (e) e.textContent = txt; };
   const setBarWidth = (id, pct) => { const e = document.getElementById(id); if (e) e.style.width = Math.min(100, Math.max(0, pct*100)) + '%'; };
   setEl('v6-dash-hero', '$' + total.toLocaleString('es-CL'));
-  // FIX V31.2: el widget "Depositado este mes" del dashboard ahora usa
-  // _acumuladoMes (lo realmente depositado/consolidado este mes), no totDep
-  // (que ahora es solo el input pendiente sin consolidar).
-  setEl('v6-dash-dep', '+$' + depMesAcumulado.toLocaleString('es-CL'));
   setEl('v6-dash-tc', '$' + totTC.toLocaleString('es-CL'));
   setEl('v6-dash-deudores', '$' + deudoresTotal.toLocaleString('es-CL'));
   setEl('v6-dash-fijos', '$' + fijosTotal.toLocaleString('es-CL'));
@@ -7313,6 +7311,47 @@ function v6EliminarSnapshot(idx) {
   snaps.splice(idx, 1);
   v6SaveSnapshots(snaps);
   v6RenderHistorico();
+}
+
+// FIX puntual (una sola vez, ver botón "Reparar Fintual Jun/Jul" en
+// Histórico): los snapshots de Junio y Julio 2026 quedaron con Fintual
+// Reserva (fr) y Fintual Capital (fc) en $0 por un bug guardando el cierre
+// de mes — no una baja real de esas cuentas (Gonzalo confirmó que no las
+// mueve hace meses). Corrige SOLO fr/fc de esos dos snapshots al saldo
+// actual, sin tocar nada más (ni el resto de cuentas, ni TC, ni fijos).
+// Sacar este botón/función en un commit posterior una vez usado.
+async function v6FixFintualJunioJulio() {
+  const frActual = val('c-fr') || 0;
+  const fcActual = val('c-fc') || 0;
+  if (!confirm(
+    '🔧 Esto va a poner en los snapshots de "Junio 2026" y "Julio 2026":\n\n' +
+    'Fintual Reserva: ' + fmt(frActual) + '\n' +
+    'Fintual Capital: ' + fmt(fcActual) + '\n\n' +
+    '(el saldo actual de ambas cuentas — no se toca nada más de esos meses)\n\n¿Continuar?'
+  )) return;
+
+  const snaps = v6GetSnapshots();
+  let corregidos = 0;
+  ['Junio 2026', 'Julio 2026'].forEach(mes => {
+    const snap = snaps.find(s => s.mes === mes);
+    if (snap) {
+      snap.cuentas = snap.cuentas || {};
+      snap.cuentas.fr = frActual;
+      snap.cuentas.fc = fcActual;
+      corregidos++;
+    }
+  });
+  if (corregidos === 0) { alert('No encontré snapshots de Junio ni Julio 2026 para corregir.'); return; }
+
+  v6SaveSnapshots(snaps);
+  let driveOk = true;
+  if (driveAccessToken && typeof guardar === 'function') {
+    driveOk = await guardar() !== false;
+  }
+  v6RenderHistorico();
+  v6RenderDashboard();
+  alert((corregidos === 2 ? 'Junio y Julio corregidos' : corregidos + ' mes corregido') +
+    (driveOk ? ' (guardado en Drive).' : ' localmente — reintenta "Guardar", falló la subida a Drive.'));
 }
 
 // ═══ Recuperación manual de un snapshot perdido ═══════════════════
