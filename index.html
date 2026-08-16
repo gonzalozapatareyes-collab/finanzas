@@ -203,12 +203,6 @@
   .badge-no { background:var(--yellow-dim); color:var(--yellow); }
   .badge-si { background:var(--green-dim); color:var(--green); }
 
-  .check-item { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:0.5px solid var(--border); font-size:13px; cursor:pointer; color:var(--text2); }
-  .check-item:last-child { border-bottom:none; }
-  .chk { width:18px; height:18px; border:1.5px solid var(--border); border-radius:4px; flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:all .2s; font-size:11px; background:var(--surface2); }
-  .chk.done { background:var(--green-dim); border-color:var(--green); color:var(--green); }
-  .check-text.done { color:var(--muted); text-decoration:line-through; }
-
   .section-label { font-family:'Syne',sans-serif; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:2.5px; color:var(--muted); margin:26px 0 12px; }
   .tag { display:inline-block; padding:1px 7px; border-radius:4px; font-size:9px; text-transform:uppercase; letter-spacing:1px; margin-left:6px; font-weight:600; }
   .tag-imp { background:var(--purple-dim); color:var(--purple); }
@@ -1277,6 +1271,12 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
 .mf-check-item:hover{ background:var(--mf-surface-2); }
 .mf-check-item.done{ color:var(--mf-text-faint); text-decoration:line-through; }
 .mf-check-item i{ font-size:16px; flex:none; }
+.mf-check-item button{ opacity:0; transition:opacity .15s; }
+.mf-check-item:hover button{ opacity:1; }
+.mf-checklist-add-row{ display:flex; gap:6px; margin-top:8px; }
+.mf-checklist-add-row .mf-deu-input{ padding:8px 10px; font-size:12.5px; }
+.mf-checklist-add-btn{ flex:none; width:34px; border:0; border-radius:9px; background:var(--mf-green); color:#fff; cursor:pointer; font-size:14px; }
+.mf-checklist-add-btn:hover{ background:var(--mf-green-dark); }
 
 @media (max-width:1100px){
   .mf-dash-row-1, .mf-dash-row-2{ grid-template-columns:1fr; }
@@ -1681,15 +1681,17 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
 #page-deudores .mf-deu-cobrar:disabled{ cursor:default; opacity:.6; }
 
 #page-deudores .mf-deu-pendientes-head{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
-#page-deudores .mf-deu-toggle-form-btn{ margin-left:auto; display:inline-flex; align-items:center; gap:6px; padding:9px 14px; border:0; border-radius:10px; background:var(--mf-green); color:#fff; font:700 12.5px/1 'Manrope'; cursor:pointer; }
-#page-deudores .mf-deu-toggle-form-btn:hover{ background:var(--mf-green-dark); }
-#page-deudores .mf-deu-form-wrap{ padding:16px; margin-bottom:14px; border-radius:12px; background:var(--mf-surface-2); }
-#page-deudores .mf-deu-form{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-#page-deudores .mf-deu-input{ background:var(--mf-surface-2); border:1px solid transparent; border-radius:9px; color:var(--mf-ink); font:500 13px/1 'Manrope'; padding:10px 12px; box-sizing:border-box; width:100%; }
-#page-deudores .mf-deu-input:focus{ outline:none; border-color:var(--mf-green); background:var(--mf-surface); }
-#page-deudores .mf-deu-input-wide{ grid-column:span 2; }
-#page-deudores .mf-deu-add-btn{ margin-top:14px; width:100%; background:var(--mf-green); color:#fff; border:none; padding:12px; border-radius:10px; cursor:pointer; font:700 13px/1 'Manrope'; }
-#page-deudores .mf-deu-add-btn:hover{ background:var(--mf-green-dark); }
+/* Reusadas también en #page-gastos (formulario "+ Agregar gasto fijo",
+   mismo look que "+ Agregar deudor" — ver renderGastosFijosCustom). */
+#page-deudores .mf-deu-toggle-form-btn, #page-gastos .mf-deu-toggle-form-btn{ margin-left:auto; display:inline-flex; align-items:center; gap:6px; padding:9px 14px; border:0; border-radius:10px; background:var(--mf-green); color:#fff; font:700 12.5px/1 'Manrope'; cursor:pointer; }
+#page-deudores .mf-deu-toggle-form-btn:hover, #page-gastos .mf-deu-toggle-form-btn:hover{ background:var(--mf-green-dark); }
+#page-deudores .mf-deu-form-wrap, #page-gastos .mf-deu-form-wrap{ padding:16px; margin-bottom:14px; border-radius:12px; background:var(--mf-surface-2); }
+#page-deudores .mf-deu-form, #page-gastos .mf-deu-form{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+#page-deudores .mf-deu-input, #page-gastos .mf-deu-input, #page-dashboard .mf-deu-input{ background:var(--mf-surface-2); border:1px solid transparent; border-radius:9px; color:var(--mf-ink); font:500 13px/1 'Manrope'; padding:10px 12px; box-sizing:border-box; width:100%; }
+#page-deudores .mf-deu-input:focus, #page-gastos .mf-deu-input:focus, #page-dashboard .mf-deu-input:focus{ outline:none; border-color:var(--mf-green); background:var(--mf-surface); }
+#page-deudores .mf-deu-input-wide, #page-gastos .mf-deu-input-wide{ grid-column:span 2; }
+#page-deudores .mf-deu-add-btn, #page-gastos .mf-deu-add-btn{ margin-top:14px; width:100%; background:var(--mf-green); color:#fff; border:none; padding:12px; border-radius:10px; cursor:pointer; font:700 13px/1 'Manrope'; }
+#page-deudores .mf-deu-add-btn:hover, #page-gastos .mf-deu-add-btn:hover{ background:var(--mf-green-dark); }
 
 @media (max-width:640px){
   #page-deudores .mf-deu-summary{ grid-template-columns:1fr; }
@@ -2445,24 +2447,9 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
 <div class="grid-2">
 
   <!-- FIJOS -->
-  <div class="card">
+  <div class="card" id="v6-fijos-card">
     <div class="card-title"><i class="ph ph-list-checks"></i> Gastos fijos</div>
-    <div class="fijo-row" id="fijo-casa"><div class="fijo-check" onclick="toggleFijo('casa',this)"></div><div class="fijo-row-info"><div>Cuota casa</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$150.000</div></div>
-    <div class="fijo-row" id="fijo-crossfit"><div class="fijo-check" onclick="toggleFijo('crossfit',this)"></div><div class="fijo-row-info"><div>Crossfit</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$45.000</div></div>
-    <div class="fijo-row" id="fijo-flores"><div class="fijo-check" onclick="toggleFijo('flores',this)"></div><div class="fijo-row-info"><div>Flores (20)</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$46.000</div></div>
-    <div class="fijo-row" id="fijo-claude"><div class="fijo-check" onclick="toggleFijo('claude',this)"></div><div class="fijo-row-info"><div>Claude</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$23.990</div></div>
-    <div class="fijo-row" id="fijo-psico"><div class="fijo-check" onclick="toggleFijo('psico',this)"></div><div class="fijo-row-info"><div>Psicólogo</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$44.000</div></div>
-    <div class="fijo-row" id="fijo-wizz"><div class="fijo-check" onclick="toggleFijo('wizz',this)"></div><div class="fijo-row-info"><div>Wizz (cuotas)</div><div class="fijo-estado" style="color:var(--yellow);">⚠ Termina nov</div></div><div class="fijo-amount" style="color:var(--yellow);">$61.666</div></div>
-    <div class="fijo-row" id="fijo-bodega"><div class="fijo-check" onclick="toggleFijo('bodega',this)"></div><div class="fijo-row-info"><div>Bodega</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$24.600</div></div>
-    <div class="fijo-row" id="fijo-spotify"><div class="fijo-check" onclick="toggleFijo('spotify',this)"></div><div class="fijo-row-info"><div>Spotify</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$6.750</div></div>
-    <div class="fijo-row" id="fijo-netflix"><div class="fijo-check" onclick="toggleFijo('netflix',this)"></div><div class="fijo-row-info"><div>Netflix</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$9.990</div></div>
-    <div class="fijo-row" id="fijo-google"><div class="fijo-check" onclick="toggleFijo('google',this)"></div><div class="fijo-row-info"><div>Google One</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$1.790</div></div>
-    <div class="fijo-row" id="fijo-celu"><div class="fijo-check" onclick="toggleFijo('celu',this)"></div><div class="fijo-row-info"><div>Plan Celu</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$9.027</div></div>
-    <div class="fijo-row" id="fijo-bip"><div class="fijo-check" onclick="toggleFijo('bip',this)"></div><div class="fijo-row-info"><div>BIP</div><div class="fijo-estado">Permanente</div></div><div class="fijo-amount" style="color:var(--red);">$15.000</div></div>
-    <div class="total-row">
-      <span class="total-label">Total fijos</span>
-      <span class="total-amount" style="color:var(--yellow);font-size:17px;">$437.813</span>
-    </div>
+    <div id="v6-fijos-rows-mount"></div>
   </div>
 
   <!-- TARJETAS -->
@@ -2549,18 +2536,6 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
       <span></span>
     </div>
   </div>
-</div>
-
-<!-- CHECKLIST -->
-<div class="section-label">✅ Checklist inicio de mes</div>
-<div class="card">
-  <div class="card-title">Qué actualizar cada 1ro</div>
-  <div class="check-item" onclick="toggleCheck(this)"><div class="chk">✓</div><div class="check-text">Actualizar saldo MercadoPago</div></div>
-  <div class="check-item" onclick="toggleCheck(this)"><div class="chk">✓</div><div class="check-text">Actualizar saldo BancoEstado Vivienda</div></div>
-  <div class="check-item" onclick="toggleCheck(this)"><div class="chk">✓</div><div class="check-text">Actualizar los 2 saldos Fintual (Reserva y Capital)</div></div>
-  <div class="check-item" onclick="toggleCheck(this)"><div class="chk">✓</div><div class="check-text">Ingresar montos de tarjetas Bco Chile y CMR</div></div>
-  <div class="check-item" onclick="toggleCheck(this)"><div class="chk">✓</div><div class="check-text">Marcar pagos de tarjetas a medida que se realizan</div></div>
-  <div class="check-item" onclick="toggleCheck(this)"><div class="chk">✓</div><div class="check-text">Revisar si cambió algún gasto fijo</div></div>
 </div>
 
 <script>
@@ -2959,37 +2934,124 @@ function fmtShort(n) {
 }
 
 // ══════════════════════════════════════════════════════════════════
-//  GASTOS FIJOS — CHECKBOXES (persisten, no se limpian con el mes)
+//  GASTOS FIJOS — lista 100% dinámica y vacía por defecto (sin nombres ni
+//  montos hardcodeados: pensada para que la app no muestre ningún dato
+//  ajeno a quien la use, ni siquiera "categorías de ejemplo"). Mismo
+//  patrón que window._cuentasCustom: array en memoria + hooks aditivos
+//  sobre _buildData/_aplicarDatos, nunca se tocan las funciones base.
 // ══════════════════════════════════════════════════════════════════
-const FIJOS_KEY = 'finanzas_gonzalo_fijos_v1';
+window._gastosFijosCustom = window._gastosFijosCustom || [];
 
-function toggleFijo(id, btn) {
-  const row = document.getElementById('fijo-'+id);
-  const isPagado = btn.classList.toggle('pagado');
-  btn.textContent = isPagado ? '✓' : '';
-  row.classList.toggle('pagado-row', isPagado);
-  saveFijos();
+function v6EscGastoFijo(s) {
+  return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
-function saveFijos() {
-  // Siempre guarda en Drive si está conectado (los fijos quedan en _buildData)
-  if (driveAccessToken) guardar();
-}
+window.renderGastosFijosCustom = function() {
+  const mount = document.getElementById('v6-fijos-rows-mount');
+  if (!mount) return;
+  const items = window._gastosFijosCustom || [];
+  const fmt = n => '$' + Math.round(n||0).toLocaleString('es-CL');
+  // Total = suma de TODOS los fijos (pagados o no), igual que siempre —
+  // representa el compromiso mensual completo, no lo pendiente.
+  const total = items.reduce((s,f) => s + (f.monto||0), 0);
 
-function loadFijos() {
-  // Los fijos vienen de Drive via _aplicarDatos — solo como fallback si no hay Drive
-  try {
-    const estado = JSON.parse(localStorage.getItem(FIJOS_KEY) || '{}');
-    Object.entries(estado).forEach(([key, pagado]) => {
-      const row = document.getElementById('fijo-'+key);
-      if (!row || !pagado) return;
-      const btn = row.querySelector('.fijo-check');
-      btn.classList.add('pagado');
-      btn.textContent = '✓';
-      row.classList.add('pagado-row');
-    });
-  } catch(e) {}
-}
+  const rowsHTML = items.length === 0
+    ? '<div class="v6-empty" style="margin:8px 0;"><p>Sin gastos fijos registrados. Agrega los tuyos con el botón de abajo.</p></div>'
+    : items.map(f => `
+      <div class="fijo-row" id="v6-fijo-${f.id}">
+        <div class="fijo-check ${f.pagado ? 'pagado' : ''}" onclick="v6ToggleGastoFijoPagado('${f.id}')">${f.pagado ? '✓' : ''}</div>
+        <div class="fijo-row-info">
+          <div>${v6EscGastoFijo(f.nombre)}</div>
+          <div class="fijo-estado"${f.nota ? ' style="color:var(--yellow);"' : ''}>${f.nota ? v6EscGastoFijo(f.nota) : 'Permanente'}</div>
+        </div>
+        <div class="fijo-amount" style="color:var(--red);">${fmt(f.monto)}</div>
+        <button class="mf-saldos-link" style="margin-left:8px;" onclick="v6EliminarGastoFijo('${f.id}')" title="Eliminar"><i class="ph ph-trash"></i></button>
+      </div>`).join('');
+
+  mount.innerHTML = `
+    ${rowsHTML}
+    <div class="total-row">
+      <span class="total-label">Total fijos</span>
+      <span class="total-amount" style="color:var(--yellow);font-size:17px;">${fmt(total)}</span>
+    </div>
+    <div id="v6-fijo-form-wrap" style="display:${window._v6FijoFormOpen ? 'block' : 'none'};margin-top:10px;">
+      <div class="mf-deu-form">
+        <input id="v6-fijo-nombre" placeholder="Nombre (ej: Netflix)" class="mf-deu-input">
+        <input id="v6-fijo-monto" type="number" placeholder="Monto ($)" class="mf-deu-input">
+        <input id="v6-fijo-nota" placeholder="Nota (opcional, ej: Termina en nov)" class="mf-deu-input mf-deu-input-wide">
+      </div>
+      <button class="mf-deu-add-btn" onclick="v6AgregarGastoFijo()">+ Agregar gasto fijo</button>
+    </div>
+    <button class="mf-deu-toggle-form-btn" style="margin-top:10px;" onclick="v6ToggleFijoForm()"><i class="ph ph-plus"></i> Agregar gasto fijo</button>
+  `;
+};
+
+window.v6ToggleFijoForm = function() {
+  window._v6FijoFormOpen = !window._v6FijoFormOpen;
+  renderGastosFijosCustom();
+  if (window._v6FijoFormOpen) {
+    const el = document.getElementById('v6-fijo-nombre');
+    if (el) setTimeout(() => el.focus(), 50);
+  }
+};
+
+window.v6AgregarGastoFijo = function() {
+  const n = document.getElementById('v6-fijo-nombre');
+  const m = document.getElementById('v6-fijo-monto');
+  const nt = document.getElementById('v6-fijo-nota');
+  if (!n || !m) return;
+  const nombre = (n.value||'').trim();
+  const monto = parseFloat(m.value) || 0;
+  const nota = (nt.value||'').trim();
+  if (!nombre || monto <= 0) { alert('Nombre y monto son obligatorios'); return; }
+  window._gastosFijosCustom.push({ id: 'gf_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), nombre, monto, nota, pagado: false });
+  window._v6FijoFormOpen = false;
+  renderGastosFijosCustom();
+  if (typeof v6RenderDashboard === 'function') v6RenderDashboard();
+  if (typeof guardar === 'function') guardar();
+};
+
+window.v6ToggleGastoFijoPagado = function(id) {
+  const f = (window._gastosFijosCustom||[]).find(x => x.id === id);
+  if (!f) return;
+  f.pagado = !f.pagado;
+  renderGastosFijosCustom();
+  if (typeof v6RenderDashboard === 'function') v6RenderDashboard();
+  if (typeof guardar === 'function') guardar();
+};
+
+window.v6EliminarGastoFijo = function(id) {
+  if (!confirm('¿Eliminar este gasto fijo?')) return;
+  window._gastosFijosCustom = (window._gastosFijosCustom||[]).filter(x => x.id !== id);
+  renderGastosFijosCustom();
+  if (typeof v6RenderDashboard === 'function') v6RenderDashboard();
+  if (typeof guardar === 'function') guardar();
+};
+
+// Hook _buildData / _aplicarDatos (mismo patrón que _cuentasCustom, con
+// try/catch alrededor de la cadena original — ver tests/aplicar-datos-resiliente.test.js
+// para el bug real que este try/catch evita repetir).
+(function() {
+  const _origBuildDataGF = window._buildData;
+  if (typeof _origBuildDataGF === 'function') {
+    window._buildData = function() {
+      const data = _origBuildDataGF.apply(this, arguments);
+      if (data && typeof data === 'object') data.gastosFijosCustom = window._gastosFijosCustom || [];
+      return data;
+    };
+  }
+  const _origAplicarDatosGF = window._aplicarDatos;
+  if (typeof _origAplicarDatosGF === 'function') {
+    window._aplicarDatos = function(d) {
+      let result;
+      try { result = _origAplicarDatosGF.apply(this, arguments); }
+      catch (e) { console.error('_aplicarDatos (orig, pre-gastosFijosCustom) falló, sigue la cadena igual:', e); }
+      if (d && Array.isArray(d.gastosFijosCustom)) window._gastosFijosCustom = d.gastosFijosCustom;
+      setTimeout(() => { if (typeof renderGastosFijosCustom === 'function') renderGastosFijosCustom(); }, 130);
+      return result;
+    };
+  }
+})();
 
 // ══════════════════════════════════════════════════════════════════
 //  DEUDORES
@@ -3314,15 +3376,9 @@ function _buildData() {
     // V31: snapshots de la página Histórico (antes sólo en localStorage)
     v6_snapshots: (typeof v6GetSnapshots === 'function') ? v6GetSnapshots() : [],
     // V31: retiros de cuentas de ahorro (audit trail con motivo y nota)
-    retiros: window._retiros || [],
-    fijosPagados: (function() {
-      const estado = {};
-      document.querySelectorAll('.fijo-check').forEach(btn => {
-        const row = btn.closest('.fijo-row');
-        if (row && row.id) estado[row.id.replace('fijo-','')] = btn.classList.contains('pagado');
-      });
-      return estado;
-    })()
+    retiros: window._retiros || []
+    // gastosFijosCustom se agrega vía hook aditivo (ver v6AgregarGastoFijo
+    // más abajo), mismo patrón que cuentasCustom.
   };
   // Save deposit amounts and confirmation states
   ['mp','be','fr','fc'].forEach(k => {
@@ -3346,9 +3402,9 @@ function _buildData() {
     if (p) data.customPersonas.push({ nombre: p, pago: b ? b.textContent : 'No' });
     if (p && b) data.pagos['custom_'+p] = b.textContent;
   });
-  document.querySelectorAll('.check-item').forEach((item,i) => {
-    data.checks[i] = item.querySelector('.chk').classList.contains('done');
-  });
+  // checklistCustom se agrega vía hook aditivo (ver v6AgregarChecklistItem
+  // más abajo) — reemplaza a data.checks[], que indexaba por posición en
+  // el DOM (frágil) en vez de por id estable.
   if (allGastos && allGastos.length > 0) {
     data.gastos = allGastos.map(g => ({
       fecha: g.fecha, desc: g.desc, monto: g.monto, banco: g.banco,
@@ -3472,21 +3528,8 @@ function _aplicarDatos(d) {
       renderDeudores();
     }
 
-    // ── Gastos fijos pagados ───────────────────────────────────
-    if (d.fijosPagados) {
-      Object.entries(d.fijosPagados).forEach(([key, pagado]) => {
-        const row = document.getElementById('fijo-'+key);
-        if (!row) return;
-        const btn = row.querySelector('.fijo-check');
-        if (pagado) {
-          btn.classList.add('pagado'); btn.textContent = '✓';
-          row.classList.add('pagado-row');
-        } else {
-          btn.classList.remove('pagado'); btn.textContent = '';
-          row.classList.remove('pagado-row');
-        }
-      });
-    }
+    // gastosFijosCustom se restaura vía hook aditivo (ver v6AgregarGastoFijo
+    // más abajo), mismo patrón que cuentasCustom.
 
     // ── Metas ──────────────────────────────────────────────────
     if (d.metas) {
@@ -3510,15 +3553,8 @@ function _aplicarDatos(d) {
       if (badge) { badge.textContent = pago ? 'Sí' : 'No'; badge.className = 'badge '+(pago?'badge-si':'badge-no'); }
     });
 
-    // ── Checklist ──────────────────────────────────────────────
-    if (d.checks) {
-      document.querySelectorAll('.check-item').forEach((item,i) => {
-        if (d.checks[i]) {
-          item.querySelector('.chk').classList.add('done');
-          item.querySelector('.check-text').classList.add('done');
-        }
-      });
-    }
+    // checklistCustom se restaura vía hook aditivo (ver
+    // v6AgregarChecklistItem más abajo).
 
     // ── Asignador de gastos ────────────────────────────────────
     if (d.gastos && d.gastos.length > 0) {
@@ -3667,10 +3703,6 @@ async function cargar() {
   } catch(e) { console.error('Error cargando datos:', e); }
 }
 
-function toggleCheck(item) {
-  item.querySelector('.chk').classList.toggle('done');
-  item.querySelector('.check-text').classList.toggle('done');
-}
 
 function togglePago(el) {
   const pagado = el.textContent === 'No';
@@ -3751,7 +3783,7 @@ window.onload = async function() {
   recalcular();
   calcGrandTotal();
   renderHistorial();
-  loadFijos();
+  if (typeof renderGastosFijosCustom === 'function') renderGastosFijosCustom();
   loadDeudores();
   initHeroHidden();
   // V31: render completo después de la carga inicial (no esperar a navegar)
@@ -6194,7 +6226,7 @@ function v6TomarSnapshot(mesNombre) {
     tarjetaMontos: data.tarjetaMontos,
     pagos: data.pagos,
     customPersonas: data.customPersonas,
-    fijosPagados: data.fijosPagados,
+    gastosFijosCustom: JSON.parse(JSON.stringify(window._gastosFijosCustom || [])),
     deudores: data.deudores,
     gastosCount: (data.gastos || []).length,
     gastos: data.gastos || []
@@ -6242,18 +6274,15 @@ function v6LimpiarMesActualUI() {
   });
   if (typeof v6ResetDropzoneUI === 'function') v6ResetDropzoneUI();
 
-  // Resetear checks de gastos fijos
-  // FIX V31.2: el markup real usa .fijo-check.pagado y .fijo-row.pagado-row,
-  // no .chk.done que era el selector incorrecto anterior.
-  document.querySelectorAll('.fijo-row.pagado-row').forEach(row => row.classList.remove('pagado-row'));
-  document.querySelectorAll('.fijo-check.pagado').forEach(chk => {
-    chk.classList.remove('pagado');
-    chk.textContent = '';
-  });
+  // Resetear "pagado" de gastos fijos (viven en window._gastosFijosCustom
+  // desde que se genericizaron, ya no son filas fijas del DOM).
+  (window._gastosFijosCustom || []).forEach(f => { f.pagado = false; });
+  if (typeof renderGastosFijosCustom === 'function') renderGastosFijosCustom();
 
-  // Resetear checklist inicio de mes (este sí usa .chk.done correctamente)
-  document.querySelectorAll('.check-item .chk.done').forEach(chk => chk.classList.remove('done'));
-  document.querySelectorAll('.check-item .check-text.done').forEach(el => el.classList.remove('done'));
+  // Resetear checklist del mes (vive en window._checklistCustom desde que
+  // se genericizó — ya no son check-items fijos en el DOM).
+  (window._checklistCustom || []).forEach(c => { c.hecho = false; });
+  if (typeof v6RenderChecklistCustom === 'function') v6RenderChecklistCustom();
 
   // Recalcular y refrescar
   if (typeof recalcular === 'function') recalcular();
@@ -6654,10 +6683,11 @@ function v6RenderDashboard() {
   const totTC = totTCPredef + totTCCustom;
   const deudoresTotal = (window._deudores || []).filter(d => !d.cobrado).reduce((s,d) => s + (d.monto||0), 0);
 
-  // Gastos fijos del mes (suma real de montos, no solo el conteo pagado/total)
-  const fijosTotal = Array.from(document.querySelectorAll('.fijo-amount')).reduce((s, el) => {
-    return s + (parseInt((el.textContent||'').replace(/\D/g,''), 10) || 0);
-  }, 0);
+  // Gastos fijos del mes (suma real de montos, no solo el conteo pagado/total).
+  // FIX: antes se calculaba parseando el texto de .fijo-amount en el DOM —
+  // frágil, y ya no sirve desde que los fijos son datos (_gastosFijosCustom),
+  // no filas hardcodeadas.
+  const fijosTotal = (window._gastosFijosCustom || []).reduce((s, f) => s + (f.monto||0), 0);
 
   const setEl = (id, txt) => { const e = document.getElementById(id); if (e) e.textContent = txt; };
   const setBarWidth = (id, pct) => { const e = document.getElementById(id); if (e) e.style.width = Math.min(100, Math.max(0, pct*100)) + '%'; };
@@ -6736,40 +6766,98 @@ function v6RenderDashboard() {
   });
   v6RenderPersonaBars('v6-dash-tcpersona', tcItems);
 
-  // Checklist
-  const checkCont = document.getElementById('dash-checklist');
-  if (checkCont) {
-    const items = document.querySelectorAll('.check-item');
-    if (items.length > 0) {
-      let doneCount = 0;
-      const html = Array.from(items).map((item, i) => {
-        const txt = item.querySelector('.check-text');
-        const chk = item.querySelector('.chk');
-        const done = chk && chk.classList.contains('done');
-        if (done) doneCount++;
-        return `<div class="mf-check-item${done ? ' done' : ''}" onclick="v6ToggleDashCheck(${i})">
-          <i class="${done ? 'ph-fill ph-check-circle' : 'ph ph-circle'}" style="color:${done ? 'var(--mf-green)' : 'var(--mf-text-faint)'}"></i>
-          <span>${txt ? txt.textContent : 'Tarea ' + (i+1)}</span>
-        </div>`;
-      }).join('');
-      checkCont.innerHTML = html;
-      setEl('v6-dash-check-count', doneCount + '/' + items.length);
-      setBarWidth('v6-dash-check-bar', items.length ? doneCount/items.length : 0);
-    }
-  }
+  // Checklist del mes (100% dinámico y vacío por defecto, ver
+  // window._checklistCustom / v6RenderChecklistCustom más abajo).
+  if (typeof v6RenderChecklistCustom === 'function') v6RenderChecklistCustom();
   if (v6HideAmounts) setTimeout(v6ApplyHideAmounts, 50);
 }
 
-function v6ToggleDashCheck(idx) {
-  const items = document.querySelectorAll('.check-item');
-  if (items[idx]) {
-    const chk = items[idx].querySelector('.chk');
-    if (chk) {
-      chk.click();
-      setTimeout(v6RenderDashboard, 50);
-    }
-  }
+// ══════════════════════════════════════════════════════════════════
+//  CHECKLIST DEL MES — lista 100% dinámica y vacía por defecto (mismo
+//  motivo que _gastosFijosCustom: privacidad, nada hardcodeado). Antes
+//  vivía como 6 .check-item ocultos permanentemente en #v6-original-stash
+//  (display:none) que solo servían de "fuente de datos" leída por índice
+//  de posición — v6RenderDashboard armaba el card visible mobile a partir
+//  de esos nodos invisibles. Reemplazado por un array con id estable.
+// ══════════════════════════════════════════════════════════════════
+window._checklistCustom = window._checklistCustom || [];
+
+function v6EscChecklist(s) {
+  return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
+
+window.v6RenderChecklistCustom = function() {
+  const cont = document.getElementById('dash-checklist');
+  if (!cont) return;
+  const items = window._checklistCustom || [];
+  const doneCount = items.filter(c => c.hecho).length;
+
+  const itemsHTML = items.map(c => `
+    <div class="mf-check-item${c.hecho ? ' done' : ''}" onclick="v6ToggleChecklistItem('${c.id}')">
+      <i class="${c.hecho ? 'ph-fill ph-check-circle' : 'ph ph-circle'}" style="color:${c.hecho ? 'var(--mf-green)' : 'var(--mf-text-faint)'}"></i>
+      <span style="flex:1;">${v6EscChecklist(c.texto)}</span>
+      <button onclick="event.stopPropagation(); v6EliminarChecklistItem('${c.id}')" title="Eliminar" style="background:transparent;border:0;color:var(--mf-text-faint);cursor:pointer;padding:2px;"><i class="ph ph-x"></i></button>
+    </div>`).join('');
+
+  cont.innerHTML = `
+    ${itemsHTML}
+    <div class="mf-checklist-add-row">
+      <input id="v6-check-nuevo" placeholder="+ Agregar recordatorio" class="mf-deu-input"
+        onkeydown="if(event.key==='Enter'){v6AgregarChecklistItem();}">
+      <button onclick="v6AgregarChecklistItem()" title="Agregar" class="mf-checklist-add-btn"><i class="ph ph-plus"></i></button>
+    </div>
+  `;
+  const setEl = (id, txt) => { const e = document.getElementById(id); if (e) e.textContent = txt; };
+  const setBarWidth = (id, pct) => { const e = document.getElementById(id); if (e) e.style.width = Math.min(100, Math.max(0, pct*100)) + '%'; };
+  setEl('v6-dash-check-count', doneCount + '/' + items.length);
+  setBarWidth('v6-dash-check-bar', items.length ? doneCount/items.length : 0);
+};
+
+window.v6AgregarChecklistItem = function() {
+  const inp = document.getElementById('v6-check-nuevo');
+  if (!inp) return;
+  const texto = (inp.value||'').trim();
+  if (!texto) return;
+  window._checklistCustom.push({ id: 'chk_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), texto, hecho: false });
+  v6RenderChecklistCustom();
+  if (typeof guardar === 'function') guardar();
+};
+
+window.v6ToggleChecklistItem = function(id) {
+  const c = (window._checklistCustom||[]).find(x => x.id === id);
+  if (!c) return;
+  c.hecho = !c.hecho;
+  v6RenderChecklistCustom();
+  if (typeof guardar === 'function') guardar();
+};
+
+window.v6EliminarChecklistItem = function(id) {
+  window._checklistCustom = (window._checklistCustom||[]).filter(x => x.id !== id);
+  v6RenderChecklistCustom();
+  if (typeof guardar === 'function') guardar();
+};
+
+(function() {
+  const _origBuildDataCK = window._buildData;
+  if (typeof _origBuildDataCK === 'function') {
+    window._buildData = function() {
+      const data = _origBuildDataCK.apply(this, arguments);
+      if (data && typeof data === 'object') data.checklistCustom = window._checklistCustom || [];
+      return data;
+    };
+  }
+  const _origAplicarDatosCK = window._aplicarDatos;
+  if (typeof _origAplicarDatosCK === 'function') {
+    window._aplicarDatos = function(d) {
+      let result;
+      try { result = _origAplicarDatosCK.apply(this, arguments); }
+      catch (e) { console.error('_aplicarDatos (orig, pre-checklistCustom) falló, sigue la cadena igual:', e); }
+      if (d && Array.isArray(d.checklistCustom)) window._checklistCustom = d.checklistCustom;
+      setTimeout(() => { if (typeof v6RenderChecklistCustom === 'function') v6RenderChecklistCustom(); }, 130);
+      return result;
+    };
+  }
+})();
 
 // ═══ Render Ahorros ════════════════════════════════════════════
 function v6RenderAhorros() {
@@ -7155,8 +7243,16 @@ function v6RenderHistorico() {
     const totalSaldo = Object.values(s.cuentas || {}).reduce((a,b) => a+(b||0), 0);
     const totalDep = Object.values(s.depositos || {}).reduce((a,b) => a+(b.monto||0), 0);
     const totalTC = Object.values(s.tarjetaMontos || {}).reduce((a,b) => a+(b||0), 0);
-    const numFijos = Object.values(s.fijosPagados || {}).filter(v => v).length;
-    const totalFijos = Object.keys(s.fijosPagados || {}).length;
+    // FIX: los fijos pasaron de filas hardcodeadas (fijosPagados, un mapa
+    // booleano por id) a datos (gastosFijosCustom, un array). Snapshots
+    // viejos (de antes de este cambio) solo tienen fijosPagados — se sigue
+    // leyendo como respaldo para no romper el histórico ya guardado.
+    const numFijos = Array.isArray(s.gastosFijosCustom)
+      ? s.gastosFijosCustom.filter(f => f.pagado).length
+      : Object.values(s.fijosPagados || {}).filter(v => v).length;
+    const totalFijos = Array.isArray(s.gastosFijosCustom)
+      ? s.gastosFijosCustom.length
+      : Object.keys(s.fijosPagados || {}).length;
     return `<div class="card v6-hist-card" style="border-left:3px solid var(--mf-green);">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
         <h3 style="font-family:'Manrope',system-ui,sans-serif;font-size:15px;font-weight:800;color:var(--mf-ink);margin:0;">${s.mes}</h3>
@@ -7274,7 +7370,7 @@ async function v6GuardarSnapshotManual() {
     tarjetaMontos: {},
     pagos: {},
     customPersonas: [],
-    fijosPagados: {},
+    gastosFijosCustom: [],
     deudores: deudoresActuales,
     gastosCount: 0,
     gastos: [],
@@ -9598,12 +9694,13 @@ function v6MoveBlocks() {
       blocks.forEach(el => temp.appendChild(el));
 
       // Fijos
-      const fijoRows = temp.querySelectorAll('.fijo-row');
+      // FIX: antes esto ubicaba la card buscando filas .fijo-row — dejó de
+      // servir cuando los gastos fijos pasaron a ser 100% dinámicos (la
+      // card arranca vacía, sin filas, hasta que renderGastosFijosCustom()
+      // la llena). Ahora se ubica la card directo por su id.
+      const fijoCard = temp.querySelector('#v6-fijos-card');
       const fijosTarget = document.getElementById('v6-fijos-mount');
-      if (fijoRows.length > 0 && fijosTarget) {
-        const fijoCard = fijoRows[0].closest('.card');
-        if (fijoCard) fijosTarget.appendChild(fijoCard);
-      }
+      if (fijoCard && fijosTarget) fijosTarget.appendChild(fijoCard);
       // Resto = tarjetas
       const matrizTarget = document.getElementById('v6-tarjetas-mount');
       if (matrizTarget) {
