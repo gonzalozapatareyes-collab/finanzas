@@ -6528,16 +6528,22 @@ function v6GetEvolucionMensual() {
   if (typeof val === 'function') {
     const mes = v6GetMesActualNombre();
     const customSaldoLive = (window._cuentasCustom || []).reduce((s,c) => s + (c.saldo||0), 0);
+    // FIX doble conteo: esto sumaba saldo + _acumuladoMes, pero confirmarDeposito()
+    // ya suma cada depósito confirmado DIRECTO al saldo de la cuenta (c-mp, etc.)
+    // Y por separado a _acumuladoMes (solo para mostrar "cuánto llevas depositado
+    // este mes", no para sumarlo de nuevo). v6RenderDashboard ya tiene este mismo
+    // fix documentado para el hero ("evita doble conteo") — acá faltaba aplicarlo,
+    // y por eso el comparativo "vs mes anterior" mostraba de más exactamente lo
+    // que se había depositado y confirmado ese mes.
     const total = ['mp','be','fr','fc'].reduce((s,k) => {
       const saldo = val('c-'+k) || 0;
-      const acum = (window._acumuladoMes && window._acumuladoMes[k]) || 0;
-      return s + saldo + acum;
+      const el = document.getElementById('dep-'+k);
+      const depPendiente = el ? (parseFloat(el.value)||0) : 0;
+      return s + saldo + depPendiente;
     }, 0) + customSaldoLive;
     const totDep = ['mp','be','fr','fc'].reduce((s,k) => {
       const el = document.getElementById('dep-'+k);
-      const vIn = el ? (parseFloat(el.value)||0) : 0;
-      const acum = (window._acumuladoMes && window._acumuladoMes[k]) || 0;
-      return s + vIn + acum;
+      return s + (el ? (parseFloat(el.value)||0) : 0);
     }, 0);
     if (!allMonths.find(h => h.mes === mes)) {
       allMonths.push({ mes, saldo: total, deposito: totDep, ts: Date.now(), _esActual: true });

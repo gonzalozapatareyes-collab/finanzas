@@ -53,3 +53,26 @@ test('v6GetEvolucionMensual ordena los meses cronológicamente aunque los snapsh
 
   assert.equal(meses.join(','), 'Mayo 2026,Junio 2026,Julio 2026');
 });
+
+test('v6GetEvolucionMensual no cuenta dos veces un depósito ya confirmado en el mes actual', (t) => {
+  const { window } = loadApp();
+  t.after(() => window.close());
+
+  // confirmarDeposito() ya suma cada depósito confirmado DIRECTO al saldo
+  // de la cuenta (c-mp) y, por separado, a _acumuladoMes (solo informativo,
+  // para mostrar "cuánto llevas depositado este mes"). El punto del mes en
+  // curso acá NO debe volver a sumar _acumuladoMes sobre un saldo que ya lo
+  // incluye — v6RenderDashboard ya tenía este mismo fix para el hero
+  // ("evita doble conteo"), pero acá faltaba aplicarlo: Gonzalo vio el
+  // comparativo mostrando $400.000 de más, justo lo que llevaba depositado
+  // y confirmado ese mes.
+  window.document.getElementById('c-mp').value = '1000000';
+  window._acumuladoMes = { mp: 400000 };
+
+  const mesActual = window.v6GetMesActualNombre();
+  const evolucion = window.v6GetEvolucionMensual();
+  const actual = evolucion.find(m => m.mes === mesActual);
+
+  assert.ok(actual, 'debe incluir el mes en curso');
+  assert.equal(actual.saldo, 1000000, 'no debe sumar _acumuladoMes otra vez sobre un saldo que ya lo incluye');
+});
