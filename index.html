@@ -11957,8 +11957,8 @@ function v6MoveBlocks() {
     if (/\b(gracias|genial|perfecto|buena)\b/.test(t) && t.length < 30) {
       return '¡De nada! 💪';
     }
-    if (/\b(qu[eé] puedes hacer|ayuda|help|c[oó]mo funciona)\b/.test(t)) {
-      return 'Puedo:\n• Guardar **notas y recordatorios** (detecto fechas como *"el 15 de octubre"* o *"el viernes"*)\n• Responder consultas: *"¿cuánto tengo en MP?"*, *"¿cuánto me deben?"*, *"¿cuánto falta para el auto?"*, *"total ahorros"*\n\nTodo lo demás que escribas lo guardo como nota. 📝';
+    if (/\b(qu[eé] puedes (hacer|responder|contestar)|qu[eé] (sabes|entiendes|consultas)|ayuda|help|c[oó]mo funciona)\b/.test(t)) {
+      return 'Puedo:\n• Guardar **notas y recordatorios** (detecto fechas como *"el 15 de octubre"* o *"el viernes"*)\n• Responder consultas: *"¿cuánto tengo en MP?"*, *"total ahorros"*, *"¿cuánto me deben?"*, *"qué metas tengo"*, *"¿cuánto falta para el auto?"*, *"gastos fijos pendientes"*, *"qué me falta del checklist"*\n\nTodo lo demás que escribas lo guardo como nota. 📝';
     }
 
     // Saldos por cuenta
@@ -12003,6 +12003,45 @@ function v6MoveBlocks() {
     if (/\bvivienda\b/.test(t) && /\b(falta|cu[aá]nto|meta|voy|llevo)\b/.test(t)) {
       const saldo = saldoDe('be');
       return `**Meta Vivienda** 🏠\n• Llevas: ${fmtP(saldo)}\n• Estado: ¡meta cumplida! Todo lo que sumes es pie extra para el depto.`;
+    }
+
+    // Metas en general (sin mencionar auto/vivienda puntual) — lista Auto,
+    // Vivienda y cualquier meta custom (window._metasCustom).
+    if (/\bmetas?\b/.test(t) && /\b(qu[eé]|cu[aá]les?|tengo|hay|mis)\b/.test(t)) {
+      const autoMeta = 5000000;
+      const autoSaldo = saldoDe('mp');
+      const lineas = [
+        `• 🚗 Auto: ${fmtP(autoSaldo)} de ${fmtP(autoMeta)} (${Math.min(100, autoSaldo/autoMeta*100).toFixed(0)}%)`,
+        `• 🏠 Vivienda: ${fmtP(saldoDe('be'))} (sin tope, cumplida)`,
+      ];
+      (window._metasCustom || []).forEach(m => {
+        const saldo = m.tracking === 'manual' ? (m.saldoManual||0)
+          : (typeof getSaldoCuenta === 'function' ? getSaldoCuenta(m.tracking) : 0);
+        const target = m.target || 0;
+        lineas.push(`• 🎯 ${m.nombre}: ${fmtP(saldo)}${target ? ' de ' + fmtP(target) + ' (' + Math.min(100, saldo/target*100).toFixed(0) + '%)' : ''}`);
+      });
+      return `Tus metas:\n\n${lineas.join('\n')}`;
+    }
+
+    // Gastos fijos pendientes de pagar (window._gastosFijosCustom)
+    if (/\bfijos?\b/.test(t) && /\b(cu[aá]nto|falta|debo|pagar|pendiente|qu[eé])\b/.test(t)) {
+      const fijos = window._gastosFijosCustom || [];
+      if (fijos.length === 0) return 'No tienes gastos fijos registrados todavía. Agrégalos en Gastos → Gastos fijos. 📋';
+      const pendientes = fijos.filter(f => !f.pagado);
+      const totalPend = pendientes.reduce((s,f) => s + (f.monto||0), 0);
+      if (pendientes.length === 0) return `Ya marcaste todos tus gastos fijos como pagados este mes. ✅ (${fijos.length} en total)`;
+      const detalle = pendientes.slice(0, 8).map(f => `• ${f.nombre}: ${fmtP(f.monto||0)}`).join('\n');
+      return `Te faltan **${pendientes.length}** gastos fijos por pagar, **${fmtP(totalPend)}** en total:\n\n${detalle}${pendientes.length > 8 ? '\n…y ' + (pendientes.length - 8) + ' más' : ''}`;
+    }
+
+    // Checklist del mes pendiente (window._checklistCustom)
+    if (/\bcheck\s*list\b/.test(t) || (/\b(qu[eé]|falta)\b/.test(t) && /\b(mes|tareas?)\b/.test(t))) {
+      const items = window._checklistCustom || [];
+      if (items.length === 0) return 'No tienes ítems en el checklist del mes todavía. Agrégalos desde el Dashboard. ✅';
+      const pendientes = items.filter(c => !c.hecho);
+      if (pendientes.length === 0) return `Ya completaste todo el checklist del mes. 🎉 (${items.length} ${items.length === 1 ? 'ítem' : 'ítems'})`;
+      const detalle = pendientes.slice(0, 8).map(c => `• ${c.texto}`).join('\n');
+      return `Te falta${pendientes.length === 1 ? '' : 'n'} **${pendientes.length}** ${pendientes.length === 1 ? 'ítem' : 'ítems'} del checklist:\n\n${detalle}`;
     }
 
     // Recordatorios pendientes
@@ -12149,10 +12188,19 @@ function v6MoveBlocks() {
     }
 
     // 3. No es consulta → guardar como nota + responder confirmación
+    // FIX: si el texto tiene toda la pinta de ser una pregunta (termina en
+    // "?", o empieza con qué/cuánto/cuál/cómo/etc.) pero no matcheó ningún
+    // patrón de responderConsulta(), antes igual se guardaba como nota sin
+    // más — Gonzalo preguntaba "¿qué metas tengo?" y solo veía "Nota
+    // guardada", sin saber que no había sido entendida. Ahora, en ese caso,
+    // se avisa explícitamente y se lista qué sí puede responder.
+    const pareceMPregunta = /\?\s*$/.test(texto) || /^(qu[eé]|cu[aá]nto|cu[aá]ntos|cu[aá]l|cu[aá]ndo|d[oó]nde|c[oó]mo|por qu[eé])\b/i.test(texto.trim());
     const nota = await agregarNota(texto);
     let respuesta;
     if (nota && nota.recordatorio_fecha) {
       respuesta = `✅ Nota guardada.\n⏰ Te lo recordaré el **${formatearFechaRecordatorio(nota.recordatorio_fecha)}** (detecté *"${nota.recordatorio_original}"*).`;
+    } else if (pareceMPregunta) {
+      respuesta = '🤔 No tengo una respuesta puntual para eso, así que lo guardé como nota.\n\nPuedo responder sobre: saldos por cuenta, total ahorrado, deudores, metas, gastos fijos pendientes y tu checklist del mes.';
     } else {
       respuesta = '✅ Nota guardada en tu bitácora. 📝';
     }
