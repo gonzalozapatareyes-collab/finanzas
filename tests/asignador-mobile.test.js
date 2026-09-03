@@ -109,3 +109,20 @@ test('editar nombre y cuotas desde la tarjeta móvil actualizan el movimiento', 
   assert.equal(window.allGastos[0]._cuotaActual, 2);
   assert.equal(window.allGastos[0]._cuotaTotal, 6);
 });
+
+test('ignorar un movimiento desde la tarjeta móvil lo marca y lo saca de la cola, y "Atrás" lo revierte', async (t) => {
+  const { window, document } = loadApp();
+  t.after(() => window.close());
+  seedGastos(window);
+  window.v6RenderAsignadorMobile();
+
+  document.querySelector('.mf-asigmov-icon-btn[title="Ignorar movimiento"]').click();
+  await new Promise((r) => setTimeout(r, 300));
+
+  assert.equal(window.allGastos[0].ignorado, true, 'debe quedar marcado como ignorado');
+  assert.equal(document.querySelector('.mf-asigmov-desc').textContent, 'PAGO CESANTIA', 'debe avanzar a la siguiente, ya que el ignorado no cuenta como pendiente');
+
+  window.v6DeshacerAsignadorMobile();
+  assert.equal(window.allGastos[0].ignorado, false, 'Atrás debe revertir el ignorado');
+  assert.equal(document.querySelector('.mf-asigmov-desc').textContent, 'INTERESES MORA', 'debe volver a mostrar el movimiento revertido');
+});

@@ -4706,6 +4706,7 @@ function v6RenderAsignadorMobile() {
         <div class="mf-asigmov-icons">
           <button class="mf-asigmov-icon-btn" onclick="v6EditarNombreMobile(${i})" title="Editar nombre"><i class="ph ph-pencil-simple"></i></button>
           <button class="mf-asigmov-icon-btn" onclick="v6EditarCuotasMobile(${i})" title="Cuotas"><i class="ph ph-stack"></i></button>
+          <button class="mf-asigmov-icon-btn" onclick="v6IgnorarMobile(${i})" title="Ignorar movimiento"><i class="ph ph-eye-slash"></i></button>
         </div>
       </div>
       <div class="mf-asigmov-meta">${g.fecha} · ${g.banco}</div>
@@ -4765,6 +4766,11 @@ window.v6AsignarMobile = function(idx, nombre) {
   v6AnimarTarjetaAsignadorMobile('derecha', () => renderGastos());
 };
 
+window.v6IgnorarMobile = function(idx) {
+  window._v6MobileHistory.push({ idx, tipo: 'ignorar', prev: allGastos[idx].persona || '' });
+  v6AnimarTarjetaAsignadorMobile('izquierda', () => toggleIgnorar(idx));
+};
+
 window.v6EditarNombreMobile = function(idx) {
   const actual = allGastos[idx]._label || allGastos[idx].desc;
   const nuevo = prompt('Nombre del movimiento:', actual);
@@ -4797,6 +4803,9 @@ window.v6DeshacerAsignadorMobile = function() {
     allGastos[ultimo.idx].persona = ultimo.prev;
   } else if (ultimo.tipo === 'saltar') {
     window._v6MobileSkipped.delete(ultimo.idx);
+  } else if (ultimo.tipo === 'ignorar') {
+    allGastos[ultimo.idx].ignorado = false;
+    allGastos[ultimo.idx].persona = ultimo.prev;
   }
   renderGastos();
 };
