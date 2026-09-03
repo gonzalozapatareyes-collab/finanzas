@@ -7619,6 +7619,41 @@ function v6ResetDropzoneUI() {
   if (ul) ul.innerHTML = '';
 }
 
+// Detecta si un estado de cuenta subido es CMR, Bco Chile Nacional ($) o
+// Bco Chile Internacional (USD), a partir del nombre de archivo y una
+// muestra del contenido ya en minúsculas (JSON.stringify de las primeras
+// filas). Separada de v6HandleUnifiedFiles para poder testearla sola con
+// contenido real de estados de cuenta, sin simular FileReader/XLSX.
+//
+// FIX detección de tipo: antes "falabella" en el contenido bastaba para
+// clasificar como CMR, y esa palabra puede aparecer como simple NOMBRE DE
+// COMERCIO ("FALABELLA PLAZA OESTE") dentro de un estado de cuenta de Bco
+// Chile normal — el archivo entero se clasificaba mal antes de siquiera
+// revisar si tenía marcadores de Bco Chile. Ahora los marcadores más
+// específicos de cada banco ("Movimientos Nacionales" / "Movimientos
+// Internacionales", que sí aparecen tal cual en los estados de cuenta de
+// Bco Chile) se revisan PRIMERO, y recién si ninguno matchea se cae a las
+// señales más débiles/genéricas de CMR (con "titular/adicional" — columna
+// propia del formato CMR — sumada como señal adicional más confiable que
+// solo "falabella").
+function v6DetectarTipoEECC(fname, sampleStr) {
+  if (sampleStr.includes('movimientos internacionales') || sampleStr.includes('usd') || sampleStr.includes('dollar') ||
+      sampleStr.includes('international') || sampleStr.includes('us$') ||
+      fname.includes('intern') || fname.includes('usd')) {
+    return 'int';
+  }
+  if (sampleStr.includes('movimientos nacionales') || sampleStr.includes('banco de chile') ||
+      sampleStr.includes('bcochile') || sampleStr.includes('cartola') ||
+      fname.includes('chile') || fname.includes('bch')) {
+    return 'nac';
+  }
+  if (fname.endsWith('.xlsx') || sampleStr.includes('titular/adicional') ||
+      sampleStr.includes('cmr') || sampleStr.includes('falabella')) {
+    return 'cmr';
+  }
+  return null;
+}
+
 // FIX rediseño 1a: el dropzone ahora tiene 3 estados visuales (idle/loading/done)
 // según el handoff. Toda la detección/parseo de abajo NO se tocó — solo se
 // agregó el manejo de estado del dropzone alrededor (setLoading/tick/setDone).
@@ -7678,17 +7713,7 @@ function v6HandleUnifiedFiles(input) {
         const sampleStr = JSON.stringify(sample.slice(0, 20)).toLowerCase();
         const fname = file.name.toLowerCase();
 
-        let tipo = null;
-        if (fname.endsWith('.xlsx') || sampleStr.includes('cmr') || sampleStr.includes('falabella')) {
-          tipo = 'cmr';
-        } else if (sampleStr.includes('usd') || sampleStr.includes('dollar') ||
-                   sampleStr.includes('international') || sampleStr.includes('us$') ||
-                   fname.includes('intern') || fname.includes('usd')) {
-          tipo = 'int';
-        } else if (sampleStr.includes('banco de chile') || sampleStr.includes('bcochile') ||
-                   sampleStr.includes('cartola') || fname.includes('chile') || fname.includes('bch')) {
-          tipo = 'nac';
-        }
+        let tipo = v6DetectarTipoEECC(fname, sampleStr);
 
         if (!tipo) {
           tipo = prompt('No detecté tipo de "' + file.name + '". Escribe:\n  cmr → CMR Falabella\n  nac → Bco Chile $\n  int → Bco Chile USD');
