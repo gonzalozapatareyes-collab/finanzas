@@ -1350,17 +1350,26 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
 @media (max-width:899px){
   #v6-gastos-mobile-asignar{ display:block; margin-bottom:16px; }
 }
-.mf-asigmov-card{ background:var(--mf-surface); border-radius:16px; padding:16px; }
+.mf-asigmov-card{ background:var(--mf-surface); border-radius:16px; padding:16px; touch-action:pan-y; will-change:transform; }
+.mf-asigmov-desc-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
 .mf-asigmov-desc{ font:700 15px/1.25 'Manrope'; color:var(--mf-ink); }
+.mf-asigmov-icon-btn{ flex:none; width:32px; height:32px; border-radius:9px; border:0; background:var(--mf-surface-2); color:var(--mf-text-muted); font-size:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.mf-asigmov-icons{ display:flex; gap:6px; flex:none; }
 .mf-asigmov-meta{ margin-top:4px; font:500 11.5px/1.2 'Manrope'; color:var(--mf-text-faint); }
 .mf-asigmov-monto{ margin-top:10px; font:800 28px/1 'Manrope'; font-variant-numeric:tabular-nums; color:var(--mf-ink); }
+.mf-asigmov-cuota-badge{ margin-top:8px; display:inline-block; background:var(--mf-blue-soft); color:var(--mf-blue); padding:3px 9px; border-radius:8px; font:700 10.5px/1 'Manrope'; }
 .mf-asigmov-label{ margin-top:14px; padding:4px 2px 0; font:700 10px/1 'Manrope'; letter-spacing:.12em; text-transform:uppercase; color:var(--mf-text-faint); }
 .mf-asigmov-chips{ margin-top:10px; display:flex; flex-wrap:wrap; gap:8px; }
 .mf-asigmov-chip{ min-height:44px; padding:0 14px; border:0; border-radius:14px; background:var(--mf-surface); color:var(--mf-ink); font:600 13px/1 'Manrope'; cursor:pointer; }
 .mf-asigmov-chip:hover{ background:var(--mf-green-soft); color:var(--mf-green-dark); }
+.mf-asigmov-chip-otro{ background:var(--mf-surface-2); color:var(--mf-text-muted); border:1px dashed var(--mf-line); }
 .mf-asigmov-split{ margin-top:14px; width:100%; display:flex; align-items:center; justify-content:center; gap:8px; min-height:46px; border-radius:14px; border:1px solid var(--mf-line); background:transparent; font:600 13px/1 'Manrope'; color:var(--mf-ink); cursor:pointer; }
 .mf-asigmov-footer{ margin-top:12px; display:flex; align-items:center; justify-content:space-between; font:600 11.5px/1 'Manrope'; color:var(--mf-text-faint); }
+.mf-asigmov-footer-actions{ display:flex; align-items:center; gap:4px; }
 .mf-asigmov-skip{ display:flex; align-items:center; gap:5px; border:0; background:transparent; color:var(--mf-text-muted); font:600 11.5px/1 'Manrope'; cursor:pointer; padding:8px; }
+.mf-asigmov-back{ display:flex; align-items:center; gap:5px; border:0; background:transparent; color:var(--mf-text-faint); font:600 11.5px/1 'Manrope'; cursor:pointer; padding:8px; }
+.mf-asigmov-back:disabled{ opacity:.35; cursor:default; }
+.mf-asigmov-swipe-hint{ text-align:center; margin-top:10px; font:600 10px/1 'Manrope'; letter-spacing:.06em; text-transform:uppercase; color:var(--mf-text-faint); opacity:.7; }
 .mf-asigmov-empty{ display:flex; align-items:center; gap:8px; padding:16px 18px; border-radius:16px; background:var(--mf-green-soft); color:var(--mf-green-dark); font:600 13px/1.3 'Manrope'; margin-bottom:16px; }
 .mf-asigmov-empty i{ font-size:18px; }
 
@@ -4640,6 +4649,11 @@ function renderGastos() {
 // tal cual — no duplica ningún cálculo, solo arma el layout de una tarjeta
 // por vez. Solo visible en <900px (ver CSS .mf-asigmov-*).
 window._v6MobileSkipped = window._v6MobileSkipped || new Set();
+// FIX: historial simple para poder deshacer el último paso (asignar o
+// saltar) — Gonzalo reportó que una vez que saltaba o asignaba mal no
+// tenía forma de volver atrás. Guarda solo lo necesario para revertir un
+// paso, no una pila completa de estados.
+window._v6MobileHistory = window._v6MobileHistory || [];
 
 function v6RenderAsignadorMobile() {
   const cont = document.getElementById('v6-gastos-mobile-asignar');
@@ -4662,6 +4676,9 @@ function v6RenderAsignadorMobile() {
   const { g, i } = pendientes[0];
   const posicion = pendientesTotal - pendientes.length + 1;
   const montoStr = g.moneda === 'USD' ? '$' + g.monto.toFixed(2) + ' USD' : fmtNum(g.monto);
+  const cuotaBadge = (g._cuotaActual && g._cuotaTotal)
+    ? `<div class="mf-asigmov-cuota-badge">cuota ${g._cuotaActual}/${g._cuotaTotal} · faltan ${g._cuotaTotal - g._cuotaActual}</div>`
+    : '';
 
   const customPersonasUsadas = [...new Set(
     allGastos.map(x => x.persona).filter(p => p && !PERSONAS_LIST.includes(p))
@@ -4670,36 +4687,153 @@ function v6RenderAsignadorMobile() {
     .filter(p => p !== '— sin asignar —' && p !== 'Compartido' && p !== 'Otro')
     .concat(customPersonasUsadas);
 
+  // FIX bug real preexistente: JSON.stringify(n) usa comillas dobles, y el
+  // atributo onclick TAMBIÉN estaba entre comillas dobles — el HTML se
+  // cortaba a la mitad del valor (ej. onclick="v6AsignarMobile(0, "Yo")"),
+  // dejando el argumento incompleto. Rompía el botón para CUALQUIER
+  // persona, no solo casos con caracteres especiales — era la causa real
+  // de "toco un chip y no pasa nada / no sé cómo confirmar".
   const chipsHtml = nombres.map(n =>
-    `<button class="mf-asigmov-chip" onclick="v6AsignarMobile(${i}, ${JSON.stringify(n)})">${n}</button>`
-  ).join('');
+    `<button class="mf-asigmov-chip" onclick="v6AsignarMobile(${i}, ${JSON.stringify(n).replace(/"/g, '&quot;')})">${n}</button>`
+  ).join('') + `<button class="mf-asigmov-chip mf-asigmov-chip-otro" onclick="v6AsignarMobile(${i}, 'Otro')">+ Otro</button>`;
+
+  const puedeDeshacer = window._v6MobileHistory.length > 0;
 
   cont.innerHTML = `
-    <div class="mf-asigmov-card">
-      <div class="mf-asigmov-desc">${g._label || g.desc}</div>
+    <div class="mf-asigmov-card" data-idx="${i}">
+      <div class="mf-asigmov-desc-row">
+        <div class="mf-asigmov-desc">${g._label || g.desc}</div>
+        <div class="mf-asigmov-icons">
+          <button class="mf-asigmov-icon-btn" onclick="v6EditarNombreMobile(${i})" title="Editar nombre"><i class="ph ph-pencil-simple"></i></button>
+          <button class="mf-asigmov-icon-btn" onclick="v6EditarCuotasMobile(${i})" title="Cuotas"><i class="ph ph-stack"></i></button>
+        </div>
+      </div>
       <div class="mf-asigmov-meta">${g.fecha} · ${g.banco}</div>
       <div class="mf-asigmov-monto">${montoStr}</div>
+      ${cuotaBadge}
     </div>
     <div class="mf-asigmov-label">¿De quién es?</div>
     <div class="mf-asigmov-chips">${chipsHtml}</div>
     <button class="mf-asigmov-split" onclick="abrirModalCompartido(${i})"><i class="ph ph-arrows-split"></i> Dividir entre varios</button>
+    <div class="mf-asigmov-swipe-hint">← desliza la tarjeta para saltar →</div>
     <div class="mf-asigmov-footer">
-      <span>${posicion} de ${pendientesTotal}</span>
+      <div class="mf-asigmov-footer-actions">
+        <button class="mf-asigmov-back" onclick="v6DeshacerAsignadorMobile()" ${puedeDeshacer ? '' : 'disabled'}><i class="ph ph-arrow-u-up-left"></i> Atrás</button>
+        <span>${posicion} de ${pendientesTotal}</span>
+      </div>
       <button class="mf-asigmov-skip" onclick="v6SaltarAsignadorMobile(${i})">Saltar <i class="ph ph-arrow-right"></i></button>
     </div>
   `;
+
+  v6AttachSwipeAsignadorMobile();
+}
+
+// Anima la tarjeta actual saliendo hacia un lado y recién después ejecuta
+// el cambio real de estado + re-render — es el "confirmo y paso al
+// siguiente" que faltaba: sin esto, asignar/saltar reemplazaba la tarjeta
+// al instante y no quedaba claro que la acción se había registrado.
+function v6AnimarTarjetaAsignadorMobile(direccion, despues) {
+  const card = document.querySelector('.mf-asigmov-card');
+  if (!card) { despues(); return; }
+  const dx = direccion === 'izquierda' ? -130 : 130;
+  const rot = direccion === 'izquierda' ? -8 : 8;
+  card.style.transition = 'transform .2s ease, opacity .2s ease';
+  card.style.transform = `translateX(${dx}%) rotate(${rot}deg)`;
+  card.style.opacity = '0';
+  setTimeout(despues, 200);
 }
 
 window.v6AsignarMobile = function(idx, nombre) {
+  if (nombre === 'Otro') {
+    const custom = prompt('Escribe el nombre de la persona:');
+    if (!custom || !custom.trim()) return;
+    nombre = custom.trim();
+    // Igual que asignar() con "Otro": deja la opción disponible también en
+    // los <select> de la tabla de escritorio para que quede consistente.
+    document.querySelectorAll('.persona-select').forEach(s => {
+      if (!Array.from(s.options).some(o => o.value === nombre)) {
+        const opt = document.createElement('option');
+        opt.value = nombre; opt.textContent = nombre;
+        const otroOpt = s.querySelector('option[value="Otro"]');
+        if (otroOpt) s.insertBefore(opt, otroOpt); else s.appendChild(opt);
+      }
+    });
+  }
+  window._v6MobileHistory.push({ idx, tipo: 'asignar', prev: allGastos[idx].persona || '' });
   const fakeSel = { value: nombre, classList: { toggle(){} } };
   asignar(idx, fakeSel);
-  renderGastos();
+  v6AnimarTarjetaAsignadorMobile('derecha', () => renderGastos());
+};
+
+window.v6EditarNombreMobile = function(idx) {
+  const actual = allGastos[idx]._label || allGastos[idx].desc;
+  const nuevo = prompt('Nombre del movimiento:', actual);
+  if (nuevo === null) return;
+  saveLabel(idx, nuevo);
+};
+
+window.v6EditarCuotasMobile = function(idx) {
+  const g = allGastos[idx];
+  const actualStr = prompt('Cuota actual (ej: 2). Deja vacío para quitar cuotas.', g._cuotaActual || '');
+  if (actualStr === null) return;
+  if (!actualStr.trim()) { setCuota(idx, 'clear', null); v6RenderAsignadorMobile(); return; }
+  const totalStr = prompt('Cuota total (ej: 10):', g._cuotaTotal || '');
+  if (totalStr === null) return;
+  setCuota(idx, 'actual', actualStr);
+  setCuota(idx, 'total', totalStr);
+  v6RenderAsignadorMobile();
 };
 
 window.v6SaltarAsignadorMobile = function(idx) {
+  window._v6MobileHistory.push({ idx, tipo: 'saltar' });
   window._v6MobileSkipped.add(idx);
-  v6RenderAsignadorMobile();
+  v6AnimarTarjetaAsignadorMobile('izquierda', () => v6RenderAsignadorMobile());
 };
+
+window.v6DeshacerAsignadorMobile = function() {
+  const ultimo = window._v6MobileHistory.pop();
+  if (!ultimo) return;
+  if (ultimo.tipo === 'asignar') {
+    allGastos[ultimo.idx].persona = ultimo.prev;
+  } else if (ultimo.tipo === 'saltar') {
+    window._v6MobileSkipped.delete(ultimo.idx);
+  }
+  renderGastos();
+};
+
+// Swipe táctil sobre la tarjeta: deslizar para cualquier lado equivale a
+// "Saltar" (no asigna a nadie — asignar sigue siendo tocar un chip). Se
+// re-conecta en cada render porque la tarjeta se reemplaza por completo.
+function v6AttachSwipeAsignadorMobile() {
+  const card = document.querySelector('.mf-asigmov-card');
+  if (!card) return;
+  const idx = parseInt(card.dataset.idx, 10);
+  const UMBRAL = 70;
+  let startX = 0, dx = 0, arrastrando = false;
+
+  const onStart = (x) => { arrastrando = true; startX = x; dx = 0; card.style.transition = 'none'; };
+  const onMove = (x) => {
+    if (!arrastrando) return;
+    dx = x - startX;
+    card.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)`;
+    card.style.opacity = String(Math.max(1 - Math.abs(dx) / 300, 0.4));
+  };
+  const onEnd = () => {
+    if (!arrastrando) return;
+    arrastrando = false;
+    card.style.transition = 'transform .2s ease, opacity .2s ease';
+    if (Math.abs(dx) > UMBRAL) {
+      v6SaltarAsignadorMobile(idx);
+    } else {
+      card.style.transform = 'translateX(0) rotate(0)';
+      card.style.opacity = '1';
+    }
+  };
+
+  card.addEventListener('touchstart', (e) => onStart(e.touches[0].clientX), { passive: true });
+  card.addEventListener('touchmove', (e) => onMove(e.touches[0].clientX), { passive: true });
+  card.addEventListener('touchend', onEnd);
+}
 
 // V31.2: limpia todas las transacciones del asignador TC en un click
 window.limpiarAsignadorCompleto = async function() {
