@@ -1744,6 +1744,49 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
 .drive-status.conectado:hover{ color:var(--mf-pink-dark); background:var(--mf-pink-soft); }
 .drive-status.sincronizando{ color:var(--mf-blue); background:var(--mf-blue-soft); }
 .drive-status.error{ color:var(--mf-pink-dark); background:var(--mf-pink-soft); }
+
+/* ═══ Pantalla de login (reemplaza el banner V31 no bloqueante) ═══
+   Visible por defecto en el HTML (fail-closed, sin esperar a JS) —
+   se oculta llamando a window.v31HideLockBanner() una vez hay datos
+   cargados con éxito. Ver index.html ~9893 para la lógica de
+   mostrar/ocultar. */
+#mf-login-gate{
+  position:fixed; inset:0; z-index:99999;
+  display:flex; background:var(--mf-bg);
+  font-family:'Manrope',system-ui,sans-serif;
+}
+.mf-login-gate-brand{
+  width:440px; flex:none; background:var(--mf-ink-fixed);
+  display:flex; align-items:center; justify-content:center;
+}
+.mf-login-gate-brand-logo{ display:flex; align-items:center; gap:12px; }
+.mf-login-gate-brand-logo .mf-logo-badge{ width:40px; height:40px; border-radius:11px; }
+.mf-login-gate-brand-logo .mf-logo-badge svg{ width:28px; height:28px; }
+.mf-login-gate-brand-logo .mf-logo-word{ font-size:27px; color:#fff; }
+.mf-login-gate-panel{ flex:1; display:flex; align-items:center; justify-content:center; padding:40px; }
+.mf-login-gate-card{
+  width:100%; max-width:380px; background:var(--mf-surface);
+  border-radius:var(--mf-r-card); padding:40px 32px 32px; text-align:center;
+  box-shadow:0 1px 2px rgba(15,32,24,.05), 0 16px 40px rgba(15,32,24,.08);
+}
+.mf-login-gate-card .mf-logo-badge{ width:40px; height:40px; border-radius:11px; display:inline-flex; }
+.mf-login-gate-card .mf-logo-badge svg{ width:27px; height:27px; }
+.mf-login-gate-card .mf-logo-word{ display:block; margin-top:10px; font-size:19px; color:var(--mf-ink); }
+.mf-login-gate-title{ margin-top:26px; font-family:'Manrope',sans-serif; font-weight:800; font-size:21px; letter-spacing:-.01em; color:var(--mf-ink); }
+.mf-login-gate-sub{ margin-top:8px; font:500 13px/1.55 'Manrope'; color:var(--mf-text-muted); }
+.mf-login-gate-btn{
+  margin-top:28px; width:100%; height:48px; border-radius:10px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  border:1px solid var(--mf-line); background:var(--mf-surface); color:var(--mf-ink);
+  font-family:'Manrope',system-ui,sans-serif; font-weight:700; font-size:13.5px;
+  transition:box-shadow .15s ease, border-color .15s ease, background .15s ease;
+}
+.mf-login-gate-btn:hover{ box-shadow:0 4px 14px rgba(15,32,24,.10); border-color:var(--mf-green); }
+.mf-login-gate-privacy{ margin-top:22px; display:flex; align-items:center; justify-content:center; gap:6px; }
+.mf-login-gate-privacy span{ font:500 11px/1.4 'Manrope'; color:var(--mf-text-faint); }
+@media (max-width:899px){
+  .mf-login-gate-brand{ display:none; }
+}
 </style>
 
 </head>
@@ -1771,6 +1814,31 @@ html[data-theme="dark"] .mf-card-dark{ box-shadow:inset 0 0 0 1px rgba(255,255,2
     <i class="ph ph-dots-three-outline"></i><span>Más</span>
   </button>
 </nav>
+
+<div id="mf-login-gate">
+  <div class="mf-login-gate-brand">
+    <div class="mf-login-gate-brand-logo">
+      <span class="mf-logo-badge"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" aria-hidden="true"><rect x="18" y="38" width="84" height="56" rx="14" fill="none" stroke="currentColor" stroke-width="11"></rect><rect x="32" y="52" width="56" height="10" rx="5" fill="currentColor"></rect></svg></span>
+      <span class="mf-logo-word">Misfi</span>
+    </div>
+  </div>
+  <div class="mf-login-gate-panel">
+    <div class="mf-login-gate-card">
+      <span class="mf-logo-badge"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" aria-hidden="true"><rect x="18" y="38" width="84" height="56" rx="14" fill="none" stroke="currentColor" stroke-width="11"></rect><rect x="32" y="52" width="56" height="10" rx="5" fill="currentColor"></rect></svg></span>
+      <span class="mf-logo-word">Misfi</span>
+      <div class="mf-login-gate-title">Ingresa a tus finanzas</div>
+      <div class="mf-login-gate-sub">Accede con tu cuenta de Google para ver tus cuentas, metas y gastos al día.</div>
+      <button class="mf-login-gate-btn" onclick="driveConectar()">
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 6.29C4.672 4.163 6.656 2.58 9 2.58z"/></svg>
+        <span>Continuar con Google</span>
+      </button>
+      <div class="mf-login-gate-privacy">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+        <span>Tus datos se guardan solo en tu cuenta de Google.</span>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div id="app-wrapper">
 <aside id="sidebar">
@@ -3307,7 +3375,7 @@ async function driveFindFile() {
     const r = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&fields=files(id,name)`, {
       headers: { Authorization: 'Bearer ' + driveAccessToken }
     });
-    if (r.status === 401) { driveAccessToken = null; localStorage.removeItem(LS_TOKEN_KEY); driveSetStatus('desconectado','☁️ Drive'); return; }
+    if (r.status === 401) { driveAccessToken = null; localStorage.removeItem(LS_TOKEN_KEY); driveSetStatus('desconectado','☁️ Drive'); if (typeof v31ShowLockBanner === 'function') v31ShowLockBanner(); return; }
     const data = await r.json();
     if (data.files && data.files.length > 0) {
       driveFileId = data.files[0].id;
@@ -3343,7 +3411,7 @@ async function driveGuardar(jsonStr) {
       headers: { Authorization: 'Bearer ' + driveAccessToken, 'Content-Type': 'application/json' },
       body: blob
     });
-    if (r.status === 401) { driveAccessToken = null; localStorage.removeItem(LS_TOKEN_KEY); driveSetStatus('desconectado','☁️ Drive'); return false; }
+    if (r.status === 401) { driveAccessToken = null; localStorage.removeItem(LS_TOKEN_KEY); driveSetStatus('desconectado','☁️ Drive'); if (typeof v31ShowLockBanner === 'function') v31ShowLockBanner(); return false; }
     if (!r.ok) throw new Error('Upload falló: ' + r.status);
     driveSetStatus('conectado', '☁️ Drive ✓');
     return true;
@@ -3363,7 +3431,7 @@ async function driveCargar() {
     const r = await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`, {
       headers: { Authorization: 'Bearer ' + driveAccessToken }
     });
-    if (r.status === 401) { driveAccessToken = null; localStorage.removeItem(LS_TOKEN_KEY); return null; }
+    if (r.status === 401) { driveAccessToken = null; localStorage.removeItem(LS_TOKEN_KEY); if (typeof v31ShowLockBanner === 'function') v31ShowLockBanner(); return null; }
     if (!r.ok) return null;
     const text = await r.text();
     return text;
@@ -3707,6 +3775,7 @@ async function cargar() {
     const d = JSON.parse(raw);
     _aplicarDatos(d);
     window._datosRealesCargados = true;
+    if (typeof v31HideLockBanner === 'function') v31HideLockBanner();
     // Si vino de localStorage, intenta sincronizar a Drive en background
     if (driveAccessToken && !await driveCargar()) {
       // Drive vacío pero tenemos datos locales — los subimos
@@ -7488,13 +7557,12 @@ async function v6GuardarSnapshotManual() {
   // FIX cuentas custom faltantes en recuperación manual: v6TomarSnapshot()
   // (el snapshot automático) ya incluye window._cuentasCustom vía un hook
   // más abajo en el archivo (buscar "Hook v6TomarSnapshot"), pero este
-  // formulario manual construye su propio snapshot aparte y no lo hacía —
-  // el total de un mes recuperado a mano quedaba corto exactamente en lo
-  // que sumaran las cuentas custom (ej. APV Jubilación). Ahora el
-  // formulario (v6AbrirRecuperarSnapshot) pide un input por cada cuenta
-  // custom, igual que ya hace con las 4 duras — se lee lo que el usuario
-  // haya puesto ahí, no el saldo actual en silencio (puede no ser el que
-  // tenía ese mes).
+  // formulario manual construía su propio snapshot aparte y no las incluía
+  // — el total de un mes recuperado a mano quedaba corto exactamente en lo
+  // que sumaran las cuentas custom (ej. APV Jubilación). Ahora el formulario
+  // (v6AbrirRecuperarSnapshot) pide un input por cada cuenta custom, igual
+  // que ya hace con las 4 duras — se lee lo que el usuario haya puesto ahí,
+  // no el saldo actual en silencio (puede no ser el que tenía ese mes).
   const cuentasCustomActuales = (window._cuentasCustom || []).map(c => {
     const el = document.getElementById('v6rec-custom-' + c.id);
     return { ...c, saldo: el ? (parseFloat(el.value) || 0) : (c.saldo || 0) };
@@ -9957,74 +10025,38 @@ function v6MoveBlocks() {
     }
   });
 
-  // ═══ V31: BANNER DE BLOQUEO POR SEGURIDAD ════════════════════════
-  // Cuando no hay Drive conectado, mostrar un banner suave arriba de
-  // la pantalla recordando que la data está protegida y que sólo se
-  // ve al conectar Google Drive. Se oculta automáticamente al conectar.
-  function v31InjectLockBannerStyle() {
-    if (document.getElementById('v31-lock-style')) return;
-    const st = document.createElement('style');
-    st.id = 'v31-lock-style';
-    st.textContent = `
-      #v31-lock-banner {
-        position: sticky; top: 0; left: 0; right: 0;
-        z-index: 999;
-        display: flex; align-items: center; justify-content: space-between;
-        gap: 12px;
-        padding: 10px 16px;
-        background: var(--mf-amber-soft, #f7e7c4);
-        color: var(--mf-ink, #1a1a18);
-        border-bottom: 1px solid var(--mf-line, rgba(0,0,0,.1));
-        font-family: 'Manrope', system-ui, sans-serif;
-        font-size: 13px;
-        line-height: 1.4;
-      }
-      #v31-lock-banner .v31-lock-text { display: flex; align-items: center; gap: 8px; }
-      #v31-lock-banner .v31-lock-icon { font-size: 16px; }
-      #v31-lock-banner button {
-        padding: 6px 14px;
-        background: var(--mf-green, #d16d3e);
-        color: #fff;
-        border: none;
-        border-radius: 8px;
-        font-family: inherit;
-        font-size: 12px;
-        font-weight: 700;
-        cursor: pointer;
-        white-space: nowrap;
-      }
-      #v31-lock-banner button:hover { filter: brightness(1.08); }
-      @media (max-width: 600px) {
-        #v31-lock-banner { font-size: 12px; padding: 8px 12px; }
-        #v31-lock-banner .v31-lock-text span:not(.v31-lock-icon) { font-size: 11px; }
-      }
-    `;
-    document.head.appendChild(st);
+  // ═══ V31: PANTALLA DE LOGIN (gate) POR SEGURIDAD ═════════════════
+  // Sin Drive conectado, #mf-login-gate (visible por defecto en el HTML,
+  // ver ~línea 1749) tapa toda la app y deja #app-wrapper/#mf-tabbar/
+  // #mobile-toggle inert (no clickeables ni focoseables). Se oculta al
+  // conectar con éxito. Mismos nombres de función que el banner viejo
+  // que reemplaza (v31ShowLockBanner/v31HideLockBanner) para no tocar
+  // sus call sites en cargar() y más abajo.
+  function v31SetInert(inert) {
+    ['app-wrapper', 'mf-tabbar', 'mobile-toggle'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (inert) el.setAttribute('inert', ''); else el.removeAttribute('inert');
+    });
   }
   window.v31ShowLockBanner = function() {
-    v31InjectLockBannerStyle();
-    if (document.getElementById('v31-lock-banner')) return;
-    const banner = document.createElement('div');
-    banner.id = 'v31-lock-banner';
-    banner.innerHTML = `
-      <div class="v31-lock-text">
-        <span class="v31-lock-icon">🔒</span>
-        <span><strong>Datos protegidos.</strong> Conecta Google Drive para desbloquear tu información.</span>
-      </div>
-      <button onclick="driveConectar()">☁️ Conectar Drive</button>
-    `;
-    document.body.insertBefore(banner, document.body.firstChild);
+    const gate = document.getElementById('mf-login-gate');
+    if (gate) gate.style.display = 'flex';
+    v31SetInert(true);
   };
   window.v31HideLockBanner = function() {
-    const b = document.getElementById('v31-lock-banner');
-    if (b) b.remove();
+    const gate = document.getElementById('mf-login-gate');
+    if (gate) gate.style.display = 'none';
+    v31SetInert(false);
   };
-  // Mostrar banner al cargar si no hay token Drive en localStorage
+  // Mostrar el gate al cargar si no hay token Drive en localStorage
+  // (ya está visible por defecto en el HTML; esto es el fallback que
+  // además marca app-wrapper/tabbar como inert).
   setTimeout(() => {
     const tok = localStorage.getItem('fg_drive_token');
     if (!tok && !driveAccessToken) v31ShowLockBanner();
   }, 800);
-  // Hook a driveHandleToken para ocultar el banner al conectar OK
+  // Hook a driveHandleToken para ocultar el gate al conectar OK
   const _v31_origHandleToken = window.driveHandleToken;
   if (typeof _v31_origHandleToken === 'function') {
     window.driveHandleToken = function(resp) {
