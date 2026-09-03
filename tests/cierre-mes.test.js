@@ -93,18 +93,53 @@ test('v6CheckAutoSnapshot NO toma ni guarda snapshot si los datos reales no se c
   });
 });
 
-test('v6CheckAutoSnapshot funciona normalmente cuando los datos reales SÍ se confirmaron cargados', (t) => {
+test('v6CheckAutoSnapshot NO cierra el mes si no hay driveAccessToken, aunque los datos estén confirmados', (t) => {
+  // Regla explícita pedida por Gonzalo: el cierre automático solo puede
+  // correr una vez que la app está VINCULADA a Drive. En la práctica
+  // _datosRealesCargados no debería poder quedar en true sin token (ver
+  // cargar()), pero el guardarraíl chequea ambos por separado para que la
+  // regla no dependa de esa cadena de causalidad indirecta.
   const { window } = loadApp();
   t.after(() => window.close());
 
   window._datosRealesCargados = true;
+  // driveAccessToken es un `let` de módulo, no una propiedad de `window`
+  // (ver tests/guardar-concurrencia.test.js) — ya arranca en null por
+  // defecto, así que no hace falta setearlo acá; se deja explícito igual.
+  window.eval('driveAccessToken = null;'); // no vinculado a Drive
+  window.localStorage.setItem('fg_v6_last_month', '2026-07');
+  setCuenta(window, 'mp', 500000);
+
+  let confirmLlamado = false;
+  window.confirm = () => { confirmLlamado = true; return true; };
+
+  return window.v6CheckAutoSnapshot().then(() => {
+    assert.equal(confirmLlamado, false, 'no debe preguntar si cerrar el mes sin estar vinculado a Drive');
+    assert.equal(window.v6GetSnapshots().length, 0, 'no debe crear ningún snapshot sin Drive vinculado');
+    assert.equal(
+      window.localStorage.getItem('fg_v6_last_month'),
+      '2026-07',
+      'el cierre pendiente debe reintentarse cuando sí esté vinculado a Drive'
+    );
+  });
+});
+
+test('v6CheckAutoSnapshot funciona normalmente cuando hay datos reales confirmados Y Drive vinculado', (t) => {
+  const { window } = loadApp();
+  t.after(() => window.close());
+
+  window._datosRealesCargados = true;
+  // driveAccessToken es un `let` de módulo, no una propiedad de `window`
+  // (ver tests/guardar-concurrencia.test.js) — hay que setearlo vía eval.
+  window.eval('driveAccessToken = "fake-token-de-test";');
   window.localStorage.setItem('fg_v6_last_month', '2026-07');
   setCuenta(window, 'mp', 500000);
   window.confirm = () => true;
+  window.guardar = window.guardar || (() => Promise.resolve(true));
 
   return window.v6CheckAutoSnapshot().then(() => {
     const snaps = window.v6GetSnapshots();
-    assert.equal(snaps.length, 1, 'debe crear el snapshot del mes anterior cuando sí hay datos reales');
+    assert.equal(snaps.length, 1, 'debe crear el snapshot del mes anterior cuando hay datos reales y Drive vinculado');
     assert.notEqual(
       window.localStorage.getItem('fg_v6_last_month'),
       '2026-07',

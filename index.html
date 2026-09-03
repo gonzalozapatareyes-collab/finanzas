@@ -6369,12 +6369,20 @@ async function v6CerrarMesManual() {
 
 async function v6CheckAutoSnapshot() {
   if (_v6CerrandoMes) return;
-  if (!window._datosRealesCargados) {
+  // REGLA EXPLÍCITA (pedida por Gonzalo): el cierre automático de mes solo
+  // puede correr una vez que la app está vinculada a Drive Y confirmó datos
+  // reales cargados. driveAccessToken solo no alcanza (podría estar puesto
+  // pero cargar() no haber logrado traer nada todavía); _datosRealesCargados
+  // solo tampoco (en teoría no puede quedar en true sin driveAccessToken,
+  // ver cargar(), pero se chequean ambos acá para que la regla sea explícita
+  // y no dependa de esa cadena de causalidad indirecta si alguien la toca
+  // en el futuro).
+  if (!driveAccessToken || !window._datosRealesCargados) {
     // FIX pérdida de datos: no arriesgarse a tomar un snapshot del DOM
     // vacío solo porque cargar() no llegó a tiempo con los datos reales.
     // No se toca V6_LAST_MONTH_KEY, así que el cierre pendiente se vuelve
     // a intentar en la próxima carga que sí traiga datos reales.
-    console.warn('v6CheckAutoSnapshot: datos reales no confirmados, se omite el cierre automático de mes esta vez.');
+    console.warn('v6CheckAutoSnapshot: Drive no vinculado o datos reales no confirmados, se omite el cierre automático de mes esta vez.');
     return;
   }
   const lastMonth = localStorage.getItem(V6_LAST_MONTH_KEY);
