@@ -3143,6 +3143,15 @@ const LS_DATA_KEY      = 'finanzas_gonzalo_v4';
 let driveAccessToken = null;
 let driveFileId      = null;
 let tokenClient      = null;
+// FIX pérdida de datos en cierre de mes: solo se pone en true dentro de
+// cargar() cuando _aplicarDatos() corrió con éxito sobre datos reales
+// (Drive o backup local con Drive activo). v6CheckAutoSnapshot() y
+// v6CerrarMesManual() la usan como guardarraíl: si no está en true, se
+// niegan a tomar/guardar un snapshot — evita repetir el bug de "agosto
+// en $0" (cierre de mes tomó una foto del DOM vacío porque cargar() no
+// llegó a tiempo a traer los datos reales, y esa foto vacía se subió a
+// Drive pisando la data real).
+window._datosRealesCargados = false;
 
 // ─── Estado visual del botón Drive ──────────────────────────────
 function driveSetStatus(estado, texto) {
@@ -3697,6 +3706,7 @@ async function cargar() {
   try {
     const d = JSON.parse(raw);
     _aplicarDatos(d);
+    window._datosRealesCargados = true;
     // Si vino de localStorage, intenta sincronizar a Drive en background
     if (driveAccessToken && !await driveCargar()) {
       // Drive vacío pero tenemos datos locales — los subimos
@@ -6318,6 +6328,10 @@ let _v6CerrandoMes = false;
 
 async function v6CerrarMesManual() {
   if (_v6CerrandoMes) return;
+  if (!window._datosRealesCargados) {
+    alert('⚠️ Todavía no se confirmó que tus datos reales estén cargados (Drive puede seguir sincronizando). Espera unos segundos y prueba de nuevo para no arriesgar tu histórico.');
+    return;
+  }
   const mes = v6GetMesActualNombre();
   if (!confirm('📅 ¿Cerrar el mes "' + mes + '" ahora?\n\n✅ Se guardará snapshot completo en Histórico\n✅ Depósitos del mes se SUMAN al saldo actual de cada cuenta\n🗑 Se limpia: TC, asignador, checks de fijos, checklist, depósitos\n❌ NO se toca: metas, deudores\n\n¿Continuar?')) return;
 
@@ -6355,6 +6369,14 @@ async function v6CerrarMesManual() {
 
 async function v6CheckAutoSnapshot() {
   if (_v6CerrandoMes) return;
+  if (!window._datosRealesCargados) {
+    // FIX pérdida de datos: no arriesgarse a tomar un snapshot del DOM
+    // vacío solo porque cargar() no llegó a tiempo con los datos reales.
+    // No se toca V6_LAST_MONTH_KEY, así que el cierre pendiente se vuelve
+    // a intentar en la próxima carga que sí traiga datos reales.
+    console.warn('v6CheckAutoSnapshot: datos reales no confirmados, se omite el cierre automático de mes esta vez.');
+    return;
+  }
   const lastMonth = localStorage.getItem(V6_LAST_MONTH_KEY);
   const currentMonth = v6GetMesActualKey();
 

@@ -64,3 +64,51 @@ test('los depósitos pendientes del mes también quedan en el snapshot', (t) => 
   const snap = window.v6TomarSnapshot('Agosto 2026');
   assert.equal(snap.depositos.mp.monto, 50000);
 });
+
+// Regresión del incidente de "agosto en $0": v6CheckAutoSnapshot() corría
+// después de cargar(), pero cargar() puede terminar SIN haber traído datos
+// reales (Drive momentáneamente inalcanzable, token restaurado tarde, etc.)
+// y dejar el DOM en su estado por defecto (todo en cero) sin avisar. Si en
+// ese momento cambió el mes, v6CheckAutoSnapshot tomaba esos ceros como el
+// cierre real y los subía a Drive, pisando la data real del usuario.
+test('v6CheckAutoSnapshot NO toma ni guarda snapshot si los datos reales no se confirmaron cargados', (t) => {
+  const { window } = loadApp();
+  t.after(() => window.close());
+
+  window._datosRealesCargados = false; // cargar() no llegó a aplicar datos reales
+  window.localStorage.setItem('fg_v6_last_month', '2026-07'); // mes anterior pendiente
+  setCuenta(window, 'mp', 0); // DOM en su estado por defecto (vacío)
+
+  let confirmLlamado = false;
+  window.confirm = () => { confirmLlamado = true; return true; };
+
+  return window.v6CheckAutoSnapshot().then(() => {
+    assert.equal(confirmLlamado, false, 'no debe ni preguntar si cerrar el mes sin datos reales confirmados');
+    assert.equal(window.v6GetSnapshots().length, 0, 'no debe crear ningún snapshot');
+    assert.equal(
+      window.localStorage.getItem('fg_v6_last_month'),
+      '2026-07',
+      'no debe marcar el mes como "visto" — el cierre pendiente debe reintentarse cuando sí haya datos reales'
+    );
+  });
+});
+
+test('v6CheckAutoSnapshot funciona normalmente cuando los datos reales SÍ se confirmaron cargados', (t) => {
+  const { window } = loadApp();
+  t.after(() => window.close());
+
+  window._datosRealesCargados = true;
+  window.localStorage.setItem('fg_v6_last_month', '2026-07');
+  setCuenta(window, 'mp', 500000);
+  window.confirm = () => true;
+
+  return window.v6CheckAutoSnapshot().then(() => {
+    const snaps = window.v6GetSnapshots();
+    assert.equal(snaps.length, 1, 'debe crear el snapshot del mes anterior cuando sí hay datos reales');
+    assert.notEqual(
+      window.localStorage.getItem('fg_v6_last_month'),
+      '2026-07',
+      'debe actualizar el mes visto una vez procesado el cierre'
+    );
+  });
+});
