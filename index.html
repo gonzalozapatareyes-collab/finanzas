@@ -7294,7 +7294,12 @@ function v6RenderHistorico() {
       return b.key - a.key;
     });
   const html = snapsOrdenados.map(({ s, i: realIdx }) => {
-    const totalSaldo = Object.values(s.cuentas || {}).reduce((a,b) => a+(b||0), 0);
+    // FIX: el total de la tarjeta solo sumaba las 4 cuentas duras, sin las
+    // custom (ej. APV Jubilación) — mismo patrón de bug que ya se arregló
+    // en v6GetEvolucionMensual (buscar "cuentasCustom" ahí arriba) y en
+    // v6RenderDashboard, pero acá había quedado sin aplicar.
+    const totalSaldo = Object.values(s.cuentas || {}).reduce((a,b) => a+(b||0), 0)
+      + (Array.isArray(s.cuentasCustom) ? s.cuentasCustom.reduce((a,c) => a+(c.saldo||0), 0) : 0);
     const totalDep = Object.values(s.depositos || {}).reduce((a,b) => a+(b.monto||0), 0);
     const totalTC = Object.values(s.tarjetaMontos || {}).reduce((a,b) => a+(b||0), 0);
     // FIX: los fijos pasaron de filas hardcodeadas (fijosPagados, un mapa
@@ -7323,6 +7328,7 @@ function v6RenderHistorico() {
         <div style="margin-top:8px;padding:10px;background:var(--mf-surface-2);border-radius:10px;font-size:12px;line-height:1.6;font-family:'Manrope',system-ui,sans-serif;color:var(--mf-ink);">
           <strong style="color:var(--mf-green-dark);">Cuentas:</strong><br>
           ${Object.entries(s.cuentas||{}).map(([k,v]) => `&nbsp;&nbsp;• ${k.toUpperCase()}: <span class="num-sensitive">$${(v||0).toLocaleString('es-CL')}</span>`).join('<br>')}
+          ${Array.isArray(s.cuentasCustom) && s.cuentasCustom.length ? '<br>' + s.cuentasCustom.map(c => `&nbsp;&nbsp;• ${c.nombre||'Cuenta custom'}: <span class="num-sensitive">$${(c.saldo||0).toLocaleString('es-CL')}</span>`).join('<br>') : ''}
           <br><br>
           <strong style="color:var(--mf-green-dark);">Gastos importados:</strong> ${s.gastosCount || 0} movimientos
         </div>
@@ -7456,10 +7462,23 @@ async function v6GuardarSnapshotManual() {
     }
   } catch(e) {}
 
+  // FIX cuentas custom faltantes en recuperación manual: v6TomarSnapshot()
+  // (el snapshot automático) ya incluye window._cuentasCustom vía un hook
+  // más abajo en el archivo (buscar "Hook v6TomarSnapshot"), pero este
+  // formulario manual construye su propio snapshot aparte y no lo hacía —
+  // el total de un mes recuperado a mano quedaba corto exactamente en lo
+  // que sumaran las cuentas custom (ej. APV Jubilación), porque el
+  // formulario solo pide las 4 cuentas duras. Se usa el saldo ACTUAL de
+  // las cuentas custom (mismo criterio que ya se usa para metas/deudores
+  // acá arriba: no son recuperables retroactivamente si cambiaron).
+  let cuentasCustomActuales = [];
+  try { cuentasCustomActuales = JSON.parse(JSON.stringify(window._cuentasCustom || [])); } catch(e) {}
+
   const snap = {
     mes: mes,
     ts: Date.now(),
     cuentas: cuentas,
+    cuentasCustom: cuentasCustomActuales,
     metas: metasActuales,
     depositos: depositos,
     tarjetaMontos: {},
