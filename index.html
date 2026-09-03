@@ -7409,6 +7409,20 @@ function v6AbrirRecuperarSnapshot() {
       <input type="number" id="v6rec-dep-${k}" placeholder="Depositado ese mes" style="padding:8px 10px;border-radius:8px;border:1px solid transparent;background:var(--mf-surface-2);color:var(--mf-ink);font-family:'Manrope',system-ui,sans-serif;">
     </div>`).join('');
 
+  // FIX: las cuentas custom (ej. APV Jubilación) no tenían forma de
+  // ingresarse a mano acá — se rellenaban en silencio con el saldo ACTUAL,
+  // que puede no ser el que tenían ese mes (mismo motivo por el que las
+  // cuentas duras tampoco se autocompletan). Se precargan con el saldo
+  // actual como punto de partida editable, no como valor fijo.
+  const customAccounts = window._cuentasCustom || [];
+  const customRows = customAccounts.length ? `
+    <div style="font-size:10px;color:var(--mf-text-faint);text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 6px;font-family:'Manrope',system-ui,sans-serif;">Cuentas custom</div>
+    ${customAccounts.map(c => `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center;margin-bottom:8px;">
+      <label style="font-size:12px;color:var(--mf-text-muted);font-family:'Manrope',system-ui,sans-serif;">${c.nombre || 'Cuenta custom'}</label>
+      <input type="number" id="v6rec-custom-${c.id}" value="${c.saldo || 0}" placeholder="Saldo final" style="padding:8px 10px;border-radius:8px;border:1px solid transparent;background:var(--mf-surface-2);color:var(--mf-ink);font-family:'Manrope',system-ui,sans-serif;">
+    </div>`).join('')}` : '';
+
   cont.innerHTML = `<div class="card" style="border-left:3px solid var(--mf-amber);margin-bottom:16px;">
     <div class="v6-section-label" style="margin-top:0;"><i class="ph ph-bandaids"></i> Recuperar snapshot manual</div>
     <p style="font-size:11px;color:var(--mf-text-muted);margin-bottom:10px;">
@@ -7422,6 +7436,7 @@ function v6AbrirRecuperarSnapshot() {
       <span>Cuenta</span><span>Saldo final del mes</span><span>Depositado ese mes</span>
     </div>
     ${cuentasRows}
+    ${customRows}
     <div style="display:flex;gap:10px;margin-top:14px;">
       <button class="icon-btn primary" style="width:auto;padding:0 14px;height:36px;" onclick="v6GuardarSnapshotManual()"><i class="ph ph-floppy-disk"></i> Guardar snapshot</button>
       <button class="icon-btn" style="width:auto;padding:0 14px;height:36px;" onclick="document.getElementById('v6-recuperar-form').style.display='none';document.getElementById('v6-recuperar-form').innerHTML='';">Cancelar</button>
@@ -7467,12 +7482,15 @@ async function v6GuardarSnapshotManual() {
   // más abajo en el archivo (buscar "Hook v6TomarSnapshot"), pero este
   // formulario manual construye su propio snapshot aparte y no lo hacía —
   // el total de un mes recuperado a mano quedaba corto exactamente en lo
-  // que sumaran las cuentas custom (ej. APV Jubilación), porque el
-  // formulario solo pide las 4 cuentas duras. Se usa el saldo ACTUAL de
-  // las cuentas custom (mismo criterio que ya se usa para metas/deudores
-  // acá arriba: no son recuperables retroactivamente si cambiaron).
-  let cuentasCustomActuales = [];
-  try { cuentasCustomActuales = JSON.parse(JSON.stringify(window._cuentasCustom || [])); } catch(e) {}
+  // que sumaran las cuentas custom (ej. APV Jubilación). Ahora el
+  // formulario (v6AbrirRecuperarSnapshot) pide un input por cada cuenta
+  // custom, igual que ya hace con las 4 duras — se lee lo que el usuario
+  // haya puesto ahí, no el saldo actual en silencio (puede no ser el que
+  // tenía ese mes).
+  const cuentasCustomActuales = (window._cuentasCustom || []).map(c => {
+    const el = document.getElementById('v6rec-custom-' + c.id);
+    return { ...c, saldo: el ? (parseFloat(el.value) || 0) : (c.saldo || 0) };
+  });
 
   const snap = {
     mes: mes,
