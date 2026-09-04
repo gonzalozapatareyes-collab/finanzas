@@ -6777,16 +6777,18 @@ function v6GetEvolucionMensual() {
     // fix documentado para el hero ("evita doble conteo") — acá faltaba aplicarlo,
     // y por eso el comparativo "vs mes anterior" mostraba de más exactamente lo
     // que se había depositado y confirmado ese mes.
-    const total = ['mp','be','fr','fc'].reduce((s,k) => {
-      const saldo = val('c-'+k) || 0;
+    // FIX doble conteo (mismo caso que v6RenderDashboard, buscar "dep-{k}
+    // solo != 0 cuando NO se confirmó" más abajo): si el input dep-{k}
+    // quedó con un valor viejo pese a que el botón ya está "✓ Listo" (ese
+    // depósito ya está sumado en el saldo), no volver a sumarlo acá.
+    const depPendienteEvol = (k) => {
+      const btnEl = document.getElementById('btn-'+k);
+      if (btnEl && btnEl.classList.contains('listo')) return 0;
       const el = document.getElementById('dep-'+k);
-      const depPendiente = el ? (parseFloat(el.value)||0) : 0;
-      return s + saldo + depPendiente;
-    }, 0) + customSaldoLive;
-    const totDep = ['mp','be','fr','fc'].reduce((s,k) => {
-      const el = document.getElementById('dep-'+k);
-      return s + (el ? (parseFloat(el.value)||0) : 0);
-    }, 0);
+      return el ? (parseFloat(el.value)||0) : 0;
+    };
+    const total = ['mp','be','fr','fc'].reduce((s,k) => s + (val('c-'+k)||0) + depPendienteEvol(k), 0) + customSaldoLive;
+    const totDep = ['mp','be','fr','fc'].reduce((s,k) => s + depPendienteEvol(k), 0);
     if (!allMonths.find(h => h.mes === mes)) {
       allMonths.push({ mes, saldo: total, deposito: totDep, ts: Date.now(), _esActual: true });
     }
@@ -6917,19 +6919,27 @@ function v6RenderDashboard() {
   if (typeof val !== 'function') return;
   // FIX V31.2: Patrimonio = saldo + dep pendiente. NO sumar _acumuladoMes
   // porque ya está consolidado en el saldo input (evita doble conteo).
-  const total = ['mp','be','fr','fc'].reduce((s,k) => {
-    const saldo = val('c-'+k) || 0;
+  //
+  // FIX doble conteo real (encontrado con datos reales de Gonzalo tras una
+  // restauración de Drive): ese cálculo asume que dep-{k} solo es != 0
+  // cuando el depósito TODAVÍA no se confirmó — confirmarDeposito() lo deja
+  // en 0 al tocar "Listo" porque ya sumó el monto al saldo. Pero si el
+  // input queda con un valor viejo por fuera de ese flujo (ej. una
+  // restauración de datos que no pasó por confirmarDeposito()), el botón
+  // queda "✓ Listo" (ya consolidado en el saldo) con el input todavía
+  // mostrando el monto — y este cálculo lo sumaba una segunda vez. Ahora
+  // solo se suma el input si el botón NO está en estado "listo".
+  const depPendiente = (k) => {
+    const btnEl = document.getElementById('btn-'+k);
+    if (btnEl && btnEl.classList.contains('listo')) return 0;
     const depEl = document.getElementById('dep-'+k);
-    const dep = depEl ? (parseFloat(depEl.value)||0) : 0;
-    return s + saldo + dep;
-  }, 0);
+    return depEl ? (parseFloat(depEl.value)||0) : 0;
+  };
+  const total = ['mp','be','fr','fc'].reduce((s,k) => s + (val('c-'+k)||0) + depPendiente(k), 0);
   // totDep = solo el input dep pendiente. El widget "depositado este mes"
   // del dashboard que usa _acumuladoMes para mostrar el progreso del mes
   // se calcula aparte (es solo informativo, no se suma al patrimonio).
-  const totDep = ['mp','be','fr','fc'].reduce((s,k) => {
-    const elActual = document.getElementById('dep-'+k);
-    return s + (elActual ? (parseFloat(elActual.value)||0) : 0);
-  }, 0);
+  const totDep = ['mp','be','fr','fc'].reduce((s,k) => s + depPendiente(k), 0);
   // El widget "Depositado este mes" del dashboard sigue mostrando _acumuladoMes
   // como referencia informativa (cuánto se ha depositado en el mes en curso).
   const depMesAcumulado = ['mp','be','fr','fc'].reduce((s,k) => {

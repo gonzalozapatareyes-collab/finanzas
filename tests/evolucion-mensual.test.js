@@ -76,3 +76,45 @@ test('v6GetEvolucionMensual no cuenta dos veces un depósito ya confirmado en el
   assert.ok(actual, 'debe incluir el mes en curso');
   assert.equal(actual.saldo, 1000000, 'no debe sumar _acumuladoMes otra vez sobre un saldo que ya lo incluye');
 });
+
+// Regresión real (encontrada con los datos reales de Gonzalo, tras
+// restaurar una versión de Drive): confirmarDeposito() deja dep-{k} en 0
+// al tocar "✓ Listo" porque ya sumó ese monto al saldo. Pero si el input
+// queda con un valor viejo por fuera de ese flujo (ej. una restauración de
+// datos que no pasó por confirmarDeposito()), el botón queda "✓ Listo"
+// (depósito ya consolidado en el saldo) con el input todavía mostrando el
+// monto — y tanto v6GetEvolucionMensual como v6RenderDashboard lo sumaban
+// una segunda vez. Gonzalo vio "Total ahorrado" del Dashboard con
+// $400.000 de más comparado con "Total ahorros" de la página Cuentas
+// (que solo suma el saldo, sin el input dep-).
+test('v6GetEvolucionMensual no suma dep-{k} si el depósito ya está marcado "Listo" (input desactualizado)', (t) => {
+  const { window } = loadApp();
+  t.after(() => window.close());
+
+  window.document.getElementById('c-mp').value = '4083297';
+  window.document.getElementById('dep-mp').value = '400000';
+  const btn = window.document.getElementById('btn-mp');
+  btn.classList.remove('pendiente');
+  btn.classList.add('listo');
+
+  const mesActual = window.v6GetMesActualNombre();
+  const actual = window.v6GetEvolucionMensual().find(m => m.mes === mesActual);
+
+  assert.equal(actual.saldo, 4083297, 'no debe sumar dep-mp otra vez: ese depósito ya está reflejado en el saldo');
+});
+
+test('v6RenderDashboard: "Total ahorrado" no suma dep-{k} si el depósito ya está marcado "Listo"', (t) => {
+  const { window, document } = loadApp();
+  t.after(() => window.close());
+
+  document.getElementById('c-mp').value = '4083297';
+  document.getElementById('dep-mp').value = '400000';
+  const btn = document.getElementById('btn-mp');
+  btn.classList.remove('pendiente');
+  btn.classList.add('listo');
+
+  window.v6RenderDashboard();
+
+  const hero = document.getElementById('v6-dash-hero').textContent;
+  assert.equal(hero, '$4.083.297', 'el hero del dashboard no debe contar el depósito ya consolidado una segunda vez');
+});
