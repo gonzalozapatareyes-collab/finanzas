@@ -147,3 +147,30 @@ test('v6CheckAutoSnapshot funciona normalmente cuando hay datos reales confirmad
     );
   });
 });
+
+// Regresión del incidente de "septiembre perdido" (oct 2026): si Gonzalo
+// cancelaba el diálogo "¿Cerrar el mes?" (o el snapshot fallaba por algún
+// motivo), v6CheckAutoSnapshot igual marcaba el mes como "visto" en
+// localStorage. La próxima carga ya no detectaba el cambio de mes pendiente
+// y ese mes quedaba sin cerrar para siempre: sin snapshot en Histórico, y
+// el contador "acumulado este mes" se reseteaba igual con el calendario,
+// perdiendo de vista depósitos reales que sí quedaron sumados al saldo.
+test('v6CheckAutoSnapshot NO marca el mes como "visto" si el usuario cancela el cierre', (t) => {
+  const { window } = loadApp();
+  t.after(() => window.close());
+
+  window._datosRealesCargados = true;
+  window.eval('driveAccessToken = "fake-token-de-test";');
+  window.localStorage.setItem('fg_v6_last_month', '2026-08');
+  setCuenta(window, 'mp', 500000);
+  window.confirm = () => false; // el usuario cancela el diálogo de cierre
+
+  return window.v6CheckAutoSnapshot().then(() => {
+    assert.equal(window.v6GetSnapshots().length, 0, 'no debe crear ningún snapshot si se cancela');
+    assert.equal(
+      window.localStorage.getItem('fg_v6_last_month'),
+      '2026-08',
+      'el mes pendiente debe seguir marcado como no-visto para volver a preguntar en la próxima carga'
+    );
+  });
+});

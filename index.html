@@ -6616,6 +6616,14 @@ async function v6CheckAutoSnapshot() {
       '❌ NO tocar: metas, deudores\n\n' +
       '¿Proceder?'
     );
+    // FIX mes perdido en Histórico (detectado con datos reales de Gonzalo,
+    // sep 2026): antes esto marcaba V6_LAST_MONTH_KEY = currentMonth tanto
+    // si se cerraba como si se cancelaba. Si cancelabas (o el snapshot
+    // fallaba), el mes anterior quedaba sin cerrar PARA SIEMPRE: la próxima
+    // carga ya no detecta el cambio de mes (lastMonth ya quedó en
+    // currentMonth) y nunca más se vuelve a ofrecer cerrarlo. Ahora solo se
+    // marca como "visto" si el cierre realmente se completó.
+    let cerrado = false;
     if (ok) {
       _v6CerrandoMes = true;
       try {
@@ -6635,14 +6643,15 @@ async function v6CheckAutoSnapshot() {
           if (!driveOk) {
             alert('⚠️ Snapshot de ' + mesAnt + ' guardado LOCALMENTE, pero falló el guardado en Drive.\nNo cierres la app hasta reintentar "Guardar", o el histórico podría perderse.');
           }
+          cerrado = true;
         }
       } finally {
         _v6CerrandoMes = false;
       }
     }
-    // Se marca el mes como "visto" tanto si se cerró como si se canceló,
-    // para no volver a preguntar en cada carga dentro del mismo mes.
-    localStorage.setItem(V6_LAST_MONTH_KEY, currentMonth);
+    if (cerrado) {
+      localStorage.setItem(V6_LAST_MONTH_KEY, currentMonth);
+    }
   }
 }
 
