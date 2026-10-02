@@ -118,3 +118,29 @@ test('v6RenderDashboard: "Total ahorrado" no suma dep-{k} si el depósito ya est
   const hero = document.getElementById('v6-dash-hero').textContent;
   assert.equal(hero, '$4.083.297', 'el hero del dashboard no debe contar el depósito ya consolidado una segunda vez');
 });
+
+// Regresión reportada por Gonzalo (oct 2026): la tarjeta "Meta más cercana"
+// del Dashboard mostraba 101% ($5.049.819) mientras que "Plan Auto" (la
+// tarjeta de Cuentas) mostraba 95.3% ($4.766.558) para la MISMA cuenta.
+// Causa: "Meta más cercana" sumaba saldo + window._acumuladoMes[k], pero
+// _acumuladoMes es un contador informativo que NO se resetea al confirmar
+// un depósito (confirmarDeposito() lo incrementa Y suma el monto al saldo
+// a la vez) — sumar ambos duplicaba el depósito apenas se confirmaba.
+test('v6RenderDashboard: "Meta más cercana" no suma _acumuladoMes encima de un depósito ya confirmado', (t) => {
+  const { window, document } = loadApp();
+  t.after(() => window.close());
+
+  document.getElementById('c-mp').value = '4766558'; // saldo YA incluye el depósito confirmado
+  document.getElementById('dep-mp').value = '0';
+  const btn = document.getElementById('btn-mp');
+  btn.classList.remove('pendiente');
+  btn.classList.add('listo');
+  window._acumuladoMes = { mp: 283261 }; // no se resetea al confirmar
+
+  window.v6RenderDashboard();
+
+  const detalle = document.getElementById('v6-dash-meta-detail').textContent;
+  const pct = document.getElementById('v6-dash-meta-pct').textContent;
+  assert.equal(detalle, '$4.766.558 de $5.000.000', 'no debe sumar _acumuladoMes.mp encima del saldo ya confirmado');
+  assert.equal(pct, '95%');
+});

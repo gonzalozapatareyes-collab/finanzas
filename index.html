@@ -7001,12 +7001,17 @@ function v6RenderDashboard() {
   setEl('v6-dash-deudores', '$' + deudoresTotal.toLocaleString('es-CL'));
   setEl('v6-dash-fijos', '$' + fijosTotal.toLocaleString('es-CL'));
 
-  // V30: Meta más cercana - usar saldo + acumulado del mes
-  const _acumMP = (window._acumuladoMes && window._acumuladoMes.mp) || 0;
-  const _acumBE = (window._acumuladoMes && window._acumuladoMes.be) || 0;
-  const autoSaldo = (val('c-mp') || 0) + _acumMP;
+  // FIX doble conteo (detectado con datos reales de Gonzalo, oct 2026): esto
+  // sumaba saldo + _acumuladoMes[k], pero _acumuladoMes es un contador
+  // informativo ("cuánto llevas depositado este mes") que NO se resetea al
+  // confirmar — confirmarDeposito() lo incrementa Y suma el mismo monto al
+  // saldo a la vez, así que sumar ambos acá duplicaba cualquier depósito
+  // apenas lo confirmabas. Mismo fix que ya tiene el hero más arriba: solo
+  // sumar lo que todavía esté pendiente de confirmar (depPendiente, que
+  // devuelve 0 si el botón ya está "listo").
+  const autoSaldo = (val('c-mp') || 0) + depPendiente('mp');
   const autoMeta = val('auto-meta') || 0;
-  const vivSaldo = (val('c-be') || 0) + _acumBE;
+  const vivSaldo = (val('c-be') || 0) + depPendiente('be');
   const vivMeta = val('viv-meta') || 0;
   const autoPct = autoMeta ? autoSaldo/autoMeta : 0;
   const vivPct = vivMeta ? vivSaldo/vivMeta : 0;
@@ -8386,20 +8391,34 @@ window.v17GenerarInsights = function() {
   const val = (id) => parseFloat(document.getElementById(id)?.value) || 0;
   const hist = window._historialAhorros || [];
 
-  // V30: incluir acumulado del mes en cada cuenta
-  const _ac = window._acumuladoMes || {};
+  // FIX doble conteo (mismo bug que v6RenderDashboard, detectado con datos
+  // reales de Gonzalo oct 2026): esto sumaba saldo + dep-{k} pendiente +
+  // _acumuladoMes[k], pero confirmarDeposito() ya deja el depósito
+  // confirmado sumado al saldo Y registrado en _acumuladoMes a la vez —
+  // sumar los tres contaba el mismo depósito hasta dos veces en el
+  // patrimonio apenas lo confirmabas. `cuentas` (patrimonio) ahora solo
+  // suma lo que esté PENDIENTE de confirmar (depPendienteInsight, que
+  // devuelve 0 si el botón ya está "listo"); `depositoMes` (para comparar
+  // contra el promedio histórico) usa _acumuladoMes + lo pendiente, que sí
+  // es la cifra correcta de "cuánto deposité este mes" — nunca se suma al
+  // patrimonio.
+  const depPendienteInsight = (k) => {
+    const btnEl = document.getElementById('btn-'+k);
+    if (btnEl && btnEl.classList.contains('listo')) return 0;
+    return val('dep-'+k);
+  };
   const cuentas = {
-    mp: val('c-mp') + val('dep-mp') + (_ac.mp || 0),
-    be: val('c-be') + val('dep-be') + (_ac.be || 0),
-    fr: val('c-fr') + val('dep-fr') + (_ac.fr || 0),
-    fc: val('c-fc') + val('dep-fc') + (_ac.fc || 0)
+    mp: val('c-mp') + depPendienteInsight('mp'),
+    be: val('c-be') + depPendienteInsight('be'),
+    fr: val('c-fr') + depPendienteInsight('fr'),
+    fc: val('c-fc') + depPendienteInsight('fc')
   };
   const patrimonioActual = Object.values(cuentas).reduce((a,b) => a+b, 0);
   const depositoMes = (function(){
     const acum = window._acumuladoMes || {};
     let total = 0;
     ['mp','be','fr','fc'].forEach(k => {
-      total += val('dep-'+k) + (acum[k] || 0);
+      total += depPendienteInsight(k) + (acum[k] || 0);
     });
     return total;
   })();
@@ -8409,7 +8428,11 @@ window.v17GenerarInsights = function() {
   const vivMeta = val('viv-meta');
   if (vivMeta > 0 && vivSaldo < vivMeta) {
     const falta = vivMeta - vivSaldo;
-    const aporteBE = val('dep-be');
+    // FIX: antes solo miraba el depósito pendiente (dep-be) como "aporte de
+    // este mes" — si ya le habías dado "Listo", quedaba en 0 y el insight
+    // decía "sin movimiento" aunque sí depositaste. Ahora usa el total
+    // depositado este mes (confirmado + pendiente), igual que depositoMes.
+    const aporteBE = depPendienteInsight('be') + ((window._acumuladoMes && window._acumuladoMes.be) || 0);
     if (aporteBE > 0) {
       const meses = Math.ceil(falta / aporteBE);
       const fecha = new Date();
@@ -8434,7 +8457,9 @@ window.v17GenerarInsights = function() {
   const autoMeta = val('auto-meta');
   if (autoMeta > 0 && autoSaldo < autoMeta) {
     const falta = autoMeta - autoSaldo;
-    const aporteAuto = val('dep-mp');
+    // FIX: mismo caso que aporteBE arriba — usar el total depositado este
+    // mes (confirmado + pendiente), no solo el pendiente.
+    const aporteAuto = depPendienteInsight('mp') + ((window._acumuladoMes && window._acumuladoMes.mp) || 0);
     if (aporteAuto > 0) {
       const meses = Math.ceil(falta / aporteAuto);
       const fecha = new Date();
@@ -9668,6 +9693,37 @@ setInterval(() => { if (typeof v17RenderInsights === 'function') v17RenderInsigh
 // ═══════════════════════════════════════════════════════════════════
 // V17: REPORTE MENSUAL EN PDF
 // ═══════════════════════════════════════════════════════════════════
+// Separado de v17GenerarReportePDF para poder testearlo sin depender de
+// jsPDF (se carga desde un CDN, no hay red en los tests).
+function v17CalcularPatrimonioReporte() {
+  const val = (id) => parseFloat(document.getElementById(id)?.value) || 0;
+  // FIX doble conteo (mismo bug que v6RenderDashboard / v17GenerarInsights):
+  // si dep-{k} queda con un valor viejo pese a que el botón ya está "listo"
+  // (ej. una restauración de Drive que no pasó por confirmarDeposito()), ese
+  // depósito ya está sumado al saldo y no hay que sumarlo de nuevo acá.
+  const depPendienteReporte = (k) => {
+    const btnEl = document.getElementById('btn-'+k);
+    if (btnEl && btnEl.classList.contains('listo')) return 0;
+    return val('dep-'+k);
+  };
+  const cuentas = {
+    'MercadoPago': val('c-mp') + depPendienteReporte('mp'),
+    'BancoEstado': val('c-be') + depPendienteReporte('be'),
+    'Fintual Reserva': val('c-fr') + depPendienteReporte('fr'),
+    'Fintual Capital': val('c-fc') + depPendienteReporte('fc')
+  };
+  const patrimonioTotal = Object.values(cuentas).reduce((a,b) => a+b, 0);
+  const depositoMes = (function(){
+    const acum = window._acumuladoMes || {};
+    let total = 0;
+    ['mp','be','fr','fc'].forEach(k => {
+      total += depPendienteReporte(k) + (acum[k] || 0);
+    });
+    return total;
+  })();
+  return { cuentas, patrimonioTotal, depositoMes };
+}
+
 window.v17GenerarReportePDF = async function() {
   // Cargar jsPDF dinámicamente si no está
   if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
@@ -9693,21 +9749,7 @@ window.v17GenerarReportePDF = async function() {
   const GREEN = [107, 155, 63];
 
   // Calcular data
-  const cuentas = {
-    'MercadoPago': val('c-mp') + val('dep-mp'),
-    'BancoEstado': val('c-be') + val('dep-be'),
-    'Fintual Reserva': val('c-fr') + val('dep-fr'),
-    'Fintual Capital': val('c-fc') + val('dep-fc')
-  };
-  const patrimonioTotal = Object.values(cuentas).reduce((a,b) => a+b, 0);
-  const depositoMes = (function(){
-    const acum = window._acumuladoMes || {};
-    let total = 0;
-    ['mp','be','fr','fc'].forEach(k => {
-      total += val('dep-'+k) + (acum[k] || 0);
-    });
-    return total;
-  })();
+  const { cuentas, patrimonioTotal, depositoMes } = v17CalcularPatrimonioReporte();
   const totalTC = ['papa','paola','yo','vania','paula','aldo','mama','rorro','luis']
     .reduce((s,p) => s + val('bc-'+p) + val('cmr-'+p), 0);
   const deudores = (window._deudores || []).filter(d => !d.cobrado);
