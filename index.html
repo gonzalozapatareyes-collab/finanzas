@@ -11700,6 +11700,33 @@ function v6MoveBlocks() {
         color: #b394d8;
       }
 
+      /* Accesos rápidos (menú de consultas sin tener que escribir) */
+      .chat-quick-chips {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        padding: 10px 14px;
+        flex-shrink: 0;
+        border-bottom: 1px solid var(--mf-line, var(--border));
+        -webkit-overflow-scrolling: touch;
+      }
+      .chat-quick-chips::-webkit-scrollbar { display: none; }
+      .chat-chip {
+        flex-shrink: 0;
+        background: var(--mf-surface-2, var(--surface2));
+        color: var(--mf-ink, var(--text));
+        border: 1px solid var(--mf-line, var(--border));
+        border-radius: 14px;
+        padding: 7px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        font-family: 'Manrope', system-ui, sans-serif;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .chat-chip:hover { border-color: var(--mf-green, #0FA97C); }
+      .chat-chip:active { transform: scale(.97); }
+
       /* Input fijo abajo */
       .chat-burbuja-input-row {
         display: flex;
@@ -11935,6 +11962,12 @@ function v6MoveBlocks() {
         <div class="chat-burbuja-header">
           <div class="chat-burbuja-titulo"><span class="estado-dot"></span> Asistente de finanzas</div>
           <button class="chat-burbuja-cerrar" onclick="closeChatBurbuja()">×</button>
+        </div>
+        <div class="chat-quick-chips" id="chat-quick-chips">
+          <button class="chat-chip" onclick="consultaRapida('saldos')">💰 Saldos</button>
+          <button class="chat-chip" onclick="consultaRapida('metas')">🎯 Metas</button>
+          <button class="chat-chip" onclick="consultaRapida('deudores')">👥 Deudores</button>
+          <button class="chat-chip" onclick="consultaRapida('fijos')">📋 Fijos pendientes</button>
         </div>
         <div class="chat-mensajes" id="chat-mensajes-stream"></div>
         <div class="chat-burbuja-input-row">
@@ -12261,19 +12294,13 @@ function v6MoveBlocks() {
       return `En **Fintual Capital** tienes ${fmtP(saldoDe('fc'))} 📦`;
     }
     // Total ahorros / patrimonio
-    if (/\b(total|patrimonio|todo)\b/.test(t) && /\b(ahorro|tengo|cu[aá]nto|plata)\b/.test(t)) {
-      const base = ['mp','be','fr','fc'].reduce((s,k) => s + saldoDe(k), 0);
-      const custom = (window._cuentasCustom || []).reduce((s,c) => s + (c.saldo||0), 0);
-      return `Tu patrimonio total es **${fmtP(base + custom)}** 💰\n\n• MercadoPago: ${fmtP(saldoDe('mp'))}\n• BancoEstado: ${fmtP(saldoDe('be'))}\n• Fintual Reserva: ${fmtP(saldoDe('fr'))}\n• Fintual Capital: ${fmtP(saldoDe('fc'))}${custom > 0 ? '\n• Cuentas custom: ' + fmtP(custom) : ''}`;
+    if (/\b(total|patrimonio|todo)\b/.test(t) && /\b(ahorros?|tengo|cu[aá]nto|plata)\b/.test(t)) {
+      return respuestaSaldosRapida();
     }
 
     // Deudores
     if (/\b(deben|deudor|debe)\b/.test(t)) {
-      const deudores = (window._deudores || []).filter(d => !d.cobrado);
-      const tot = deudores.reduce((s,d) => s + (d.monto||0), 0);
-      if (deudores.length === 0) return 'No tienes deudas pendientes por cobrar. ✅';
-      const detalle = deudores.slice(0, 6).map(d => `• ${d.nombre}: ${fmtP(d.monto||0)}`).join('\n');
-      return `Te deben **${fmtP(tot)}** en total 👥\n\n${detalle}${deudores.length > 6 ? '\n…y ' + (deudores.length - 6) + ' más' : ''}`;
+      return respuestaDeudoresRapida();
     }
 
     // Meta auto
@@ -12294,30 +12321,12 @@ function v6MoveBlocks() {
     // Metas en general (sin mencionar auto/vivienda puntual) — lista Auto,
     // Vivienda y cualquier meta custom (window._metasCustom).
     if (/\bmetas?\b/.test(t) && /\b(qu[eé]|cu[aá]les?|tengo|hay|mis)\b/.test(t)) {
-      const autoMeta = 5000000;
-      const autoSaldo = saldoDe('mp');
-      const lineas = [
-        `• 🚗 Auto: ${fmtP(autoSaldo)} de ${fmtP(autoMeta)} (${Math.min(100, autoSaldo/autoMeta*100).toFixed(0)}%)`,
-        `• 🏠 Vivienda: ${fmtP(saldoDe('be'))} (sin tope, cumplida)`,
-      ];
-      (window._metasCustom || []).forEach(m => {
-        const saldo = m.tracking === 'manual' ? (m.saldoManual||0)
-          : (typeof getSaldoCuenta === 'function' ? getSaldoCuenta(m.tracking) : 0);
-        const target = m.target || 0;
-        lineas.push(`• 🎯 ${m.nombre}: ${fmtP(saldo)}${target ? ' de ' + fmtP(target) + ' (' + Math.min(100, saldo/target*100).toFixed(0) + '%)' : ''}`);
-      });
-      return `Tus metas:\n\n${lineas.join('\n')}`;
+      return respuestaMetasRapida();
     }
 
     // Gastos fijos pendientes de pagar (window._gastosFijosCustom)
     if (/\bfijos?\b/.test(t) && /\b(cu[aá]nto|falta|debo|pagar|pendiente|qu[eé])\b/.test(t)) {
-      const fijos = window._gastosFijosCustom || [];
-      if (fijos.length === 0) return 'No tienes gastos fijos registrados todavía. Agrégalos en Gastos → Gastos fijos. 📋';
-      const pendientes = fijos.filter(f => !f.pagado);
-      const totalPend = pendientes.reduce((s,f) => s + (f.monto||0), 0);
-      if (pendientes.length === 0) return `Ya marcaste todos tus gastos fijos como pagados este mes. ✅ (${fijos.length} en total)`;
-      const detalle = pendientes.slice(0, 8).map(f => `• ${f.nombre}: ${fmtP(f.monto||0)}`).join('\n');
-      return `Te faltan **${pendientes.length}** gastos fijos por pagar, **${fmtP(totalPend)}** en total:\n\n${detalle}${pendientes.length > 8 ? '\n…y ' + (pendientes.length - 8) + ' más' : ''}`;
+      return respuestaFijosPendientesRapida();
     }
 
     // Checklist del mes pendiente (window._checklistCustom)
@@ -12342,6 +12351,83 @@ function v6MoveBlocks() {
 
     return null; // no es consulta → se guarda como nota
   }
+
+  // ─── Respuestas reutilizables para el menú de accesos rápidos (ver
+  // consultaRapida() más abajo) — la misma lógica que usaban los bloques de
+  // responderConsulta() de arriba, movida acá para no tener dos copias que
+  // puedan divergir: ahora responderConsulta() también las llama.
+  function respuestaSaldosRapida() {
+    const fmtP = (n) => '$' + Math.round(n).toLocaleString('es-CL');
+    const saldoDe = (k) => { const el = document.getElementById('c-'+k); return el ? (parseFloat(el.value)||0) : 0; };
+    const customArr = window._cuentasCustom || [];
+    const custom = customArr.reduce((s,c) => s + (c.saldo||0), 0);
+    const base = ['mp','be','fr','fc'].reduce((s,k) => s + saldoDe(k), 0);
+    let r = `Tu patrimonio total es **${fmtP(base + custom)}** 💰\n\n• MercadoPago: ${fmtP(saldoDe('mp'))}\n• BancoEstado: ${fmtP(saldoDe('be'))}\n• Fintual Reserva: ${fmtP(saldoDe('fr'))}\n• Fintual Capital: ${fmtP(saldoDe('fc'))}`;
+    customArr.forEach(c => { r += `\n• ${c.nombre}: ${fmtP(c.saldo||0)}`; });
+    return r;
+  }
+
+  function respuestaMetasRapida() {
+    const fmtP = (n) => '$' + Math.round(n).toLocaleString('es-CL');
+    const saldoDe = (k) => { const el = document.getElementById('c-'+k); return el ? (parseFloat(el.value)||0) : 0; };
+    const autoMeta = 5000000;
+    const autoSaldo = saldoDe('mp');
+    const lineas = [
+      `• 🚗 Auto: ${fmtP(autoSaldo)} de ${fmtP(autoMeta)} (${Math.min(100, autoSaldo/autoMeta*100).toFixed(0)}%)`,
+      `• 🏠 Vivienda: ${fmtP(saldoDe('be'))} (sin tope, cumplida)`,
+    ];
+    (window._metasCustom || []).forEach(m => {
+      const saldo = m.tracking === 'manual' ? (m.saldoManual||0)
+        : (typeof getSaldoCuenta === 'function' ? getSaldoCuenta(m.tracking) : 0);
+      const target = m.target || 0;
+      lineas.push(`• 🎯 ${m.nombre}: ${fmtP(saldo)}${target ? ' de ' + fmtP(target) + ' (' + Math.min(100, saldo/target*100).toFixed(0) + '%)' : ''}`);
+    });
+    return `Tus metas:\n\n${lineas.join('\n')}`;
+  }
+
+  function respuestaDeudoresRapida() {
+    const fmtP = (n) => '$' + Math.round(n).toLocaleString('es-CL');
+    const deudores = (window._deudores || []).filter(d => !d.cobrado);
+    const tot = deudores.reduce((s,d) => s + (d.monto||0), 0);
+    if (deudores.length === 0) return 'No tienes deudas pendientes por cobrar. ✅';
+    const detalle = deudores.slice(0, 6).map(d => `• ${d.nombre}: ${fmtP(d.monto||0)}`).join('\n');
+    return `Te deben **${fmtP(tot)}** en total 👥\n\n${detalle}${deudores.length > 6 ? '\n…y ' + (deudores.length - 6) + ' más' : ''}`;
+  }
+
+  function respuestaFijosPendientesRapida() {
+    const fmtP = (n) => '$' + Math.round(n).toLocaleString('es-CL');
+    const fijos = window._gastosFijosCustom || [];
+    if (fijos.length === 0) return 'No tienes gastos fijos registrados todavía. Agrégalos en Gastos → Gastos fijos. 📋';
+    const pendientes = fijos.filter(f => !f.pagado);
+    const totalPend = pendientes.reduce((s,f) => s + (f.monto||0), 0);
+    if (pendientes.length === 0) return `Ya marcaste todos tus gastos fijos como pagados este mes. ✅ (${fijos.length} en total)`;
+    const detalle = pendientes.slice(0, 8).map(f => `• ${f.nombre}: ${fmtP(f.monto||0)}`).join('\n');
+    return `Te faltan **${pendientes.length}** gastos fijos por pagar, **${fmtP(totalPend)}** en total:\n\n${detalle}${pendientes.length > 8 ? '\n…y ' + (pendientes.length - 8) + ' más' : ''}`;
+  }
+
+  // ─── Menú de accesos rápidos (botones arriba del input del chat): pedido
+  // de Gonzalo porque el texto libre depende de que el regex de
+  // responderConsulta() matchee la frase exacta — un botón nunca falla por
+  // redacción. Se muestra como si el usuario hubiera "preguntado" el chip,
+  // para que quede en el historial del chat igual que una consulta escrita,
+  // pero sin guardarse como nota (es una consulta, no un apunte).
+  const CONSULTAS_RAPIDAS = {
+    saldos:   { label: '💰 Saldos',           fn: respuestaSaldosRapida },
+    metas:    { label: '🎯 Metas',            fn: respuestaMetasRapida },
+    deudores: { label: '👥 Deudores',         fn: respuestaDeudoresRapida },
+    fijos:    { label: '📋 Fijos pendientes', fn: respuestaFijosPendientesRapida }
+  };
+  window.consultaRapida = function(tipo) {
+    const item = CONSULTAS_RAPIDAS[tipo];
+    if (!item) return;
+    pushChatMsg('user', item.label);
+    renderChatMensajes();
+    setTimeout(async () => {
+      pushChatMsg('app', item.fn());
+      renderChatMensajes();
+      if (typeof guardar === 'function') await guardar();
+    }, 250);
+  };
 
   // ─── Render del stream de mensajes ───────────────────────────
   function renderChatMensajes() {

@@ -70,3 +70,61 @@ test('una pregunta que no matchea ningún patrón devuelve null (no se inventa u
   const r = window.responderConsulta('cuando cae la luna llena?');
   assert.equal(r, null);
 });
+
+// Menú de accesos rápidos (chips arriba del input del chat): Gonzalo pidió
+// una forma de consultar sin depender de que el texto libre matchee el
+// regex correcto. Las funciones de abajo son las que usan esos botones, y
+// responderConsulta() las reutiliza para no tener la misma lógica en dos
+// lugares que puedan divergir (ver respuestaSaldosRapida y similares).
+
+test('respuestaSaldosRapida lista cada cuenta custom por separado y suma el patrimonio total', (t) => {
+  const { window } = loadApp();
+  t.after(() => window.close());
+
+  window.document.getElementById('c-mp').value = '4766558';
+  window.document.getElementById('c-be').value = '3500000';
+  window.document.getElementById('c-fr').value = '1452149';
+  window.document.getElementById('c-fc').value = '1019949';
+  window._cuentasCustom = [{ id: 'apv', nombre: 'APV Jubilación', saldo: 224000 }];
+
+  const r = window.respuestaSaldosRapida();
+  assert.match(r, /APV Jubilación: \$224\.000/);
+  assert.match(r, /\$10\.962\.656/, 'debe incluir la cuenta custom en el patrimonio total');
+});
+
+test('responderConsulta("total ahorros") devuelve exactamente lo mismo que respuestaSaldosRapida (misma fuente, sin duplicar lógica)', (t) => {
+  const { window } = loadApp();
+  t.after(() => window.close());
+
+  window.document.getElementById('c-mp').value = '500000';
+  window._cuentasCustom = [{ id: 'apv', nombre: 'APV Jubilación', saldo: 100000 }];
+
+  assert.equal(window.responderConsulta('total ahorros'), window.respuestaSaldosRapida());
+});
+
+test('consultaRapida("saldos") responde en el chat y NO guarda una nota', (t) => {
+  const { window } = loadApp();
+  t.after(() => window.close());
+
+  window.document.getElementById('c-mp').value = '100000';
+  window._notas = [];
+  window._chatLog = [];
+
+  window.consultaRapida('saldos');
+  return new Promise(resolve => setTimeout(resolve, 400)).then(() => {
+    assert.equal(window._notas.length, 0, 'una consulta rápida no debe crear una nota en la bitácora');
+    assert.equal(window._chatLog.length, 2, 'debe quedar el chip + la respuesta en el historial del chat');
+    assert.equal(window._chatLog[0].rol, 'user');
+    assert.equal(window._chatLog[1].rol, 'app');
+    assert.match(window._chatLog[1].texto, /patrimonio total/);
+  });
+});
+
+test('consultaRapida con un tipo desconocido no hace nada (no rompe ni ensucia el chat)', (t) => {
+  const { window } = loadApp();
+  t.after(() => window.close());
+
+  window._chatLog = [];
+  assert.doesNotThrow(() => window.consultaRapida('inventado'));
+  assert.equal(window._chatLog.length, 0);
+});
